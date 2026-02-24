@@ -1,0 +1,32 @@
+{
+  "name": "pydentity",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "UV_LINK_MODE": "copy"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
+  },
+  "postCreateCommand": "make setup",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "charliermarsh.ruff",
+        "streetsidesoftware.code-spell-checker",
+        "ms-python.mypy-type-checker",
+        "mhutchie.git-graph",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml",
+        "usernamehw.errorlens",
+        "ms-azuretools.vscode-docker",
+        "jebbs.plantuml"
+      ]
+    }
+  }
+}
