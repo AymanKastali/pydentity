@@ -43,3 +43,6 @@ Thumbs.db
 # PlantUML rendered output
 docs/diagrams/*.png
 docs/diagrams/*.svg
+
+# Claude
+claude/
