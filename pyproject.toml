@@ -1,0 +1,51 @@
+[project]
+name = "pydentity"
+version = "0.1.0"
+description = "A Python microservice for managing authentication and identity verification."
+authors = [{ name = "AymanKastali" }]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "rich>=13.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pydentity"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+data_file = ".pytest_cache/.coverage"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TC"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "debugpy>=1.8.0",
+    "codespell>=2.3.0",
+    "pre-commit>=3.7.0",
+]
