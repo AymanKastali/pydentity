@@ -11,6 +11,7 @@ from pydentity.domain.events.session_events import (
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.exceptions import (
+    InvalidValueError,
     RefreshTokenReuseDetectedError,
     SessionExpiredError,
     SessionRevokedError,
@@ -18,17 +19,18 @@ from pydentity.domain.models.exceptions import (
 from pydentity.domain.models.value_objects import (
     HashedRefreshToken,
     RefreshTokenFamily,
+    SessionCreatedAt,
+    SessionExpiry,
     SessionId,
+    SessionLastRefresh,
     UserId,
 )
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
 
-    from pydentity.domain.events.base import DomainEvent
 
-
-class Session(AggregateRoot):
+class Session(AggregateRoot[SessionId]):
     def __init__(
         self,
         *,
@@ -37,29 +39,36 @@ class Session(AggregateRoot):
         refresh_token_hash: HashedRefreshToken,
         refresh_token_family: RefreshTokenFamily,
         status: SessionStatus,
-        created_at: datetime,
-        last_refreshed_at: datetime,
-        expires_at: datetime,
+        created_at: SessionCreatedAt,
+        last_refresh: SessionLastRefresh,
+        expiry: SessionExpiry,
     ) -> None:
+        super().__init__()
         self._id = session_id
         self._user_id = user_id
         self._refresh_token_hash = refresh_token_hash
         self._refresh_token_family = refresh_token_family
         self._status = status
         self._created_at = created_at
-        self._last_refreshed_at = last_refreshed_at
-        self._expires_at = expires_at
-        self._events: list[DomainEvent] = []
+        self._last_refresh = last_refresh
+        self._expiry = expiry
 
-    @staticmethod
+    @classmethod
     def establish(
+        cls,
         session_id: SessionId,
         user_id: UserId,
         initial_refresh_token_hash: HashedRefreshToken,
         absolute_lifetime: timedelta,
         created_at: datetime,
     ) -> Session:
-        session = Session(
+        if absolute_lifetime.total_seconds() <= 0:
+            raise InvalidValueError(
+                field_name="absolute_lifetime",
+                reason="must be positive",
+            )
+
+        session = cls(
             session_id=session_id,
             user_id=user_id,
             refresh_token_hash=initial_refresh_token_hash,
@@ -67,9 +76,11 @@ class Session(AggregateRoot):
                 family_id=session_id.value, generation=0
             ),
             status=SessionStatus.ACTIVE,
-            created_at=created_at,
-            last_refreshed_at=created_at,
-            expires_at=created_at + absolute_lifetime,
+            created_at=SessionCreatedAt(created_at=created_at),
+            last_refresh=SessionLastRefresh(refreshed_at=created_at),
+            expiry=SessionExpiry(
+                expires_at=created_at + absolute_lifetime,
+            ),
         )
 
         session._record_event(
@@ -80,33 +91,30 @@ class Session(AggregateRoot):
         )
         return session
 
-    @staticmethod
+    @classmethod
     def _reconstitute(
+        cls,
         session_id: SessionId,
         user_id: UserId,
         refresh_token_hash: HashedRefreshToken,
         refresh_token_family: RefreshTokenFamily,
         status: SessionStatus,
-        created_at: datetime,
-        last_refreshed_at: datetime,
-        expires_at: datetime,
+        created_at: SessionCreatedAt,
+        last_refresh: SessionLastRefresh,
+        expiry: SessionExpiry,
     ) -> Session:
-        return Session(
+        return cls(
             session_id=session_id,
             user_id=user_id,
             refresh_token_hash=refresh_token_hash,
             refresh_token_family=refresh_token_family,
             status=status,
             created_at=created_at,
-            last_refreshed_at=last_refreshed_at,
-            expires_at=expires_at,
+            last_refresh=last_refresh,
+            expiry=expiry,
         )
 
     # --- Read-only properties ---
-
-    @property
-    def id(self) -> SessionId:
-        return self._id
 
     @property
     def user_id(self) -> UserId:
@@ -125,24 +133,24 @@ class Session(AggregateRoot):
         return self._status
 
     @property
-    def created_at(self) -> datetime:
+    def created_at(self) -> SessionCreatedAt:
         return self._created_at
 
     @property
-    def last_refreshed_at(self) -> datetime:
-        return self._last_refreshed_at
+    def last_refresh(self) -> SessionLastRefresh:
+        return self._last_refresh
 
     @property
-    def expires_at(self) -> datetime:
-        return self._expires_at
+    def expiry(self) -> SessionExpiry:
+        return self._expiry
 
     # --- Helpers ---
 
     def _ensure_active(self, now: datetime) -> None:
         if self._status == SessionStatus.REVOKED:
-            raise SessionRevokedError("Session has been revoked")
+            raise SessionRevokedError()
         if self.is_expired(now):
-            raise SessionExpiredError("Session has expired")
+            raise SessionExpiredError()
 
     # --- Commands ---
 
@@ -154,7 +162,7 @@ class Session(AggregateRoot):
     ) -> None:
         self._ensure_active(now)
 
-        if presented_hash.value != self._refresh_token_hash.value:
+        if not self._refresh_token_hash.timing_safe_equals(presented_hash):
             self._status = SessionStatus.REVOKED
             self._record_event(
                 RefreshTokenReused(
@@ -162,13 +170,11 @@ class Session(AggregateRoot):
                     user_id=self._user_id.value,
                 )
             )
-            raise RefreshTokenReuseDetectedError(
-                "Refresh token reuse detected — session revoked"
-            )
+            raise RefreshTokenReuseDetectedError()
 
         self._refresh_token_hash = new_hash
         self._refresh_token_family = self._refresh_token_family.next_generation()
-        self._last_refreshed_at = now
+        self._last_refresh = SessionLastRefresh(refreshed_at=now)
 
         self._record_event(RefreshTokenRotated(session_id=self._id.value))
 
@@ -181,4 +187,4 @@ class Session(AggregateRoot):
         self._record_event(SessionTerminated(session_id=self._id.value))
 
     def is_expired(self, now: datetime) -> bool:
-        return now >= self._expires_at
+        return self._expiry.is_expired(now)

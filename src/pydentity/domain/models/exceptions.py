@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import datetime
+
+    from pydentity.domain.models.enums import UserStatus
+    from pydentity.domain.models.value_objects import Permission, RoleId, UserId
+
 
 class DomainError(Exception):
     """Base class for all domain-layer errors."""
@@ -15,8 +24,13 @@ class PasswordPolicyViolationError(DomainError):
 
     def __init__(
         self,
-        message: str = "Password does not meet policy requirements",
+        *,
+        violations: Sequence[str] | None = None,
     ) -> None:
+        if violations is not None:
+            message = "; ".join(violations)
+        else:
+            message = "Password does not meet policy requirements"
         super().__init__(message)
 
 
@@ -27,8 +41,13 @@ class PasswordReuseError(DomainError):
 
     def __init__(
         self,
-        message: str = "Password was recently used and cannot be reused",
+        *,
+        history_size: int | None = None,
     ) -> None:
+        if history_size is not None:
+            message = f"Cannot reuse any of the last {history_size} passwords"
+        else:
+            message = "Password was recently used and cannot be reused"
         super().__init__(message)
 
 
@@ -39,10 +58,15 @@ class AccountLockedError(DomainError):
 
     def __init__(
         self,
-        message: str = (
-            "Account is temporarily locked due to too many failed login attempts"
-        ),
+        *,
+        locked_until: datetime | None = None,
     ) -> None:
+        if locked_until is not None:
+            message = f"Account is locked until {locked_until.isoformat()}"
+        else:
+            message = (
+                "Account is temporarily locked due to too many failed login attempts"
+            )
         super().__init__(message)
 
 
@@ -51,8 +75,25 @@ class AccountNotActiveError(DomainError):
     but the account is not in ACTIVE status.
     """
 
-    def __init__(self, message: str = "Account is not active") -> None:
+    def __init__(
+        self,
+        *,
+        status: UserStatus | None = None,
+    ) -> None:
+        if status is not None:
+            message = f"Account is not active (status={status.value})"
+        else:
+            message = "Account is not active"
         super().__init__(message)
+
+
+class AccountAlreadyActiveError(DomainError):
+    """Raised when reactivation is attempted on an account
+    that is already in ACTIVE status.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Account is already active")
 
 
 class AccountDeactivatedError(DomainError):
@@ -60,11 +101,26 @@ class AccountDeactivatedError(DomainError):
     deactivated account.
     """
 
-    def __init__(
-        self,
-        message: str = "Account has been permanently deactivated",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Account has been permanently deactivated")
+
+
+class AccountAlreadyDeactivatedError(DomainError):
+    """Raised when deactivation is attempted on an account
+    that is already deactivated.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Account is already deactivated")
+
+
+class EmailUnchangedError(DomainError):
+    """Raised when a change-email operation is attempted
+    with the same email address already on file.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("New email address is the same as the current one")
 
 
 class EmailAlreadyVerifiedError(DomainError):
@@ -72,11 +128,8 @@ class EmailAlreadyVerifiedError(DomainError):
     email is already verified.
     """
 
-    def __init__(
-        self,
-        message: str = "Email address is already verified",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Email address is already verified")
 
 
 class VerificationTokenExpiredError(DomainError):
@@ -84,23 +137,26 @@ class VerificationTokenExpiredError(DomainError):
     its expiry time.
     """
 
-    def __init__(
-        self,
-        message: str = "Email verification token has expired",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Email verification token has expired")
 
 
 class VerificationTokenInvalidError(DomainError):
     """Raised when an email verification token does not match
-    or was never issued.
+    the stored token.
     """
 
-    def __init__(
-        self,
-        message: str = "Email verification token is invalid",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Email verification token is invalid")
+
+
+class VerificationTokenNotIssuedError(DomainError):
+    """Raised when email verification is attempted but no
+    verification token has been issued.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("No email verification token has been issued")
 
 
 class ResetTokenExpiredError(DomainError):
@@ -108,23 +164,26 @@ class ResetTokenExpiredError(DomainError):
     expiry time.
     """
 
-    def __init__(
-        self,
-        message: str = "Password reset token has expired",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Password reset token has expired")
 
 
 class ResetTokenInvalidError(DomainError):
     """Raised when a password reset token does not match
-    or was never issued.
+    the stored token.
     """
 
-    def __init__(
-        self,
-        message: str = "Password reset token is invalid",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Password reset token is invalid")
+
+
+class ResetTokenNotIssuedError(DomainError):
+    """Raised when a password reset is attempted but no
+    reset token has been issued.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("No password reset token has been issued")
 
 
 class InvalidCredentialsError(DomainError):
@@ -132,20 +191,8 @@ class InvalidCredentialsError(DomainError):
     stored credentials.
     """
 
-    def __init__(self, message: str = "Invalid credentials") -> None:
-        super().__init__(message)
-
-
-class EmailNotVerifiedError(DomainError):
-    """Raised when an operation requires a verified email
-    but the email is unverified.
-    """
-
-    def __init__(
-        self,
-        message: str = "Email address has not been verified",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Invalid credentials")
 
 
 # --- Session exceptions ---
@@ -156,8 +203,8 @@ class SessionRevokedError(DomainError):
     session.
     """
 
-    def __init__(self, message: str = "Session has been revoked") -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Session has been revoked")
 
 
 class SessionExpiredError(DomainError):
@@ -165,17 +212,8 @@ class SessionExpiredError(DomainError):
     session.
     """
 
-    def __init__(self, message: str = "Session has expired") -> None:
-        super().__init__(message)
-
-
-class RefreshTokenMismatchError(DomainError):
-    """Raised when a presented refresh token does not match
-    the stored hash.
-    """
-
-    def __init__(self, message: str = "Refresh token does not match") -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Session has expired")
 
 
 class RefreshTokenReuseDetectedError(DomainError):
@@ -183,11 +221,8 @@ class RefreshTokenReuseDetectedError(DomainError):
     presented, indicating a potential token theft.
     """
 
-    def __init__(
-        self,
-        message: str = "Refresh token reuse detected — session revoked for security",
-    ) -> None:
-        super().__init__(message)
+    def __init__(self) -> None:
+        super().__init__("Refresh token reuse detected — session revoked for security")
 
 
 # --- User authorization exceptions ---
@@ -200,8 +235,16 @@ class RoleAlreadyAssignedError(DomainError):
 
     def __init__(
         self,
-        message: str = "Role is already assigned to this user",
+        *,
+        role_id: RoleId | None = None,
+        user_id: UserId | None = None,
     ) -> None:
+        if role_id is not None and user_id is not None:
+            message = (
+                f"Role {role_id.value!r} is already assigned to user {user_id.value!r}"
+            )
+        else:
+            message = "Role is already assigned to this user"
         super().__init__(message)
 
 
@@ -212,8 +255,16 @@ class RoleNotAssignedError(DomainError):
 
     def __init__(
         self,
-        message: str = "Role is not assigned to this user",
+        *,
+        role_id: RoleId | None = None,
+        user_id: UserId | None = None,
     ) -> None:
+        if role_id is not None and user_id is not None:
+            message = (
+                f"Role {role_id.value!r} is not assigned to user {user_id.value!r}"
+            )
+        else:
+            message = "Role is not assigned to this user"
         super().__init__(message)
 
 
@@ -227,8 +278,17 @@ class PermissionAlreadyGrantedError(DomainError):
 
     def __init__(
         self,
-        message: str = "Permission is already granted to this role",
+        *,
+        permission: Permission | None = None,
+        role_name: str | None = None,
     ) -> None:
+        if permission is not None and role_name is not None:
+            message = (
+                f"Permission ({permission.resource}, {permission.action}) "
+                f"is already granted to role {role_name!r}"
+            )
+        else:
+            message = "Permission is already granted to this role"
         super().__init__(message)
 
 
@@ -239,13 +299,79 @@ class PermissionNotGrantedError(DomainError):
 
     def __init__(
         self,
-        message: str = "Permission is not granted to this role",
+        *,
+        permission: Permission | None = None,
+        role_name: str | None = None,
     ) -> None:
+        if permission is not None and role_name is not None:
+            message = (
+                f"Permission ({permission.resource}, {permission.action}) "
+                f"is not granted to role {role_name!r}"
+            )
+        else:
+            message = "Permission is not granted to this role"
         super().__init__(message)
 
 
-class RoleNameBlankError(DomainError):
-    """Raised when a role name is empty or blank."""
+# --- Value object validation exceptions ---
 
-    def __init__(self, message: str = "Role name cannot be blank") -> None:
+
+class EmptyValueError(DomainError):
+    """Raised when a value object receives an empty value
+    where a non-empty value is required.
+    """
+
+    def __init__(
+        self,
+        *,
+        field_name: str,
+    ) -> None:
+        super().__init__(f"{field_name} cannot be empty")
+
+
+class InvalidValueError(DomainError):
+    """Raised when a value object receives a value that
+    violates a domain constraint.
+    """
+
+    def __init__(
+        self,
+        *,
+        field_name: str,
+        reason: str,
+    ) -> None:
+        super().__init__(f"{field_name}: {reason}")
+
+
+class InvalidEmailAddressError(DomainError):
+    """Raised when an email address value object receives
+    an invalid local part or domain.
+    """
+
+    def __init__(
+        self,
+        *,
+        detail: str | None = None,
+    ) -> None:
+        if detail is not None:
+            message = f"Invalid email address: {detail}"
+        else:
+            message = "Invalid email address"
         super().__init__(message)
+
+
+# --- Policy validation exceptions ---
+
+
+class InvalidPolicyValueError(DomainError):
+    """Raised when a policy value object receives a value
+    that violates its configuration constraints.
+    """
+
+    def __init__(
+        self,
+        *,
+        field_name: str,
+        reason: str,
+    ) -> None:
+        super().__init__(f"{field_name}: {reason}")

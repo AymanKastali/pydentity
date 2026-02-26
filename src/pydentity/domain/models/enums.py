@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum, auto
 
 
-class UserStatus(Enum):
-    ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED"
-    DEACTIVATED = "DEACTIVATED"
+class UserStatus(StrEnum):
+    ACTIVE = auto()
+    SUSPENDED = auto()
+    DEACTIVATED = auto()
 
 
-class SessionStatus(Enum):
-    ACTIVE = "ACTIVE"
-    REVOKED = "REVOKED"
+class SessionStatus(StrEnum):
+    ACTIVE = auto()
+    REVOKED = auto()
