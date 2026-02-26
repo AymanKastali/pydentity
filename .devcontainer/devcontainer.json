@@ -3,6 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.14",
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
@@ -25,7 +26,8 @@
         "tamasfe.even-better-toml",
         "usernamehw.errorlens",
         "ms-azuretools.vscode-docker",
-        "jebbs.plantuml"
+        "jebbs.plantuml",
+        "continue.continue"
       ]
     }
   }
