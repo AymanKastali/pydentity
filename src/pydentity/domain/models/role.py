@@ -9,11 +9,11 @@ from pydentity.domain.events.role_events import (
     RoleDescriptionChanged,
     RoleRenamed,
 )
-from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.exceptions import (
+from pydentity.domain.exceptions import (
     PermissionAlreadyGrantedError,
     PermissionNotGrantedError,
 )
+from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.value_objects import RoleDescription, RoleId, RoleName
 
 if TYPE_CHECKING:

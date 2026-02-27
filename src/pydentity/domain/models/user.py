@@ -19,9 +19,7 @@ from pydentity.domain.events.user_events import (
     UserSuspended,
     VerificationTokenReissued,
 )
-from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.enums import UserStatus
-from pydentity.domain.models.exceptions import (
+from pydentity.domain.exceptions import (
     AccountAlreadyActiveError,
     AccountAlreadyDeactivatedError,
     AccountDeactivatedError,
@@ -29,15 +27,18 @@ from pydentity.domain.models.exceptions import (
     EmailAlreadyVerifiedError,
     EmailUnchangedError,
     EmptyValueError,
+    InvalidCredentialsError,
+    PasswordReuseError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
     VerificationTokenExpiredError,
     VerificationTokenInvalidError,
     VerificationTokenNotIssuedError,
 )
+from pydentity.domain.models.base import AggregateRoot
+from pydentity.domain.models.enums import UserStatus
 from pydentity.domain.models.value_objects import (
     Credentials,
-    DisplayName,
     EmailVerification,
     FailedLoginAttempts,
     LoginTracking,
@@ -55,9 +56,11 @@ if TYPE_CHECKING:
         HashedResetToken,
         HashedVerificationToken,
         LockoutExpiry,
+        PasswordPolicy,
         PasswordResetToken,
         RoleId,
     )
+    from pydentity.domain.ports.password_hasher import PasswordHasherPort
 
 
 class User(AggregateRoot[UserId]):
@@ -66,7 +69,6 @@ class User(AggregateRoot[UserId]):
         *,
         user_id: UserId,
         email: EmailAddress,
-        display_name: DisplayName,
         status: UserStatus,
         email_verification: EmailVerification,
         credentials: Credentials,
@@ -76,7 +78,6 @@ class User(AggregateRoot[UserId]):
         super().__init__()
         self._id = user_id
         self._email = email
-        self._display_name = display_name
         self._status = status
         self._email_verification = email_verification
         self._credentials = credentials
@@ -84,18 +85,21 @@ class User(AggregateRoot[UserId]):
         self._role_ids = set(role_ids)
 
     @classmethod
-    def register(
+    async def create(
         cls,
         user_id: UserId,
         email: EmailAddress,
-        display_name: DisplayName,
-        password_hash: HashedPassword,
+        plain_password: str,
+        password_policy: PasswordPolicy,
+        hasher: PasswordHasherPort,
         verification_token: EmailVerificationToken | None = None,
     ) -> User:
+        password_policy.validate(plain_password)
+        password_hash = await hasher.hash(plain_password)
+
         user = cls(
             user_id=user_id,
             email=email,
-            display_name=display_name,
             status=UserStatus.ACTIVE,
             email_verification=EmailVerification(
                 is_verified=verification_token is None,
@@ -116,8 +120,7 @@ class User(AggregateRoot[UserId]):
         user._record_event(
             UserRegistered(
                 user_id=user_id.value,
-                email=email.full_address,
-                display_name=user._display_name.value,
+                email=email.address,
             )
         )
         return user
@@ -127,7 +130,6 @@ class User(AggregateRoot[UserId]):
         cls,
         user_id: UserId,
         email: EmailAddress,
-        display_name: DisplayName,
         status: UserStatus,
         email_verification: EmailVerification,
         credentials: Credentials,
@@ -137,7 +139,6 @@ class User(AggregateRoot[UserId]):
         return cls(
             user_id=user_id,
             email=email,
-            display_name=display_name,
             status=status,
             email_verification=email_verification,
             credentials=credentials,
@@ -152,12 +153,12 @@ class User(AggregateRoot[UserId]):
         return self._email
 
     @property
-    def display_name(self) -> DisplayName:
-        return self._display_name
-
-    @property
     def status(self) -> UserStatus:
         return self._status
+
+    @property
+    def is_active(self) -> bool:
+        return self._status == UserStatus.ACTIVE
 
     @property
     def email_verification(self) -> EmailVerification:
@@ -236,33 +237,70 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(PasswordResetRequested(user_id=self._id.value))
 
-    def reset_password(
+    async def reset_password(
         self,
         token_hash: HashedResetToken,
-        new_hash: HashedPassword,
+        new_password: str,
         now: datetime,
-        history_size: int,
+        password_policy: PasswordPolicy,
+        hasher: PasswordHasherPort,
     ) -> None:
         self._ensure_active()
 
+        password_policy.validate(new_password)
+        await self._check_password_reuse(
+            new_password, hasher, password_policy.history_size
+        )
+        new_hash = await hasher.hash(new_password)
+
         self._credentials = self._credentials.with_password_reset(
-            token_hash, new_hash, now, history_size
+            token_hash, new_hash, now, password_policy.history_size
         )
         self._login_tracking = self._login_tracking.reset()
 
         self._record_event(PasswordReset(user_id=self._id.value))
 
-    def change_password(
+    async def change_password(
         self,
-        new_hash: HashedPassword,
-        history_size: int,
+        current_password: str,
+        new_password: str,
+        password_policy: PasswordPolicy,
+        hasher: PasswordHasherPort,
     ) -> None:
         self._ensure_active()
 
-        self._credentials = self._credentials.with_new_password(new_hash, history_size)
+        if not await hasher.verify(current_password, self._credentials.password_hash):
+            raise InvalidCredentialsError()
+
+        password_policy.validate(new_password)
+        await self._check_password_reuse(
+            new_password, hasher, password_policy.history_size
+        )
+        new_hash = await hasher.hash(new_password)
+
+        self._credentials = self._credentials.with_new_password(
+            new_hash, password_policy.history_size
+        )
         self._login_tracking = self._login_tracking.reset()
 
         self._record_event(PasswordChanged(user_id=self._id.value))
+
+    async def verify_password(
+        self, plain_password: str, hasher: PasswordHasherPort, now: datetime
+    ) -> bool:
+        self._ensure_active()
+        self._login_tracking.ensure_not_locked(now)
+        return await hasher.verify(plain_password, self._credentials.password_hash)
+
+    async def _check_password_reuse(
+        self,
+        plain_password: str,
+        hasher: PasswordHasherPort,
+        history_size: int,
+    ) -> None:
+        for old_hash in self._credentials.password_history:
+            if await hasher.verify(plain_password, old_hash):
+                raise PasswordReuseError(history_size=history_size)
 
     def record_failed_login(self, policy: AccountLockoutPolicy, now: datetime) -> None:
         self._ensure_active()
@@ -350,8 +388,8 @@ class User(AggregateRoot[UserId]):
         self._record_event(
             UserEmailChanged(
                 user_id=self._id.value,
-                old_email=old_email.full_address,
-                new_email=new_email.full_address,
+                old_email=old_email.address,
+                new_email=new_email.address,
             )
         )
 

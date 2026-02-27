@@ -3,9 +3,12 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.14",
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
-  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
   "containerEnv": {
-    "UV_LINK_MODE": "copy"
+    "UV_LINK_MODE": "copy",
+    "VIRTUAL_ENV": "/workspaces/pydentity/.venv"
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
