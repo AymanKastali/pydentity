@@ -8,14 +8,14 @@ from pydentity.domain.events.session_events import (
     SessionEstablished,
     SessionTerminated,
 )
-from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.enums import SessionStatus
-from pydentity.domain.models.exceptions import (
+from pydentity.domain.exceptions import (
     InvalidValueError,
     RefreshTokenReuseDetectedError,
     SessionExpiredError,
     SessionRevokedError,
 )
+from pydentity.domain.models.base import AggregateRoot
+from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.value_objects import (
     HashedRefreshToken,
     RefreshTokenFamily,
@@ -28,6 +28,8 @@ from pydentity.domain.models.value_objects import (
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+
+    from pydentity.domain.ports.token_hasher import TokenHasherPort
 
 
 class Session(AggregateRoot[SessionId]):
@@ -54,7 +56,7 @@ class Session(AggregateRoot[SessionId]):
         self._expiry = expiry
 
     @classmethod
-    def establish(
+    def create(
         cls,
         session_id: SessionId,
         user_id: UserId,
@@ -156,12 +158,16 @@ class Session(AggregateRoot[SessionId]):
 
     def rotate_refresh_token(
         self,
-        presented_hash: HashedRefreshToken,
-        new_hash: HashedRefreshToken,
+        presented_raw_token: str,
+        new_raw_token: str,
+        token_hasher: TokenHasherPort,
         now: datetime,
     ) -> None:
         self._ensure_active(now)
 
+        presented_hash = HashedRefreshToken(
+            value=token_hasher.hash(presented_raw_token)
+        )
         if not self._refresh_token_hash.timing_safe_equals(presented_hash):
             self._status = SessionStatus.REVOKED
             self._record_event(
@@ -172,6 +178,7 @@ class Session(AggregateRoot[SessionId]):
             )
             raise RefreshTokenReuseDetectedError()
 
+        new_hash = HashedRefreshToken(value=token_hasher.hash(new_raw_token))
         self._refresh_token_hash = new_hash
         self._refresh_token_family = self._refresh_token_family.next_generation()
         self._last_refresh = SessionLastRefresh(refreshed_at=now)

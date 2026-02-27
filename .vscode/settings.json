@@ -1,5 +1,5 @@
 {
-  "python.defaultInterpreterPath": ".venv/bin/python",
+  "python.defaultInterpreterPath": "/workspaces/pydentity/.venv/bin/python",
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "charliermarsh.ruff",
   "[python]": {
@@ -24,6 +24,7 @@
   "plantuml.server": "https://www.plantuml.com/plantuml",
   "plantuml.exportOutDir": "docs/diagrams",
   "cSpell.words": [
+    "dtos",
     "pydentity"
   ]
 }

@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydentity.domain.models.exceptions import (
+from pydentity.domain.exceptions import (
     AccountLockedError,
     EmptyValueError,
     InvalidEmailAddressError,
@@ -51,17 +51,6 @@ class RoleId:
 
 
 # --- Naming VOs ---
-
-
-@dataclass(frozen=True, slots=True)
-class DisplayName:
-    value: str
-
-    def __post_init__(self) -> None:
-        stripped = self.value.strip()
-        if not stripped:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-        object.__setattr__(self, "value", stripped)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,12 +128,17 @@ class EmailAddress:
         if not _EMAIL_DOMAIN_RE.match(self.domain):
             raise InvalidEmailAddressError(detail=f"invalid domain: {self.domain!r}")
 
+    @classmethod
+    def from_string(cls, address: str) -> EmailAddress:
+        local_part, _, domain = address.partition("@")
+        return cls(local_part=local_part, domain=domain)
+
     @property
-    def full_address(self) -> str:
+    def address(self) -> str:
         return f"{self.local_part}@{self.domain}"
 
     def __str__(self) -> str:
-        return self.full_address
+        return self.address
 
 
 @dataclass(frozen=True, slots=True)
@@ -400,31 +394,6 @@ class LoginTracking:
         )
 
 
-# --- Token VO ---
-
-
-@dataclass(frozen=True, slots=True)
-class AccessTokenClaims:
-    issuer: str
-    subject: UserId
-    session_id: SessionId
-    issued_at: datetime
-    expires_at: datetime
-    token_id: str
-    permissions: frozenset[Permission]
-
-    def __post_init__(self) -> None:
-        if not self.issuer:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.issuer")
-        if not self.token_id:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.token_id")
-        if self.expires_at <= self.issued_at:
-            raise InvalidValueError(
-                field_name=f"{self.__class__.__name__}.expires_at",
-                reason="must be after issued_at",
-            )
-
-
 # --- Policy VOs ---
 
 
@@ -499,4 +468,16 @@ class TokenLifetimePolicy:
         if self.session_absolute_ttl.total_seconds() <= 0:
             raise InvalidPolicyValueError(
                 field_name="session_absolute_ttl", reason="must be positive"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class EmailVerificationPolicy:
+    required_on_registration: bool
+    token_ttl: timedelta
+
+    def __post_init__(self) -> None:
+        if self.token_ttl.total_seconds() <= 0:
+            raise InvalidPolicyValueError(
+                field_name="token_ttl", reason="must be positive"
             )

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 class UserRegistered(DomainEvent):
     user_id: str
     email: str
-    display_name: str
 
 
 @dataclass(frozen=True, slots=True)
