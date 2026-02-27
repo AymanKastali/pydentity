@@ -6,6 +6,8 @@ import traceback
 from datetime import UTC, datetime
 from typing import IO
 
+from pydentity import __app_name__, __version__
+
 _LEVELS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
 
 
@@ -47,7 +49,8 @@ class JsonLogger:
         if _LEVELS[level] < self._threshold:
             return
         record = {
-            "logger": "pydentity",
+            "logger": __app_name__,
+            "version": __version__,
             "level": level,
             "message": message,
             "timestamp": datetime.now(UTC).isoformat(),

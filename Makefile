@@ -12,9 +12,9 @@ ensure-uv: ## Install uv if not present
 setup: ensure-uv sync ## Set up the full dev environment
 	@if command -v git >/dev/null 2>&1; then \
 		git rev-parse --git-dir >/dev/null 2>&1 || git init -b main; \
-		uv run pre-commit install; \
+		uv run pre-commit; \
 	else \
-		echo "Warning: git not found, skipping pre-commit install"; \
+		echo "Warning: git not found, skipping pre-commit"; \
 	fi
 
 sync: ## Sync all dependencies
