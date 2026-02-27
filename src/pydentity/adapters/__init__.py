@@ -1,3 +1,7 @@
-from pydentity.adapters.outbound import InProcessEventPublisher
+from pydentity.adapters.outbound import (
+    InProcessEventPublisher,
+    JsonLogger,
+    RichConsoleLogger,
+)
 
-__all__ = ["InProcessEventPublisher"]
+__all__ = ["InProcessEventPublisher", "JsonLogger", "RichConsoleLogger"]

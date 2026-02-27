@@ -5,11 +5,12 @@ from pydentity.application.exceptions import (
     SessionNotFoundError,
     UserNotFoundError,
 )
-from pydentity.application.ports import NotificationPort, TokenSignerPort
+from pydentity.application.ports import LoggerPort, NotificationPort, TokenSignerPort
 
 __all__ = [
     "ApplicationError",
     "EmailAlreadyRegisteredError",
+    "LoggerPort",
     "NotificationPort",
     "RoleNotFoundError",
     "SessionNotFoundError",
