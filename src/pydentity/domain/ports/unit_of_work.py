@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from pydentity.domain.ports.repositories import (
+        DeviceRepository,
         RoleRepository,
         SessionRepository,
         UserRepository,
@@ -21,6 +22,10 @@ class UnitOfWork(ABC):
     @property
     @abstractmethod
     def sessions(self) -> SessionRepository: ...
+
+    @property
+    @abstractmethod
+    def devices(self) -> DeviceRepository: ...
 
     @property
     @abstractmethod

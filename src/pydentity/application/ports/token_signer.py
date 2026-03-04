@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pydentity.application.dtos.auth import AccessTokenClaims
+    from pydentity.application.models.access_token_claims import AccessTokenClaims
 
 
 class TokenSignerPort(ABC):

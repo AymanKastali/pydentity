@@ -14,9 +14,11 @@ from pydentity.domain.exceptions import (
     SessionExpiredError,
     SessionRevokedError,
 )
+from pydentity.domain.exceptions.domain import SessionAlreadyRevokedError
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.value_objects import (
+    DeviceId,
     HashedRefreshToken,
     RefreshTokenFamily,
     SessionCreatedAt,
@@ -38,6 +40,7 @@ class Session(AggregateRoot[SessionId]):
         *,
         session_id: SessionId,
         user_id: UserId,
+        device_id: DeviceId,
         refresh_token_hash: HashedRefreshToken,
         refresh_token_family: RefreshTokenFamily,
         status: SessionStatus,
@@ -48,6 +51,7 @@ class Session(AggregateRoot[SessionId]):
         super().__init__()
         self._id = session_id
         self._user_id = user_id
+        self._device_id = device_id
         self._refresh_token_hash = refresh_token_hash
         self._refresh_token_family = refresh_token_family
         self._status = status
@@ -59,6 +63,7 @@ class Session(AggregateRoot[SessionId]):
     def create(
         cls,
         session_id: SessionId,
+        device_id: DeviceId,
         user_id: UserId,
         initial_refresh_token_hash: HashedRefreshToken,
         absolute_lifetime: timedelta,
@@ -73,6 +78,7 @@ class Session(AggregateRoot[SessionId]):
         session = cls(
             session_id=session_id,
             user_id=user_id,
+            device_id=device_id,
             refresh_token_hash=initial_refresh_token_hash,
             refresh_token_family=RefreshTokenFamily(
                 family_id=session_id.value, generation=0
@@ -89,6 +95,7 @@ class Session(AggregateRoot[SessionId]):
             SessionEstablished(
                 session_id=session_id.value,
                 user_id=user_id.value,
+                device_id=device_id.value,
             )
         )
         return session
@@ -97,6 +104,7 @@ class Session(AggregateRoot[SessionId]):
     def _reconstitute(
         cls,
         session_id: SessionId,
+        device_id: DeviceId,
         user_id: UserId,
         refresh_token_hash: HashedRefreshToken,
         refresh_token_family: RefreshTokenFamily,
@@ -107,6 +115,7 @@ class Session(AggregateRoot[SessionId]):
     ) -> Session:
         return cls(
             session_id=session_id,
+            device_id=device_id,
             user_id=user_id,
             refresh_token_hash=refresh_token_hash,
             refresh_token_family=refresh_token_family,
@@ -121,6 +130,10 @@ class Session(AggregateRoot[SessionId]):
     @property
     def user_id(self) -> UserId:
         return self._user_id
+
+    @property
+    def device_id(self) -> DeviceId:
+        return self._device_id
 
     @property
     def refresh_token_hash(self) -> HashedRefreshToken:
@@ -145,6 +158,10 @@ class Session(AggregateRoot[SessionId]):
     @property
     def expiry(self) -> SessionExpiry:
         return self._expiry
+
+    @property
+    def is_active(self) -> bool:
+        return self._status == SessionStatus.ACTIVE
 
     # --- Helpers ---
 
@@ -187,7 +204,7 @@ class Session(AggregateRoot[SessionId]):
 
     def revoke(self) -> None:
         if self._status == SessionStatus.REVOKED:
-            return
+            raise SessionAlreadyRevokedError()
 
         self._status = SessionStatus.REVOKED
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.domain.models.session import Session
-from pydentity.domain.models.value_objects import HashedRefreshToken
+from pydentity.domain.models.value_objects import DeviceId, HashedRefreshToken
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
@@ -27,6 +27,7 @@ class SessionFactory:
         self,
         *,
         user_id: UserId,
+        device_id: DeviceId,
         raw_refresh_token: str,
         absolute_lifetime: timedelta,
         created_at: datetime,
@@ -37,6 +38,7 @@ class SessionFactory:
         )
         return Session.create(
             session_id=session_id,
+            device_id=device_id,
             user_id=user_id,
             initial_refresh_token_hash=initial_hash,
             absolute_lifetime=absolute_lifetime,

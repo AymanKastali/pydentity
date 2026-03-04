@@ -9,6 +9,7 @@ from pydentity.domain.events.base import DomainEvent
 class SessionEstablished(DomainEvent):
     session_id: str
     user_id: str
+    device_id: str
 
 
 @dataclass(frozen=True, slots=True)

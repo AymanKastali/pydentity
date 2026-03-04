@@ -4,10 +4,12 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pydentity.domain.models.device import Device
     from pydentity.domain.models.role import Role
     from pydentity.domain.models.session import Session
     from pydentity.domain.models.user import User
     from pydentity.domain.models.value_objects import (
+        DeviceId,
         EmailAddress,
         RoleId,
         SessionId,
@@ -31,6 +33,9 @@ class SessionRepository(ABC):
     async def find_by_id(self, session_id: SessionId) -> Session | None: ...
 
     @abstractmethod
+    async def get_active_by_device(self, device_id: DeviceId) -> Session | None: ...
+
+    @abstractmethod
     async def find_active_by_user_id(self, user_id: UserId) -> list[Session]: ...
 
     @abstractmethod
@@ -46,3 +51,17 @@ class RoleRepository(ABC):
 
     @abstractmethod
     async def save(self, role: Role) -> None: ...
+
+
+class DeviceRepository(ABC):
+    @abstractmethod
+    async def save(self, device: Device) -> None: ...
+
+    @abstractmethod
+    async def get_by_id(self, device_id: DeviceId) -> Device | None: ...
+
+    @abstractmethod
+    async def get_all_for_user(self, user_id: UserId) -> list[Device]: ...
+
+    @abstractmethod
+    async def revoke_all_for_user(self, user_id: UserId) -> None: ...

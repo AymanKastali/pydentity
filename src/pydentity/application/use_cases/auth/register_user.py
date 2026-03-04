@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import EmailAlreadyRegisteredError
 from pydentity.domain.models.value_objects import EmailAddress
 
 if TYPE_CHECKING:
@@ -52,16 +51,25 @@ class RegisterUser:
         from pydentity.application.dtos.auth import RegisterUserOutput
 
         email = EmailAddress.from_string(command.email)
-
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
             existing = await uow.users.find_by_email(email)
+
+            # ------------------------------------------------------------------
+            # Email already registered — return silently, notify existing user.
+            # The caller receives an identical response to a successful
+            # registration so registered emails cannot be enumerated.
+            # ------------------------------------------------------------------
             if existing is not None:
-                raise EmailAlreadyRegisteredError()
+                await self._notification.send_account_exists_email(email=email.address)
+                return RegisterUserOutput(
+                    email=email.address,
+                )
 
             raw_token: str | None = None
             verification_token = None
+
             if self._email_verification_policy.required_on_registration:
                 raw_token, verification_token = (
                     self._verification_token_generator.generate(
@@ -91,6 +99,5 @@ class RegisterUser:
             )
 
         return RegisterUserOutput(
-            user_id=user.id.value,
             email=email.address,
         )

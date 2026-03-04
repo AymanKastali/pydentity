@@ -42,6 +42,15 @@ class SessionId:
 
 
 @dataclass(frozen=True, slots=True)
+class DeviceId:
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise EmptyValueError(field_name=self.__class__.__name__)
+
+
+@dataclass(frozen=True, slots=True)
 class RoleId:
     value: str
 
@@ -73,6 +82,25 @@ class RoleDescription:
         if not stripped:
             raise EmptyValueError(field_name=self.__class__.__name__)
         object.__setattr__(self, "value", stripped)
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceName:
+    value: str
+
+    def __post_init__(self) -> None:
+        stripped = self.value.strip()
+        if not stripped:
+            raise EmptyValueError(field_name=self.__class__.__name__)
+        object.__setattr__(self, "value", stripped)
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceLastActive:
+    last_active_at: datetime
+
+    def bump(self, now: datetime) -> DeviceLastActive:
+        return DeviceLastActive(last_active_at=now)
 
 
 # --- Authorization VOs ---

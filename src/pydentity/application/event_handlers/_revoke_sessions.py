@@ -27,7 +27,8 @@ class _RevokeSessionsHandler:
             sessions = await uow.sessions.find_active_by_user_id(UserId(value=user_id))
 
             for session in sessions:
-                session.revoke()
+                if session.is_active:
+                    session.revoke()
                 await uow.sessions.save(session)
 
             await uow.commit()

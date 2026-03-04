@@ -375,3 +375,41 @@ class InvalidPolicyValueError(DomainError):
         reason: str,
     ) -> None:
         super().__init__(f"{field_name}: {reason}")
+
+
+class DeviceAlreadyRevokedError(DomainError):
+    """Raised when trying to revoke a device that is already revoked."""
+
+    def __str__(self) -> str:
+        return "Device is already revoked."
+
+
+class DeviceRevokedError(DomainError):
+    """Raised when performing any action on a revoked device."""
+
+    def __str__(self) -> str:
+        return "Device has been revoked."
+
+
+class DeviceAlreadyTrustedError(DomainError):
+    """Raised when marking an already-trusted device as trusted."""
+
+    def __str__(self) -> str:
+        return "Device is already trusted."
+
+
+class DeviceAlreadyUntrustedError(DomainError):
+    """Raised when marking an already-untrusted device as untrusted."""
+
+    def __str__(self) -> str:
+        return "Device is already untrusted."
+
+
+class DeviceOwnershipError(DomainError):
+    def __str__(self) -> str:
+        return "Device does not belong to the authenticated user."
+
+
+class SessionAlreadyRevokedError(DomainError):
+    def __str__(self) -> str:
+        return "Session is already revoked."

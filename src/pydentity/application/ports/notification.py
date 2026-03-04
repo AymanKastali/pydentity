@@ -14,3 +14,6 @@ class NotificationPort(ABC):
 
     @abstractmethod
     async def send_welcome_email(self, *, email: str) -> None: ...
+
+    @abstractmethod
+    async def send_account_exists_email(self, *, email: str) -> None: ...

@@ -12,3 +12,8 @@ class UserStatus(StrEnum):
 class SessionStatus(StrEnum):
     ACTIVE = auto()
     REVOKED = auto()
+
+
+class DeviceStatus(StrEnum):
+    ACTIVE = auto()
+    REVOKED = auto()
