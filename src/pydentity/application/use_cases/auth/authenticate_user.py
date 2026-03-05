@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     )
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
+    from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
         TokenLifetimePolicy,
@@ -26,7 +27,6 @@ if TYPE_CHECKING:
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
-    from pydentity.domain.services.establish_session import EstablishSession
     from pydentity.domain.services.register_device import RegisterDevice
 
 
@@ -37,7 +37,7 @@ class AuthenticateUser:
         uow_factory: Callable[[], UnitOfWork],
         password_hasher: PasswordHasherPort,
         register_device: RegisterDevice,
-        establish_session: EstablishSession,
+        session_factory: SessionFactory,
         raw_token_generator: RawTokenGeneratorPort,
         token_signer: TokenSignerPort,
         identity_generator: IdentityGeneratorPort,
@@ -50,7 +50,7 @@ class AuthenticateUser:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
         self._register_device = register_device
-        self._establish_session = establish_session
+        self._session_factory = session_factory
         self._raw_token_generator = raw_token_generator
         self._token_signer = token_signer
         self._identity_generator = identity_generator
@@ -82,9 +82,7 @@ class AuthenticateUser:
                 user.record_failed_login(self._lockout_policy, now)
                 await uow.users.save(user)
                 await uow.commit()
-                events = user.collect_events()
-
-                await self._event_publisher.publish(events)
+                await self._event_publisher.publish(user.collect_events())
                 raise InvalidCredentialsError()
 
             user.record_successful_login(now)
@@ -114,8 +112,12 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             # 3. Establish session — revokes existing, creates new
             # ------------------------------------------------------------------
+            existing_session = await uow.sessions.get_active_by_device(device.id)
+            if existing_session is not None:
+                existing_session.revoke()
+
             raw_refresh = self._raw_token_generator.generate()
-            session = await self._establish_session.execute(
+            session = self._session_factory.create(
                 user_id=user.id,
                 device_id=device.id,
                 raw_refresh_token=raw_refresh,
@@ -144,12 +146,20 @@ class AuthenticateUser:
             await uow.users.save(user)
             await uow.devices.save(device)
             await uow.sessions.save(session)
+            if existing_session is not None:
+                await uow.sessions.save(existing_session)
             await uow.commit()
 
         events = (
-            user.collect_events() + device.collect_events() + session.collect_events()
+            user.collect_events()
+            + device.collect_events()
+            + session.collect_events()
+            + (
+                existing_session.collect_events()
+                if existing_session is not None
+                else []
+            )
         )
-
         await self._event_publisher.publish(events)
 
         return AuthenticateUserOutput(
