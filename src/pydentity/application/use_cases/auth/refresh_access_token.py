@@ -14,10 +14,10 @@ if TYPE_CHECKING:
         RefreshAccessTokenInput,
         RefreshAccessTokenOutput,
     )
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
     from pydentity.domain.models.value_objects import TokenLifetimePolicy
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
@@ -57,14 +57,14 @@ class RefreshAccessToken:
 
         async with self._uow_factory() as uow:
             # ------------------------------------------------------------------
-            # 1. Load session — generic error to avoid session ID enumeration
+            # 1. Load session
             # ------------------------------------------------------------------
             session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
             if session is None:
                 raise InvalidTokenError()
 
             # ------------------------------------------------------------------
-            # 2. Validate user is still active before doing any work
+            # 2. Validate user is still active
             # ------------------------------------------------------------------
             user = await uow.users.find_by_id(session.user_id)
             if user is None or not user.is_active:
@@ -72,8 +72,8 @@ class RefreshAccessToken:
                     session.revoke()
                 await uow.sessions.save(session)
                 await uow.commit()
-                await self._event_publisher.publish(session.collect_events())
-                session.clear_events()
+                events = session.collect_events()
+                await self._event_publisher.publish(events)
                 raise AccountNotActiveError(
                     status=user.status if user is not None else None
                 )
@@ -87,8 +87,8 @@ class RefreshAccessToken:
                     session.revoke()
                 await uow.sessions.save(session)
                 await uow.commit()
-                await self._event_publisher.publish(session.collect_events())
-                session.clear_events()
+                events = session.collect_events()
+                await self._event_publisher.publish(events)
                 raise InvalidTokenError()
 
             # ------------------------------------------------------------------
@@ -126,11 +126,8 @@ class RefreshAccessToken:
             await uow.devices.save(device)
             await uow.commit()
 
-            events = session.collect_events() + device.collect_events()
-
+        events = session.collect_events() + device.collect_events()
         await self._event_publisher.publish(events)
-        session.clear_events()
-        device.clear_events()
 
         return RefreshAccessTokenOutput(
             access_token=access_token,

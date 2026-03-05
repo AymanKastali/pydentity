@@ -413,3 +413,26 @@ class DeviceOwnershipError(DomainError):
 class SessionAlreadyRevokedError(DomainError):
     def __str__(self) -> str:
         return "Session is already revoked."
+
+
+class DeviceAlreadyRegisteredError(DomainError):
+    """
+    Raised when a device with the same fingerprint is already registered for the user.
+    """
+
+    def __str__(self) -> str:
+        return "A device with this fingerprint is already registered."
+
+
+class EmailAlreadyTakenError(DomainError):
+    """Raised when a user attempts to register with an email already in use."""
+
+    def __str__(self) -> str:
+        return "Email address is already taken."
+
+
+class RoleAlreadyExistsError(DomainError):
+    """Raised when a role with the same name already exists."""
+
+    def __str__(self) -> str:
+        return "A role with this name already exists."

@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.application.dtos.email import VerifyEmailInput
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
@@ -40,12 +40,12 @@ class VerifyEmail:
             token_hash = HashedVerificationToken(
                 value=self._token_hasher.hash(command.token)
             )
+
             user.verify_email(token_hash, now)
 
             await uow.users.save(user)
             await uow.commit()
 
-            events = user.collect_events()
+        events = user.collect_events()
 
         await self._event_publisher.publish(events)
-        user.clear_events()

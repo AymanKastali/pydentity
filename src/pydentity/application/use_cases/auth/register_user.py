@@ -2,24 +2,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydentity.domain.exceptions.domain import EmailAlreadyTakenError
 from pydentity.domain.models.value_objects import EmailAddress
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.application.dtos.auth import RegisterUserInput, RegisterUserOutput
-    from pydentity.application.ports import NotificationPort
-    from pydentity.domain.factories import UserFactory
-    from pydentity.domain.models.value_objects import (
-        EmailVerificationPolicy,
-        PasswordPolicy,
-    )
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
-    from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
     from pydentity.domain.ports.verification_token_generator import (
         VerificationTokenGeneratorPort,
+    )
+    from pydentity.domain.services.register_user import (
+        RegisterUser as RegisterUserService,
     )
 
 
@@ -28,24 +26,18 @@ class RegisterUser:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
-        user_factory: UserFactory,
-        password_hasher: PasswordHasherPort,
+        register_user_service: RegisterUserService,
         verification_token_generator: VerificationTokenGeneratorPort,
+        email_verification_policy: EmailVerificationPolicy,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
-        notification: NotificationPort,
-        password_policy: PasswordPolicy,
-        email_verification_policy: EmailVerificationPolicy,
     ) -> None:
         self._uow_factory = uow_factory
-        self._user_factory = user_factory
-        self._password_hasher = password_hasher
+        self._register_user_service = register_user_service
         self._verification_token_generator = verification_token_generator
+        self._email_verification_policy = email_verification_policy
         self._clock = clock
         self._event_publisher = event_publisher
-        self._notification = notification
-        self._password_policy = password_policy
-        self._email_verification_policy = email_verification_policy
 
     async def execute(self, command: RegisterUserInput) -> RegisterUserOutput:
         from pydentity.application.dtos.auth import RegisterUserOutput
@@ -53,51 +45,30 @@ class RegisterUser:
         email = EmailAddress.from_string(command.email)
         now = self._clock.now()
 
-        async with self._uow_factory() as uow:
-            existing = await uow.users.find_by_email(email)
+        raw_token: str | None = None
+        verification_token = None
 
-            # ------------------------------------------------------------------
-            # Email already registered — return silently, notify existing user.
-            # The caller receives an identical response to a successful
-            # registration so registered emails cannot be enumerated.
-            # ------------------------------------------------------------------
-            if existing is not None:
-                await self._notification.send_account_exists_email(email=email.address)
-                return RegisterUserOutput(
-                    email=email.address,
-                )
-
-            raw_token: str | None = None
-            verification_token = None
-
-            if self._email_verification_policy.required_on_registration:
-                raw_token, verification_token = (
-                    self._verification_token_generator.generate(
-                        self._email_verification_policy.token_ttl, now
-                    )
-                )
-
-            user = await self._user_factory.create(
-                email=email,
-                plain_password=command.password,
-                password_policy=self._password_policy,
-                hasher=self._password_hasher,
-                verification_token=verification_token,
+        if self._email_verification_policy.required_on_registration:
+            raw_token, verification_token = self._verification_token_generator.generate(
+                self._email_verification_policy.token_ttl, now
             )
+
+        async with self._uow_factory() as uow:
+            try:
+                user = await self._register_user_service.execute(
+                    email=email,
+                    plain_password=command.password,
+                    verification_token=verification_token,
+                    raw_token=raw_token,
+                )
+            except EmailAlreadyTakenError:
+                return RegisterUserOutput(email=email.address)
 
             await uow.users.save(user)
             await uow.commit()
 
-            events = user.collect_events()
+        events = user.collect_events()
 
         await self._event_publisher.publish(events)
-        user.clear_events()
 
-        if raw_token is not None:
-            await self._notification.send_verification_email(
-                email=email.address, raw_token=raw_token
-            )
-
-        return RegisterUserOutput(
-            email=email.address,
-        )
+        return RegisterUserOutput(email=email.address)

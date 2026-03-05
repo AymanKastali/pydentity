@@ -15,6 +15,7 @@ class SessionEstablished(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class RefreshTokenRotated(DomainEvent):
     session_id: str
+    user_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,3 +27,4 @@ class RefreshTokenReused(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class SessionTerminated(DomainEvent):
     session_id: str
+    user_id: str

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.application.dtos.account import SuspendUserInput
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -34,7 +34,6 @@ class SuspendUser:
             await uow.users.save(user)
             await uow.commit()
 
-            events = user.collect_events()
+        events = user.collect_events()
 
         await self._event_publisher.publish(events)
-        user.clear_events()

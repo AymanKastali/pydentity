@@ -20,6 +20,8 @@ class AuthenticateUserInput:
     password: str
     device_id: str
     device_name: str
+    raw_fingerprint: str
+    platform: str
 
 
 @dataclass(frozen=True, slots=True)

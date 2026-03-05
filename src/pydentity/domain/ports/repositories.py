@@ -9,15 +9,17 @@ if TYPE_CHECKING:
     from pydentity.domain.models.session import Session
     from pydentity.domain.models.user import User
     from pydentity.domain.models.value_objects import (
+        DeviceFingerprint,
         DeviceId,
         EmailAddress,
         RoleId,
+        RoleName,
         SessionId,
         UserId,
     )
 
 
-class UserRepository(ABC):
+class UserRepositoryPort(ABC):
     @abstractmethod
     async def find_by_id(self, user_id: UserId) -> User | None: ...
 
@@ -28,7 +30,7 @@ class UserRepository(ABC):
     async def save(self, user: User) -> None: ...
 
 
-class SessionRepository(ABC):
+class SessionRepositoryPort(ABC):
     @abstractmethod
     async def find_by_id(self, session_id: SessionId) -> Session | None: ...
 
@@ -42,7 +44,7 @@ class SessionRepository(ABC):
     async def save(self, session: Session) -> None: ...
 
 
-class RoleRepository(ABC):
+class RoleRepositoryPort(ABC):
     @abstractmethod
     async def find_by_id(self, role_id: RoleId) -> Role | None: ...
 
@@ -50,10 +52,13 @@ class RoleRepository(ABC):
     async def find_by_ids(self, role_ids: frozenset[RoleId]) -> list[Role]: ...
 
     @abstractmethod
+    async def find_by_name(self, name: RoleName) -> Role | None: ...
+
+    @abstractmethod
     async def save(self, role: Role) -> None: ...
 
 
-class DeviceRepository(ABC):
+class DeviceRepositoryPort(ABC):
     @abstractmethod
     async def save(self, device: Device) -> None: ...
 
@@ -65,3 +70,8 @@ class DeviceRepository(ABC):
 
     @abstractmethod
     async def revoke_all_for_user(self, user_id: UserId) -> None: ...
+
+    @abstractmethod
+    async def find_by_fingerprint(
+        self, user_id: UserId, fingerprint: DeviceFingerprint
+    ) -> Device | None: ...

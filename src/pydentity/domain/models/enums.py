@@ -17,3 +17,9 @@ class SessionStatus(StrEnum):
 class DeviceStatus(StrEnum):
     ACTIVE = auto()
     REVOKED = auto()
+
+
+class DevicePlatform(StrEnum):
+    WEB = auto()
+    MOBILE = auto()
+    DESKTOP = auto()

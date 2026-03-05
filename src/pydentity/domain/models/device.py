@@ -17,8 +17,9 @@ from pydentity.domain.exceptions.domain import (
     DeviceRevokedError,
 )
 from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.enums import DeviceStatus
+from pydentity.domain.models.enums import DevicePlatform, DeviceStatus
 from pydentity.domain.models.value_objects import (
+    DeviceFingerprint,
     DeviceId,
     DeviceLastActive,
     DeviceName,
@@ -36,6 +37,8 @@ class Device(AggregateRoot[DeviceId]):
         device_id: DeviceId,
         user_id: UserId,
         name: DeviceName,
+        fingerprint: DeviceFingerprint,
+        platform: DevicePlatform,
         status: DeviceStatus,
         is_trusted: bool,
         last_active: DeviceLastActive,
@@ -44,6 +47,8 @@ class Device(AggregateRoot[DeviceId]):
         self._id = device_id
         self._user_id = user_id
         self._name = name
+        self._fingerprint = fingerprint
+        self._platform = platform
         self._status = status
         self._is_trusted = is_trusted
         self._last_active = last_active
@@ -58,19 +63,17 @@ class Device(AggregateRoot[DeviceId]):
         device_id: DeviceId,
         user_id: UserId,
         name: DeviceName,
+        fingerprint: DeviceFingerprint,
+        platform: DevicePlatform,
         now: datetime,
         trusted: bool = False,
     ) -> Device:
-        """
-        Register a new device for a user.
-
-        ``trusted=True`` can be passed when the caller has already
-        completed a step-up MFA challenge for this device.
-        """
         device = cls(
             device_id=device_id,
             user_id=user_id,
             name=name,
+            fingerprint=fingerprint,
+            platform=platform,
             status=DeviceStatus.ACTIVE,
             is_trusted=trusted,
             last_active=DeviceLastActive(last_active_at=now),
@@ -91,6 +94,8 @@ class Device(AggregateRoot[DeviceId]):
         device_id: DeviceId,
         user_id: UserId,
         name: DeviceName,
+        fingerprint: DeviceFingerprint,
+        platform: DevicePlatform,
         status: DeviceStatus,
         is_trusted: bool,
         last_active: DeviceLastActive,
@@ -99,6 +104,8 @@ class Device(AggregateRoot[DeviceId]):
             device_id=device_id,
             user_id=user_id,
             name=name,
+            fingerprint=fingerprint,
+            platform=platform,
             status=status,
             is_trusted=is_trusted,
             last_active=last_active,
@@ -115,6 +122,14 @@ class Device(AggregateRoot[DeviceId]):
     @property
     def name(self) -> DeviceName:
         return self._name
+
+    @property
+    def fingerprint(self) -> DeviceFingerprint:
+        return self._fingerprint
+
+    @property
+    def platform(self) -> DevicePlatform:
+        return self._platform
 
     @property
     def status(self) -> DeviceStatus:
@@ -145,11 +160,6 @@ class Device(AggregateRoot[DeviceId]):
     # ------------------------------------------------------------------
 
     def mark_active(self, now: datetime) -> None:
-        """
-        Bump last-active timestamp on every successful token refresh.
-        Silently ignores revoked devices — the session layer handles
-        revocation; we never want a stale timestamp write to raise here.
-        """
         if self._status == DeviceStatus.REVOKED:
             return
 
@@ -163,11 +173,6 @@ class Device(AggregateRoot[DeviceId]):
         )
 
     def trust(self) -> None:
-        """
-        Mark device as trusted after a successful MFA step-up.
-        Trusted devices may skip MFA on subsequent logins (policy
-        enforcement lives in the application layer).
-        """
         self._ensure_active()
 
         if self._is_trusted:
@@ -183,7 +188,6 @@ class Device(AggregateRoot[DeviceId]):
         )
 
     def untrust(self) -> None:
-        """Downgrade a previously trusted device back to untrusted."""
         self._ensure_active()
 
         if not self._is_trusted:
@@ -199,11 +203,6 @@ class Device(AggregateRoot[DeviceId]):
         )
 
     def revoke(self) -> None:
-        """
-        Permanently revoke this device.
-        The application layer is responsible for also revoking all
-        Sessions that carry this device_id.
-        """
         if self._status == DeviceStatus.REVOKED:
             raise DeviceAlreadyRevokedError()
 
@@ -213,6 +212,7 @@ class Device(AggregateRoot[DeviceId]):
         self._record_event(
             DeviceRevoked(
                 device_id=self._id.value,
+                device_name=self._name.value,
                 user_id=self._user_id.value,
             )
         )

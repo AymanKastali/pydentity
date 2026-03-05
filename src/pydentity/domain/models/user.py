@@ -27,7 +27,6 @@ from pydentity.domain.exceptions import (
     EmailAlreadyVerifiedError,
     EmailUnchangedError,
     EmptyValueError,
-    InvalidCredentialsError,
     PasswordReuseError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
@@ -56,7 +55,6 @@ if TYPE_CHECKING:
         HashedResetToken,
         HashedVerificationToken,
         LockoutExpiry,
-        PasswordPolicy,
         PasswordResetToken,
         RoleId,
     )
@@ -85,18 +83,14 @@ class User(AggregateRoot[UserId]):
         self._role_ids = set(role_ids)
 
     @classmethod
-    async def create(
+    def create(
         cls,
+        *,
         user_id: UserId,
         email: EmailAddress,
-        plain_password: str,
-        password_policy: PasswordPolicy,
-        hasher: PasswordHasherPort,
+        password_hash: HashedPassword,
         verification_token: EmailVerificationToken | None = None,
     ) -> User:
-        password_policy.validate(plain_password)
-        password_hash = await hasher.hash(plain_password)
-
         user = cls(
             user_id=user_id,
             email=email,
@@ -117,12 +111,8 @@ class User(AggregateRoot[UserId]):
             role_ids=set(),
         )
 
-        user._record_event(
-            UserRegistered(
-                user_id=user_id.value,
-                email=email.address,
-            )
-        )
+        user._record_event(UserRegistered(user_id=user_id.value, email=email.address))
+
         return user
 
     @classmethod
@@ -230,60 +220,36 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(EmailVerified(user_id=self._id.value))
 
-    def request_password_reset(self, token: PasswordResetToken) -> None:
+    def request_password_reset(self, token: PasswordResetToken, raw_token: str) -> None:
         self._ensure_active()
 
         self._credentials = self._credentials.with_reset_requested(token)
 
-        self._record_event(PasswordResetRequested(user_id=self._id.value))
+        self._record_event(
+            PasswordResetRequested(user_id=self._id.value, raw_token=raw_token)
+        )
 
-    async def reset_password(
-        self,
-        token_hash: HashedResetToken,
-        new_password: str,
-        now: datetime,
-        password_policy: PasswordPolicy,
-        hasher: PasswordHasherPort,
+    def reset_password(
+        self, new_hash: HashedPassword, token_hash: HashedResetToken, now: datetime
     ) -> None:
         self._ensure_active()
-
-        password_policy.validate(new_password)
-        await self._check_password_reuse(
-            new_password, hasher, password_policy.history_size
-        )
-        new_hash = await hasher.hash(new_password)
-
         self._credentials = self._credentials.with_password_reset(
-            token_hash, new_hash, now, password_policy.history_size
+            token_hash, new_hash, now, len(self._credentials.password_history)
         )
         self._login_tracking = self._login_tracking.reset()
+        self._record_event(
+            PasswordReset(user_id=self._id.value, email=self._email.address)
+        )
 
-        self._record_event(PasswordReset(user_id=self._id.value))
-
-    async def change_password(
-        self,
-        current_password: str,
-        new_password: str,
-        password_policy: PasswordPolicy,
-        hasher: PasswordHasherPort,
-    ) -> None:
+    def change_password(self, new_hash: HashedPassword) -> None:
         self._ensure_active()
-
-        if not await hasher.verify(current_password, self._credentials.password_hash):
-            raise InvalidCredentialsError()
-
-        password_policy.validate(new_password)
-        await self._check_password_reuse(
-            new_password, hasher, password_policy.history_size
-        )
-        new_hash = await hasher.hash(new_password)
-
         self._credentials = self._credentials.with_new_password(
-            new_hash, password_policy.history_size
+            new_hash, len(self._credentials.password_history)
         )
         self._login_tracking = self._login_tracking.reset()
-
-        self._record_event(PasswordChanged(user_id=self._id.value))
+        self._record_event(
+            PasswordChanged(user_id=self._id.value, email=self._email.address)
+        )
 
     async def verify_password(
         self, plain_password: str, hasher: PasswordHasherPort, now: datetime
@@ -314,6 +280,7 @@ class User(AggregateRoot[UserId]):
         self._record_event(
             LoginFailed(
                 user_id=self._id.value,
+                email=self._email.address,
                 failed_attempts=self._login_tracking.failed_login_attempts.value,
             )
         )
@@ -322,6 +289,7 @@ class User(AggregateRoot[UserId]):
             self._record_event(
                 AccountLocked(
                     user_id=self._id.value,
+                    email=self._email.address,
                     locked_until=new_lockout.locked_until,
                 )
             )

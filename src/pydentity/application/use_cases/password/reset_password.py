@@ -9,12 +9,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.application.dtos.password import ResetPasswordInput
-    from pydentity.domain.models.value_objects import PasswordPolicy
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
-    from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
+    from pydentity.domain.services.reset_user_password import ResetUserPassword
 
 
 class ResetPassword:
@@ -22,18 +21,16 @@ class ResetPassword:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
-        password_hasher: PasswordHasherPort,
+        reset_user_password: ResetUserPassword,
         token_hasher: TokenHasherPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
-        password_policy: PasswordPolicy,
     ) -> None:
         self._uow_factory = uow_factory
-        self._password_hasher = password_hasher
+        self._reset_user_password = reset_user_password
         self._token_hasher = token_hasher
         self._clock = clock
         self._event_publisher = event_publisher
-        self._password_policy = password_policy
 
     async def execute(self, command: ResetPasswordInput) -> None:
         now = self._clock.now()
@@ -44,18 +41,17 @@ class ResetPassword:
                 raise UserNotFoundError(user_id=command.user_id)
 
             token_hash = HashedResetToken(value=self._token_hasher.hash(command.token))
-            await user.reset_password(
-                token_hash,
-                command.new_password,
-                now,
-                self._password_policy,
-                self._password_hasher,
+
+            await self._reset_user_password.execute(
+                user=user,
+                token_hash=token_hash,
+                new_password=command.new_password,
+                now=now,
             )
 
             await uow.users.save(user)
             await uow.commit()
 
-            events = user.collect_events()
+        events = user.collect_events()
 
         await self._event_publisher.publish(events)
-        user.clear_events()
