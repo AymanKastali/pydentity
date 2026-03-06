@@ -6,7 +6,10 @@ authors = [{ name = "AymanKastali" }]
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "pydantic-settings>=2.13.1",
     "rich>=13.0.0",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "sqlmodel>=0.0.37",
 ]
 
 [build-system]
