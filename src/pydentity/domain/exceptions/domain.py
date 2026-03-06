@@ -375,3 +375,64 @@ class InvalidPolicyValueError(DomainError):
         reason: str,
     ) -> None:
         super().__init__(f"{field_name}: {reason}")
+
+
+class DeviceAlreadyRevokedError(DomainError):
+    """Raised when trying to revoke a device that is already revoked."""
+
+    def __str__(self) -> str:
+        return "Device is already revoked."
+
+
+class DeviceRevokedError(DomainError):
+    """Raised when performing any action on a revoked device."""
+
+    def __str__(self) -> str:
+        return "Device has been revoked."
+
+
+class DeviceAlreadyTrustedError(DomainError):
+    """Raised when marking an already-trusted device as trusted."""
+
+    def __str__(self) -> str:
+        return "Device is already trusted."
+
+
+class DeviceAlreadyUntrustedError(DomainError):
+    """Raised when marking an already-untrusted device as untrusted."""
+
+    def __str__(self) -> str:
+        return "Device is already untrusted."
+
+
+class DeviceOwnershipError(DomainError):
+    def __str__(self) -> str:
+        return "Device does not belong to the authenticated user."
+
+
+class SessionAlreadyRevokedError(DomainError):
+    def __str__(self) -> str:
+        return "Session is already revoked."
+
+
+class DeviceAlreadyRegisteredError(DomainError):
+    """
+    Raised when a device with the same fingerprint is already registered for the user.
+    """
+
+    def __str__(self) -> str:
+        return "A device with this fingerprint is already registered."
+
+
+class EmailAlreadyTakenError(DomainError):
+    """Raised when a user attempts to register with an email already in use."""
+
+    def __str__(self) -> str:
+        return "Email address is already taken."
+
+
+class RoleAlreadyExistsError(DomainError):
+    """Raised when a role with the same name already exists."""
+
+    def __str__(self) -> str:
+        return "A role with this name already exists."

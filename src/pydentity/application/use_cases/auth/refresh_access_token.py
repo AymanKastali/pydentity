@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import SessionNotFoundError
-from pydentity.application.services import assemble_token_claims
+from pydentity.application.exceptions import InvalidTokenError
+from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import AccountNotActiveError
 from pydentity.domain.models.value_objects import SessionId
 
@@ -14,10 +14,10 @@ if TYPE_CHECKING:
         RefreshAccessTokenInput,
         RefreshAccessTokenOutput,
     )
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
     from pydentity.domain.models.value_objects import TokenLifetimePolicy
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
@@ -56,29 +56,59 @@ class RefreshAccessToken:
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
+            # ------------------------------------------------------------------
+            # 1. Load session
+            # ------------------------------------------------------------------
             session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
             if session is None:
-                raise SessionNotFoundError(session_id=command.session_id)
+                raise InvalidTokenError()
 
+            # ------------------------------------------------------------------
+            # 2. Validate user is still active
+            # ------------------------------------------------------------------
+            user = await uow.users.find_by_id(session.user_id)
+            if user is None or not user.is_active:
+                if session.is_active:
+                    session.revoke()
+                await uow.sessions.save(session)
+                await uow.commit()
+                events = session.collect_events()
+                await self._event_publisher.publish(events)
+                raise AccountNotActiveError(
+                    status=user.status if user is not None else None
+                )
+
+            # ------------------------------------------------------------------
+            # 3. Validate device is still active
+            # ------------------------------------------------------------------
+            device = await uow.devices.get_by_id(session.device_id)
+            if device is None or not device.is_active:
+                if session.is_active:
+                    session.revoke()
+                await uow.sessions.save(session)
+                await uow.commit()
+                events = session.collect_events()
+                await self._event_publisher.publish(events)
+                raise InvalidTokenError()
+
+            # ------------------------------------------------------------------
+            # 4. Rotate refresh token
+            # ------------------------------------------------------------------
             new_raw_refresh = self._raw_token_generator.generate()
             session.rotate_refresh_token(
                 command.refresh_token, new_raw_refresh, self._token_hasher, now
             )
 
-            user = await uow.users.find_by_id(session.user_id)
-            if user is None or not user.is_active:
-                session.revoke()
-                await uow.sessions.save(session)
-                await uow.commit()
-                events = session.collect_events()
-                await self._event_publisher.publish(events)
-                session.clear_events()
-                raise AccountNotActiveError(
-                    status=user.status if user is not None else None
-                )
+            # ------------------------------------------------------------------
+            # 5. Bump device last_active
+            # ------------------------------------------------------------------
+            device.mark_active(now)
 
+            # ------------------------------------------------------------------
+            # 6. Sign new access token
+            # ------------------------------------------------------------------
             roles = await uow.roles.find_by_ids(user.role_ids)
-            claims = assemble_token_claims(
+            claims = AccessTokenClaims.create(
                 issuer=self._token_issuer,
                 subject=user.id,
                 session_id=session.id,
@@ -89,13 +119,15 @@ class RefreshAccessToken:
             )
             access_token = await self._token_signer.sign(claims)
 
+            # ------------------------------------------------------------------
+            # 7. Persist everything atomically
+            # ------------------------------------------------------------------
             await uow.sessions.save(session)
+            await uow.devices.save(device)
             await uow.commit()
 
-            events = session.collect_events()
-
+        events = session.collect_events() + device.collect_events()
         await self._event_publisher.publish(events)
-        session.clear_events()
 
         return RefreshAccessTokenOutput(
             access_token=access_token,

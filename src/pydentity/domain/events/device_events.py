@@ -6,25 +6,32 @@ from pydentity.domain.events.base import DomainEvent
 
 
 @dataclass(frozen=True, slots=True)
-class SessionEstablished(DomainEvent):
-    session_id: str
-    user_id: str
+class DeviceRegistered(DomainEvent):
     device_id: str
+    user_id: str
+    device_name: str
 
 
 @dataclass(frozen=True, slots=True)
-class RefreshTokenRotated(DomainEvent):
-    session_id: str
+class DeviceTrusted(DomainEvent):
+    device_id: str
     user_id: str
 
 
 @dataclass(frozen=True, slots=True)
-class RefreshTokenReused(DomainEvent):
-    session_id: str
+class DeviceUntrusted(DomainEvent):
+    device_id: str
     user_id: str
 
 
 @dataclass(frozen=True, slots=True)
-class SessionTerminated(DomainEvent):
-    session_id: str
+class DeviceRevoked(DomainEvent):
+    device_id: str
+    user_id: str
+    device_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceLastActiveBumped(DomainEvent):
+    device_id: str
     user_id: str

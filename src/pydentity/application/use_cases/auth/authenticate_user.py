@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.services import assemble_token_claims
+from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import InvalidCredentialsError
-from pydentity.domain.models.value_objects import EmailAddress
+from pydentity.domain.exceptions.domain import DeviceOwnershipError, DeviceRevokedError
+from pydentity.domain.models.enums import DevicePlatform
+from pydentity.domain.models.value_objects import DeviceId, DeviceName, EmailAddress
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -13,18 +15,19 @@ if TYPE_CHECKING:
         AuthenticateUserInput,
         AuthenticateUserOutput,
     )
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
-    from pydentity.domain.factories import SessionFactory
+    from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
         TokenLifetimePolicy,
     )
     from pydentity.domain.ports.clock import ClockPort
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
+    from pydentity.domain.services.register_device import RegisterDevice
 
 
 class AuthenticateUser:
@@ -33,6 +36,7 @@ class AuthenticateUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         password_hasher: PasswordHasherPort,
+        register_device: RegisterDevice,
         session_factory: SessionFactory,
         raw_token_generator: RawTokenGeneratorPort,
         token_signer: TokenSignerPort,
@@ -45,6 +49,7 @@ class AuthenticateUser:
     ) -> None:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
+        self._register_device = register_device
         self._session_factory = session_factory
         self._raw_token_generator = raw_token_generator
         self._token_signer = token_signer
@@ -62,6 +67,9 @@ class AuthenticateUser:
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
+            # ------------------------------------------------------------------
+            # 1. Authenticate user
+            # ------------------------------------------------------------------
             user = await uow.users.find_by_email(email)
             if user is None:
                 raise InvalidCredentialsError()
@@ -74,23 +82,54 @@ class AuthenticateUser:
                 user.record_failed_login(self._lockout_policy, now)
                 await uow.users.save(user)
                 await uow.commit()
-                events = user.collect_events()
-                await self._event_publisher.publish(events)
-                user.clear_events()
+                await self._event_publisher.publish(user.collect_events())
                 raise InvalidCredentialsError()
 
             user.record_successful_login(now)
 
+            # ------------------------------------------------------------------
+            # 2. Resolve device — reuse existing, register if first time
+            # ------------------------------------------------------------------
+            device = await uow.devices.get_by_id(DeviceId(value=command.device_id))
+
+            if device is None:
+                device = await self._register_device.execute(
+                    device_id=DeviceId(value=command.device_id),
+                    user_id=user.id,
+                    name=DeviceName(value=command.device_name),
+                    raw_fingerprint=command.raw_fingerprint,
+                    platform=DevicePlatform(command.platform),
+                    now=now,
+                )
+            else:
+                try:
+                    device.ensure_accessible_by(user.id)
+                except (DeviceOwnershipError, DeviceRevokedError) as e:
+                    raise InvalidCredentialsError() from e
+
+                device.mark_active(now)
+
+            # ------------------------------------------------------------------
+            # 3. Establish session — revokes existing, creates new
+            # ------------------------------------------------------------------
+            existing_session = await uow.sessions.get_active_by_device(device.id)
+            if existing_session is not None:
+                existing_session.revoke()
+
             raw_refresh = self._raw_token_generator.generate()
             session = self._session_factory.create(
                 user_id=user.id,
+                device_id=device.id,
                 raw_refresh_token=raw_refresh,
                 absolute_lifetime=self._token_lifetime_policy.session_absolute_ttl,
                 created_at=now,
             )
 
+            # ------------------------------------------------------------------
+            # 4. Sign access token
+            # ------------------------------------------------------------------
             roles = await uow.roles.find_by_ids(user.role_ids)
-            claims = assemble_token_claims(
+            claims = AccessTokenClaims.create(
                 issuer=self._token_issuer,
                 subject=user.id,
                 session_id=session.id,
@@ -101,19 +140,32 @@ class AuthenticateUser:
             )
             access_token = await self._token_signer.sign(claims)
 
+            # ------------------------------------------------------------------
+            # 5. Persist everything atomically
+            # ------------------------------------------------------------------
             await uow.users.save(user)
+            await uow.devices.save(device)
             await uow.sessions.save(session)
+            if existing_session is not None:
+                await uow.sessions.save(existing_session)
             await uow.commit()
 
-            events = user.collect_events() + session.collect_events()
-
+        events = (
+            user.collect_events()
+            + device.collect_events()
+            + session.collect_events()
+            + (
+                existing_session.collect_events()
+                if existing_session is not None
+                else []
+            )
+        )
         await self._event_publisher.publish(events)
-        user.clear_events()
-        session.clear_events()
 
         return AuthenticateUserOutput(
             access_token=access_token,
             refresh_token=raw_refresh,
             user_id=user.id.value,
             session_id=session.id.value,
+            device_id=device.id.value,
         )

@@ -7,24 +7,29 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from pydentity.domain.ports.repositories import (
-        RoleRepository,
-        SessionRepository,
-        UserRepository,
+        DeviceRepositoryPort,
+        RoleRepositoryPort,
+        SessionRepositoryPort,
+        UserRepositoryPort,
     )
 
 
 class UnitOfWork(ABC):
     @property
     @abstractmethod
-    def users(self) -> UserRepository: ...
+    def users(self) -> UserRepositoryPort: ...
 
     @property
     @abstractmethod
-    def sessions(self) -> SessionRepository: ...
+    def sessions(self) -> SessionRepositoryPort: ...
 
     @property
     @abstractmethod
-    def roles(self) -> RoleRepository: ...
+    def devices(self) -> DeviceRepositoryPort: ...
+
+    @property
+    @abstractmethod
+    def roles(self) -> RoleRepositoryPort: ...
 
     @abstractmethod
     async def commit(self) -> None: ...

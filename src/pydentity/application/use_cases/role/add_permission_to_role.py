@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.application.dtos.role import AddPermissionToRoleInput
-    from pydentity.domain.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -36,7 +36,5 @@ class AddPermissionToRole:
             await uow.roles.save(role)
             await uow.commit()
 
-            events = role.collect_events()
-
+        events = role.collect_events()
         await self._event_publisher.publish(events)
-        role.clear_events()

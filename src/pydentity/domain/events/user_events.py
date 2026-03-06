@@ -35,21 +35,25 @@ class UserEmailChanged(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class PasswordChanged(DomainEvent):
     user_id: str
+    email: str
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordResetRequested(DomainEvent):
     user_id: str
+    raw_token: str
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordReset(DomainEvent):
     user_id: str
+    email: str
 
 
 @dataclass(frozen=True, slots=True)
 class LoginFailed(DomainEvent):
     user_id: str
+    email: str
     failed_attempts: int
 
 
@@ -61,6 +65,7 @@ class LoginSucceeded(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class AccountLocked(DomainEvent):
     user_id: str
+    email: str
     locked_until: datetime
 
 
@@ -90,3 +95,10 @@ class RoleAssignedToUser(DomainEvent):
 class RoleRevokedFromUser(DomainEvent):
     user_id: str
     role_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class VerificationTokenIssued(DomainEvent):
+    user_id: str
+    email: str
+    raw_token: str

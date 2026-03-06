@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from pydentity.domain.exceptions import (
     AccountLockedError,
@@ -16,6 +17,7 @@ from pydentity.domain.exceptions import (
     ResetTokenInvalidError,
     ResetTokenNotIssuedError,
 )
+from pydentity.domain.models.base import ValueObject
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class UserId:
+class UserId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
@@ -33,7 +35,7 @@ class UserId:
 
 
 @dataclass(frozen=True, slots=True)
-class SessionId:
+class SessionId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
@@ -42,7 +44,16 @@ class SessionId:
 
 
 @dataclass(frozen=True, slots=True)
-class RoleId:
+class DeviceId(ValueObject):
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise EmptyValueError(field_name=self.__class__.__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class RoleId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
@@ -54,7 +65,7 @@ class RoleId:
 
 
 @dataclass(frozen=True, slots=True)
-class RoleName:
+class RoleName(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
@@ -65,7 +76,7 @@ class RoleName:
 
 
 @dataclass(frozen=True, slots=True)
-class RoleDescription:
+class RoleDescription(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
@@ -73,13 +84,32 @@ class RoleDescription:
         if not stripped:
             raise EmptyValueError(field_name=self.__class__.__name__)
         object.__setattr__(self, "value", stripped)
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceName(ValueObject):
+    value: str
+
+    def __post_init__(self) -> None:
+        stripped = self.value.strip()
+        if not stripped:
+            raise EmptyValueError(field_name=self.__class__.__name__)
+        object.__setattr__(self, "value", stripped)
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceLastActive(ValueObject):
+    last_active_at: datetime
+
+    def bump(self, now: datetime) -> Self:
+        return type(self)(last_active_at=now)
 
 
 # --- Authorization VOs ---
 
 
 @dataclass(frozen=True, slots=True)
-class Permission:
+class Permission(ValueObject):
     resource: str
     action: str
 
@@ -106,7 +136,7 @@ _EMAIL_DOMAIN_RE = re.compile(
 
 
 @dataclass(frozen=True, slots=True)
-class EmailAddress:
+class EmailAddress(ValueObject):
     local_part: str
     domain: str
 
@@ -129,7 +159,7 @@ class EmailAddress:
             raise InvalidEmailAddressError(detail=f"invalid domain: {self.domain!r}")
 
     @classmethod
-    def from_string(cls, address: str) -> EmailAddress:
+    def from_string(cls, address: str) -> Self:
         local_part, _, domain = address.partition("@")
         return cls(local_part=local_part, domain=domain)
 
@@ -142,7 +172,7 @@ class EmailAddress:
 
 
 @dataclass(frozen=True, slots=True)
-class HashedPassword:
+class HashedPassword(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
@@ -151,7 +181,7 @@ class HashedPassword:
 
 
 @dataclass(frozen=True, slots=True)
-class HashedVerificationToken:
+class HashedVerificationToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
@@ -160,7 +190,7 @@ class HashedVerificationToken:
 
 
 @dataclass(frozen=True, slots=True)
-class HashedResetToken:
+class HashedResetToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
@@ -169,7 +199,7 @@ class HashedResetToken:
 
 
 @dataclass(frozen=True, slots=True)
-class HashedRefreshToken:
+class HashedRefreshToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
@@ -181,7 +211,7 @@ class HashedRefreshToken:
 
 
 @dataclass(frozen=True, slots=True)
-class FailedLoginAttempts:
+class FailedLoginAttempts(ValueObject):
     value: int
 
     def __post_init__(self) -> None:
@@ -191,15 +221,15 @@ class FailedLoginAttempts:
                 reason="must be non-negative",
             )
 
-    def increment(self) -> FailedLoginAttempts:
-        return FailedLoginAttempts(value=self.value + 1)
+    def increment(self) -> Self:
+        return type(self)(value=self.value + 1)
 
     def has_reached(self, max_attempts: int) -> bool:
         return self.value >= max_attempts
 
 
 @dataclass(frozen=True, slots=True)
-class LockoutExpiry:
+class LockoutExpiry(ValueObject):
     locked_until: datetime
 
     def is_active(self, now: datetime) -> bool:
@@ -207,17 +237,17 @@ class LockoutExpiry:
 
 
 @dataclass(frozen=True, slots=True)
-class SessionCreatedAt:
+class SessionCreatedAt(ValueObject):
     created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
-class SessionLastRefresh:
+class SessionLastRefresh(ValueObject):
     refreshed_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
-class SessionExpiry:
+class SessionExpiry(ValueObject):
     expires_at: datetime
 
     def is_expired(self, now: datetime) -> bool:
@@ -225,7 +255,7 @@ class SessionExpiry:
 
 
 @dataclass(frozen=True, slots=True)
-class RefreshTokenFamily:
+class RefreshTokenFamily(ValueObject):
     family_id: str
     generation: int
 
@@ -238,15 +268,15 @@ class RefreshTokenFamily:
                 reason="must be non-negative",
             )
 
-    def next_generation(self) -> RefreshTokenFamily:
-        return RefreshTokenFamily(
+    def next_generation(self) -> Self:
+        return type(self)(
             family_id=self.family_id,
             generation=self.generation + 1,
         )
 
 
 @dataclass(frozen=True, slots=True)
-class EmailVerificationToken:
+class EmailVerificationToken(ValueObject):
     token_hash: HashedVerificationToken
     expires_at: datetime
 
@@ -258,7 +288,7 @@ class EmailVerificationToken:
 
 
 @dataclass(frozen=True, slots=True)
-class PasswordResetToken:
+class PasswordResetToken(ValueObject):
     token_hash: HashedResetToken
     expires_at: datetime
 
@@ -273,7 +303,7 @@ class PasswordResetToken:
 
 
 @dataclass(frozen=True, slots=True)
-class EmailVerification:
+class EmailVerification(ValueObject):
     is_verified: bool
     token: EmailVerificationToken | None
 
@@ -291,7 +321,7 @@ class EmailVerification:
 
 
 @dataclass(frozen=True, slots=True)
-class Credentials:
+class Credentials(ValueObject):
     password_hash: HashedPassword
     password_reset_token: PasswordResetToken | None
     password_history: tuple[HashedPassword, ...]
@@ -303,21 +333,19 @@ class Credentials:
                 reason="must contain at least one password",
             )
 
-    def with_new_password(
-        self, new_hash: HashedPassword, history_size: int
-    ) -> Credentials:
+    def with_new_password(self, new_hash: HashedPassword, history_size: int) -> Self:
         if history_size > 0:
             history = (*self.password_history, new_hash)[-history_size:]
         else:
             history = self.password_history
-        return Credentials(
+        return type(self)(
             password_hash=new_hash,
             password_reset_token=self.password_reset_token,
             password_history=history,
         )
 
-    def with_reset_requested(self, token: PasswordResetToken) -> Credentials:
-        return Credentials(
+    def with_reset_requested(self, token: PasswordResetToken) -> Self:
+        return type(self)(
             password_hash=self.password_hash,
             password_reset_token=token,
             password_history=self.password_history,
@@ -329,7 +357,7 @@ class Credentials:
         new_hash: HashedPassword,
         now: datetime,
         history_size: int,
-    ) -> Credentials:
+    ) -> Self:
         if self.password_reset_token is None:
             raise ResetTokenNotIssuedError()
         if self.password_reset_token.is_expired(now):
@@ -338,7 +366,7 @@ class Credentials:
             raise ResetTokenInvalidError()
 
         updated = self.with_new_password(new_hash, history_size)
-        return Credentials(
+        return type(self)(
             password_hash=updated.password_hash,
             password_reset_token=None,
             password_history=updated.password_history,
@@ -346,7 +374,7 @@ class Credentials:
 
 
 @dataclass(frozen=True, slots=True)
-class LoginTracking:
+class LoginTracking(ValueObject):
     failed_login_attempts: FailedLoginAttempts
     lockout_expiry: LockoutExpiry | None
 
@@ -356,9 +384,7 @@ class LoginTracking:
 
     def after_failed_attempt(
         self, policy: AccountLockoutPolicy, now: datetime
-    ) -> tuple[LoginTracking, LockoutExpiry | None]:
-        # Reset counter if previous lockout has expired — otherwise
-        # the user is immediately re-locked on every attempt.
+    ) -> tuple[Self, LockoutExpiry | None]:
         previous_lockout_expired = (
             self.lockout_expiry is not None and not self.lockout_expiry.is_active(now)
         )
@@ -376,29 +402,38 @@ class LoginTracking:
         effective_lockout = (
             new_lockout if new_lockout is not None else self.lockout_expiry
         )
-        return LoginTracking(
+        return type(self)(
             failed_login_attempts=new_attempts,
             lockout_expiry=effective_lockout,
         ), new_lockout
 
-    def after_successful_login(self) -> LoginTracking:
-        return LoginTracking(
+    def after_successful_login(self) -> Self:
+        return type(self)(
             failed_login_attempts=FailedLoginAttempts(0),
             lockout_expiry=None,
         )
 
-    def reset(self) -> LoginTracking:
-        return LoginTracking(
+    def reset(self) -> Self:
+        return type(self)(
             failed_login_attempts=FailedLoginAttempts(0),
             lockout_expiry=None,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceFingerprint(ValueObject):
+    value: str
+
+    @classmethod
+    def from_raw(cls, raw: str) -> Self:
+        return cls(value=hashlib.sha256(raw.encode()).hexdigest())
 
 
 # --- Policy VOs ---
 
 
 @dataclass(frozen=True, slots=True)
-class PasswordPolicy:
+class PasswordPolicy(ValueObject):
     min_length: int
     require_uppercase: bool
     require_lowercase: bool
@@ -435,7 +470,7 @@ class PasswordPolicy:
 
 
 @dataclass(frozen=True, slots=True)
-class AccountLockoutPolicy:
+class AccountLockoutPolicy(ValueObject):
     max_attempts: int
     lockout_duration: timedelta
 
@@ -451,7 +486,7 @@ class AccountLockoutPolicy:
 
 
 @dataclass(frozen=True, slots=True)
-class TokenLifetimePolicy:
+class TokenLifetimePolicy(ValueObject):
     access_token_ttl: timedelta
     refresh_token_ttl: timedelta
     session_absolute_ttl: timedelta
@@ -472,7 +507,7 @@ class TokenLifetimePolicy:
 
 
 @dataclass(frozen=True, slots=True)
-class EmailVerificationPolicy:
+class EmailVerificationPolicy(ValueObject):
     required_on_registration: bool
     token_ttl: timedelta
 

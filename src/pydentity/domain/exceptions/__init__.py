@@ -22,6 +22,7 @@ from pydentity.domain.exceptions.domain import (
     ResetTokenNotIssuedError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
+    SessionAlreadyRevokedError,
     SessionExpiredError,
     SessionRevokedError,
     VerificationTokenExpiredError,
@@ -58,4 +59,5 @@ __all__ = [
     "VerificationTokenExpiredError",
     "VerificationTokenInvalidError",
     "VerificationTokenNotIssuedError",
+    "SessionAlreadyRevokedError",
 ]

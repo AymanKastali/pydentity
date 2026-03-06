@@ -6,6 +6,10 @@ if TYPE_CHECKING:
     from pydentity.domain.events.base import DomainEvent
 
 
+class ValueObject:
+    pass
+
+
 class Entity[TId]:
     _id: TId
 
@@ -30,7 +34,5 @@ class AggregateRoot[TId](Entity[TId]):
         self._events.append(event)
 
     def collect_events(self) -> list[DomainEvent]:
-        return list(self._events)
-
-    def clear_events(self) -> None:
-        self._events.clear()
+        events, self._events = self._events, []
+        return events

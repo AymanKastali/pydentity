@@ -5,7 +5,6 @@ from pydentity.application.dtos.account import (
     SuspendUserInput,
 )
 from pydentity.application.dtos.auth import (
-    AccessTokenClaims,
     AuthenticateUserInput,
     AuthenticateUserOutput,
     LogoutUserInput,
@@ -35,7 +34,6 @@ from pydentity.application.dtos.role import (
 )
 
 __all__ = [
-    "AccessTokenClaims",
     "AddPermissionToRoleInput",
     "AssignRoleToUserInput",
     "AuthenticateUserInput",
