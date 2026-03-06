@@ -59,10 +59,9 @@ class UserRoleLink(BaseModel, table=True):
     )
 
 
-# ── tables ────────────────────────────────────────────────────────────────────
-
-
 # ── UserModel ─────────────────────────────────────────────────────────────────
+
+
 class UserModel(BaseModel, table=True):
     __tablename__: ClassVar[str] = "users"
 
@@ -70,23 +69,46 @@ class UserModel(BaseModel, table=True):
     email: str = Field(sa_column=sa.Column(sa.String, nullable=False, unique=True))
     status: str = Field(sa_column=sa.Column(sa.String, nullable=False))
 
-    # Fix: Renamed fields to match mapper (added _hash and _expires_at)
-    email_verification_is_verified: bool = Field(default=False)
-    email_verification_token_hash: str | None = Field(default=None)
-    email_verification_token_expires_at: datetime | None = Field(default=None)
-
-    credentials_password_hash: str = Field(nullable=False)
-    # Fix: Renamed fields to match mapper
-    credentials_password_reset_token_hash: str | None = Field(default=None)
-    credentials_password_reset_token_expires_at: datetime | None = Field(default=None)
-
-    credentials_password_history: list[str] = Field(
-        default_factory=list, sa_column=sa.Column(sa.JSON, nullable=False)
+    # EmailVerification
+    email_verification_is_verified: bool = Field(
+        sa_column=sa.Column(sa.Boolean, nullable=False, default=False)
+    )
+    email_verification_token_hash: bytes | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.LargeBinary, nullable=True),
+    )
+    email_verification_token_expires_at: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=True),
     )
 
-    login_tracking_failed_attempts: int = Field(default=0)
-    login_tracking_lockout_expiry: datetime | None = Field(default=None)
+    # Credentials
+    credentials_password_hash: bytes = Field(
+        sa_column=sa.Column(sa.LargeBinary, nullable=False)
+    )
+    credentials_password_reset_token_hash: bytes | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.LargeBinary, nullable=True),
+    )
+    credentials_password_reset_token_expires_at: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=True),
+    )
+    credentials_password_history: list[bytes] = Field(
+        default_factory=list,
+        sa_column=sa.Column(sa.ARRAY(sa.LargeBinary), nullable=False),
+    )
 
+    # LoginTracking
+    login_tracking_failed_attempts: int = Field(
+        sa_column=sa.Column(sa.Integer, nullable=False, default=0)
+    )
+    login_tracking_lockout_expiry: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=True),
+    )
+
+    # relationships
     roles: list[RoleModel] = Relationship(
         back_populates="users", link_model=UserRoleLink
     )
@@ -95,24 +117,17 @@ class UserModel(BaseModel, table=True):
 
 
 # ── RoleModel ─────────────────────────────────────────────────────────────────
+
+
 class RoleModel(BaseModel, table=True):
     __tablename__: ClassVar[str] = "roles"
 
-    # domain identity
-    domain_id: str = Field(
-        sa_column=sa.Column(sa.String, nullable=False, unique=True),
-    )
-
-    # RoleName
+    domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False, unique=True))
     name: str = Field(sa_column=sa.Column(sa.String, nullable=False, unique=True))
-
-    # RoleDescription
     description: str = Field(sa_column=sa.Column(sa.String, nullable=False))
-
-    # permissions stored as JSON array of strings
     permissions: list[str] = Field(
         default_factory=list,
-        sa_column=sa.Column(sa.JSON, nullable=False, default=list),
+        sa_column=sa.Column(sa.ARRAY(sa.String), nullable=False),
     )
 
     # relationships
@@ -121,51 +136,61 @@ class RoleModel(BaseModel, table=True):
     )
 
 
-# ── SessionModel ─────────────────────────────────────────────────────────────────
+# ── SessionModel ──────────────────────────────────────────────────────────────
+
+
 class SessionModel(BaseModel, table=True):
     __tablename__: ClassVar[str] = "sessions"
 
-    domain_id: str = Field(nullable=False, unique=True)
-    user_fk: int = Field(foreign_key="users.id", ondelete="CASCADE")
-    device_fk: int = Field(foreign_key="devices.id", ondelete="CASCADE")
-
-    # Fix: Using String for domain IDs to be consistent with User/Device domain_id
-    user_domain_id: str = Field(nullable=False)
-    device_domain_id: str = Field(nullable=False)
-
-    refresh_token_hash: str = Field(nullable=False)
-
-    # Fix: Expanded RefreshTokenFamily to match the mapper's flattened fields
-    refresh_token_family_id: str = Field(nullable=False)
-    refresh_token_family_generation: int = Field(nullable=False)
-
-    status: str = Field(nullable=False)
-    session_created_at: datetime = Field(nullable=False)
-    last_refresh: datetime = Field(nullable=False)
-    expiry: datetime = Field(nullable=False)
-
-    user: UserModel = Relationship(back_populates="sessions")
-    device: DeviceModel = Relationship(back_populates="sessions")
-
-
-# ── DeviceModel ─────────────────────────────────────────────────────────────────
-class DeviceModel(BaseModel, table=True):
-    __tablename__: ClassVar[str] = "devices"
-
-    # domain identity
     domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False, unique=True))
-
-    # foreign key
     user_fk: int = Field(
         sa_column=sa.Column(
             sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
         )
     )
-
-    # domain fields
-    user_domain_id: str = Field(
-        sa_column=sa.Column(sa.String, nullable=False, unique=True)
+    device_fk: int = Field(
+        sa_column=sa.Column(
+            sa.Integer, sa.ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+        )
     )
+    user_domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False))
+    device_domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False))
+    refresh_token_hash: bytes = Field(
+        sa_column=sa.Column(sa.LargeBinary, nullable=False)
+    )
+    refresh_token_family_id: str = Field(sa_column=sa.Column(sa.String, nullable=False))
+    refresh_token_family_generation: int = Field(
+        sa_column=sa.Column(sa.Integer, nullable=False)
+    )
+    status: str = Field(sa_column=sa.Column(sa.String, nullable=False))
+    session_created_at: datetime = Field(
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    last_refresh: datetime = Field(
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    expiry: datetime = Field(
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False)
+    )
+
+    # relationships
+    user: UserModel = Relationship(back_populates="sessions")
+    device: DeviceModel = Relationship(back_populates="sessions")
+
+
+# ── DeviceModel ───────────────────────────────────────────────────────────────
+
+
+class DeviceModel(BaseModel, table=True):
+    __tablename__: ClassVar[str] = "devices"
+
+    domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False, unique=True))
+    user_fk: int = Field(
+        sa_column=sa.Column(
+            sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        )
+    )
+    user_domain_id: str = Field(sa_column=sa.Column(sa.String, nullable=False))
     name: str = Field(sa_column=sa.Column(sa.String, nullable=False))
     fingerprint: str = Field(
         sa_column=sa.Column(sa.String, nullable=False, unique=True)

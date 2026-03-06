@@ -31,7 +31,7 @@ class ChangeRoleDescription:
 
             role.change_description(RoleDescription(value=command.new_description))
 
-            await uow.roles.save(role)
+            await uow.roles.upsert(role)
             await uow.commit()
 
         events = role.collect_events()

@@ -80,7 +80,7 @@ class AuthenticateUser:
 
             if not password_valid:
                 user.record_failed_login(self._lockout_policy, now)
-                await uow.users.save(user)
+                await uow.users.upsert(user)
                 await uow.commit()
                 await self._event_publisher.publish(user.collect_events())
                 raise InvalidCredentialsError()
@@ -143,11 +143,11 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             # 5. Persist everything atomically
             # ------------------------------------------------------------------
-            await uow.users.save(user)
-            await uow.devices.save(device)
-            await uow.sessions.save(session)
+            await uow.users.upsert(user)
+            await uow.devices.upsert(device)
+            await uow.sessions.upsert(session)
             if existing_session is not None:
-                await uow.sessions.save(existing_session)
+                await uow.sessions.upsert(existing_session)
             await uow.commit()
 
         events = (

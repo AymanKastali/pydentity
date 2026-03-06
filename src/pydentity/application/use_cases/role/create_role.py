@@ -38,7 +38,7 @@ class CreateRole:
             except RoleAlreadyExistsError:
                 raise
 
-            await uow.roles.save(role)
+            await uow.roles.upsert(role)
             await uow.commit()
 
         events = role.collect_events()

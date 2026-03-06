@@ -43,7 +43,7 @@ class VerifyEmail:
 
             user.verify_email(token_hash, now)
 
-            await uow.users.save(user)
+            await uow.users.upsert(user)
             await uow.commit()
 
         events = user.collect_events()

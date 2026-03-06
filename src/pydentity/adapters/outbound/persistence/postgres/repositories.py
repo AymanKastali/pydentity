@@ -77,7 +77,7 @@ class PostgresUserRepository(UserRepositoryPort):
         model = result.scalar_one_or_none()
         return model_to_user(model) if model else None
 
-    async def save(self, user: User) -> None:
+    async def upsert(self, user: User) -> None:
         # Fetch with roles to ensure the relationship collection is managed correctly
         stmt = (
             select(UserModel)
@@ -136,7 +136,7 @@ class PostgresRoleRepository(RoleRepositoryPort):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_role(model) if model else None
 
-    async def save(self, role: Role) -> None:
+    async def upsert(self, role: Role) -> None:
         stmt = select(RoleModel).where(col(RoleModel.domain_id) == role.id.value)
         existing = (await self._session.execute(stmt)).scalar_one_or_none()
 
@@ -157,7 +157,7 @@ class PostgresDeviceRepository(DeviceRepositoryPort):
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def save(self, device: Device) -> None:
+    async def upsert(self, device: Device) -> None:
         # Resolve integer FK for the user
         user_fk_stmt = select(col(UserModel.id)).where(
             col(UserModel.domain_id) == device.user_id.value
@@ -223,7 +223,7 @@ class PostgresSessionRepository(SessionRepositoryPort):
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def save(self, session: Session) -> None:
+    async def upsert(self, session: Session) -> None:
         # Resolve both integer FKs for data integrity
         u_stmt = select(col(UserModel.id)).where(
             col(UserModel.domain_id) == session.user_id.value

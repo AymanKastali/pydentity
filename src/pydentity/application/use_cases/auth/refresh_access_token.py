@@ -70,7 +70,7 @@ class RefreshAccessToken:
             if user is None or not user.is_active:
                 if session.is_active:
                     session.revoke()
-                await uow.sessions.save(session)
+                await uow.sessions.upsert(session)
                 await uow.commit()
                 events = session.collect_events()
                 await self._event_publisher.publish(events)
@@ -85,7 +85,7 @@ class RefreshAccessToken:
             if device is None or not device.is_active:
                 if session.is_active:
                     session.revoke()
-                await uow.sessions.save(session)
+                await uow.sessions.upsert(session)
                 await uow.commit()
                 events = session.collect_events()
                 await self._event_publisher.publish(events)
@@ -122,8 +122,8 @@ class RefreshAccessToken:
             # ------------------------------------------------------------------
             # 7. Persist everything atomically
             # ------------------------------------------------------------------
-            await uow.sessions.save(session)
-            await uow.devices.save(device)
+            await uow.sessions.upsert(session)
+            await uow.devices.upsert(device)
             await uow.commit()
 
         events = session.collect_events() + device.collect_events()
