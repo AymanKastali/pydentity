@@ -7,13 +7,13 @@ services:
       - ../.env
     ports:
       - "8000:8000"
-    command: >
-      sh -c "/app/.venv/bin/alembic upgrade head && /app/.venv/bin/python -m pydentity"
+    command: /app/.venv/bin/python -m pydentity
     depends_on:
       postgres:
         condition: service_healthy
       mailhog:
         condition: service_started
+    networks: [pydentity]
 
   postgres:
     image: postgres:16-alpine
@@ -30,12 +30,18 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks: [pydentity]
 
   mailhog:
     image: mailhog/mailhog
     ports:
       - "1025:1025"
       - "8025:8025"
+    networks: [pydentity]
 
 volumes:
   pgdata:
+
+networks:
+  pydentity:
+    external: true

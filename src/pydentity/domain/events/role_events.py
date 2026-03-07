@@ -8,7 +8,7 @@ from pydentity.domain.events.base import DomainEvent
 @dataclass(frozen=True, slots=True)
 class RoleCreated(DomainEvent):
     role_id: str
-    name: str
+    role_name: str
     description: str
 
 
