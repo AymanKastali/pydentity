@@ -24,7 +24,17 @@
   "plantuml.server": "https://www.plantuml.com/plantuml",
   "plantuml.exportOutDir": "docs/diagrams",
   "cSpell.words": [
+    "asyncpg",
+    "autoflush",
+    "creds",
     "dtos",
-    "pydentity"
+    "FASTAPI",
+    "isready",
+    "ondelete",
+    "onupdate",
+    "pgdata",
+    "pydentity",
+    "selectinload",
+    "sessionmaker"
   ]
 }

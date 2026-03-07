@@ -32,7 +32,7 @@ class LogoutUser:
             if session.is_active:
                 session.revoke()
 
-            await uow.sessions.save(session)
+            await uow.sessions.upsert(session)
             await uow.commit()
 
         events = session.collect_events()

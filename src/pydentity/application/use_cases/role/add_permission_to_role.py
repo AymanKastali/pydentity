@@ -33,7 +33,7 @@ class AddPermissionToRole:
                 Permission(resource=command.resource, action=command.action)
             )
 
-            await uow.roles.save(role)
+            await uow.roles.upsert(role)
             await uow.commit()
 
         events = role.collect_events()

@@ -38,7 +38,7 @@ class ChangePassword:
                 new_password=command.new_password,
             )
 
-            await uow.users.save(user)
+            await uow.users.upsert(user)
             await uow.commit()
 
         events = user.collect_events()

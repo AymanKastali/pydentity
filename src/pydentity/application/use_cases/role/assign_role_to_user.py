@@ -36,7 +36,7 @@ class AssignRoleToUser:
 
             user.assign_role(role_id)
 
-            await uow.users.save(user)
+            await uow.users.upsert(user)
             await uow.commit()
 
         events = user.collect_events()

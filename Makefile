@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup docker-up docker-down docker-build docker-logs docker-ps
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -44,6 +44,41 @@ clean: ## Remove build artifacts and caches
 	rm -rf dist/ build/ .venv/ .ruff_cache/ .pytest_cache/ .mypy_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+migrate: ## Apply all pending migrations
+	uv run alembic upgrade head
+
+migrate-new: ## Generate a new migration (use: make migrate-new MSG="description")
+	uv run alembic revision --autogenerate -m "$(MSG)"
+
+migrate-down: ## Rollback one migration step
+	uv run alembic downgrade -1
+
+migrate-history: ## Show migration history
+	uv run alembic history
+
+migrate-current: ## Show current migration revision
+	uv run alembic current
+
+COMPOSE := docker compose -f docker/docker-compose.yml
+
+env-setup: ## Create .env from .env.example if it does not exist
+	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example — fill in required secrets before starting.")
+
+docker-up: env-setup ## Start all services (detached)
+	$(COMPOSE) up -d
+
+docker-build: env-setup ## Build and start all services
+	$(COMPOSE) up --build -d
+
+docker-down: ## Stop and remove containers
+	$(COMPOSE) down
+
+docker-logs: ## Tail logs for all services
+	$(COMPOSE) logs -f
+
+docker-ps: ## Show running service status
+	$(COMPOSE) ps
 
 diagrams: ## Render PlantUML diagrams to PNG
 	plantuml -tpng docs/diagrams/*.puml

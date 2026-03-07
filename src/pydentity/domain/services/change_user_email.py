@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.domain.events.user_events import VerificationTokenIssued
 from pydentity.domain.exceptions.domain import EmailAlreadyTakenError
 
 if TYPE_CHECKING:
@@ -33,10 +32,6 @@ class ChangeUserEmail:
         user.change_email(new_email, verification_token)
 
         if verification_token is not None and raw_token is not None:
-            user._record_event(
-                VerificationTokenIssued(
-                    user_id=user.id.value,
-                    email=new_email.address,
-                    raw_token=raw_token,
-                )
+            user.record_verification_token_issued(
+                raw_token=raw_token, email=new_email.address
             )

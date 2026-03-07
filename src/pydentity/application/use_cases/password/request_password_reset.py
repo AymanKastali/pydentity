@@ -46,7 +46,7 @@ class RequestPasswordReset:
 
             user.request_password_reset(reset_token, raw_token)
 
-            await uow.users.save(user)
+            await uow.users.upsert(user)
             await uow.commit()
 
         events = user.collect_events()

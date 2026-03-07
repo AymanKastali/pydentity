@@ -17,6 +17,7 @@ from pydentity.domain.events.user_events import (
     UserReactivated,
     UserRegistered,
     UserSuspended,
+    VerificationTokenIssued,
     VerificationTokenReissued,
 )
 from pydentity.domain.exceptions import (
@@ -370,6 +371,13 @@ class User(AggregateRoot[UserId]):
         self._email_verification = EmailVerification(is_verified=False, token=token)
 
         self._record_event(VerificationTokenReissued(user_id=self._id.value))
+
+    def record_verification_token_issued(self, raw_token: str, email: str) -> None:
+        self._record_event(
+            VerificationTokenIssued(
+                user_id=self._id.value, email=email, raw_token=raw_token
+            )
+        )
 
     def assign_role(self, role_id: RoleId) -> None:
         self._ensure_active()

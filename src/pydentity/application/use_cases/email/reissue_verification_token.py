@@ -48,7 +48,7 @@ class ReissueVerificationToken:
 
             user.reissue_verification_token(verification_token)
 
-            await uow.users.save(user)
+            await uow.users.upsert(user)
             await uow.commit()
 
         events = user.collect_events()
