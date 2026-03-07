@@ -47,3 +47,11 @@ class NotificationPort(ABC):
     async def send_password_reset_email(
         self, *, email: str, raw_token: str
     ) -> None: ...
+
+    @abstractmethod
+    async def send_account_suspended_email(
+        self, *, email: str, reason: str
+    ) -> None: ...
+
+    @abstractmethod
+    async def send_account_deactivated_email(self, *, email: str) -> None: ...

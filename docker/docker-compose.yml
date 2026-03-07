@@ -5,3 +5,37 @@ services:
       dockerfile: docker/Dockerfile
     env_file:
       - ../.env
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "/app/.venv/bin/alembic upgrade head && /app/.venv/bin/python -m pydentity"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pydentity
+      POSTGRES_PASSWORD: pydentity
+      POSTGRES_DB: pydentity
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pydentity"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  pgdata:

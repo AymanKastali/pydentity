@@ -16,10 +16,15 @@ if TYPE_CHECKING:
     from pydentity.domain.events.user_events import (
         AccountLocked,
         LoginFailed,
+        LoginSucceeded,
         PasswordChanged,
         PasswordReset,
         PasswordResetRequested,
+        RoleAssignedToUser,
+        RoleRevokedFromUser,
+        UserDeactivated,
         UserRegistered,
+        UserSuspended,
         VerificationTokenIssued,
     )
     from pydentity.domain.ports.repositories import UserRepositoryPort
@@ -292,4 +297,112 @@ class OnPasswordResetRequested(EventHandler["PasswordResetRequested"]):
         await self._audit_log.record(
             action="user.password_reset_requested",
             user_id=event.user_id,
+        )
+
+
+# ---------------------------------------------------------------------------
+# UserSuspended
+# ---------------------------------------------------------------------------
+
+
+class OnUserSuspended(EventHandler["UserSuspended"]):
+    def __init__(
+        self,
+        user_repo: UserRepositoryPort,
+        notification: NotificationPort,
+        audit_log: AuditLogPort,
+    ) -> None:
+        self._user_repo = user_repo
+        self._notification = notification
+        self._audit_log = audit_log
+
+    async def handle(self, event: UserSuspended) -> None:
+        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
+        if user is not None:
+            await self._notification.send_account_suspended_email(
+                email=user.email.address,
+                reason=event.reason,
+            )
+        await self._audit_log.record(
+            action="user.suspended",
+            user_id=event.user_id,
+            metadata={"reason": event.reason},
+        )
+
+
+# ---------------------------------------------------------------------------
+# UserDeactivated
+# ---------------------------------------------------------------------------
+
+
+class OnUserDeactivated(EventHandler["UserDeactivated"]):
+    def __init__(
+        self,
+        user_repo: UserRepositoryPort,
+        notification: NotificationPort,
+        audit_log: AuditLogPort,
+    ) -> None:
+        self._user_repo = user_repo
+        self._notification = notification
+        self._audit_log = audit_log
+
+    async def handle(self, event: UserDeactivated) -> None:
+        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
+        if user is not None:
+            await self._notification.send_account_deactivated_email(
+                email=user.email.address,
+            )
+        await self._audit_log.record(
+            action="user.deactivated",
+            user_id=event.user_id,
+        )
+
+
+# ---------------------------------------------------------------------------
+# LoginSucceeded
+# ---------------------------------------------------------------------------
+
+
+class OnLoginSucceeded(EventHandler["LoginSucceeded"]):
+    def __init__(self, audit_log: AuditLogPort) -> None:
+        self._audit_log = audit_log
+
+    async def handle(self, event: LoginSucceeded) -> None:
+        await self._audit_log.record(
+            action="user.login_succeeded",
+            user_id=event.user_id,
+        )
+
+
+# ---------------------------------------------------------------------------
+# RoleAssignedToUser
+# ---------------------------------------------------------------------------
+
+
+class OnRoleAssignedToUser(EventHandler["RoleAssignedToUser"]):
+    def __init__(self, audit_log: AuditLogPort) -> None:
+        self._audit_log = audit_log
+
+    async def handle(self, event: RoleAssignedToUser) -> None:
+        await self._audit_log.record(
+            action="user.role_assigned",
+            user_id=event.user_id,
+            metadata={"role_id": event.role_id},
+        )
+
+
+# ---------------------------------------------------------------------------
+# RoleRevokedFromUser
+# ---------------------------------------------------------------------------
+
+
+class OnRoleRevokedFromUser(EventHandler["RoleRevokedFromUser"]):
+    def __init__(self, audit_log: AuditLogPort) -> None:
+        self._audit_log = audit_log
+
+    async def handle(self, event: RoleRevokedFromUser) -> None:
+        await self._audit_log.record(
+            action="user.role_revoked",
+            user_id=event.user_id,
+            metadata={"role_id": event.role_id},
         )

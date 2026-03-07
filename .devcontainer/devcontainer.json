@@ -30,7 +30,8 @@
         "usernamehw.errorlens",
         "ms-azuretools.vscode-docker",
         "jebbs.plantuml",
-        "continue.continue"
+        "continue.continue",
+        "cweijan.vscode-database-client2"
       ]
     }
   }

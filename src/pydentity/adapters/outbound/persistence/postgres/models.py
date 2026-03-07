@@ -17,19 +17,14 @@ def _now() -> datetime:
 
 
 class BaseModel(SQLModel):
-    id: int | None = Field(
-        default=None,
-        sa_column=sa.Column(sa.Integer, primary_key=True, autoincrement=True),
-    )
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         default_factory=_now,
-        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False, default=_now),
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
     )
     updated_at: datetime = Field(
         default_factory=_now,
-        sa_column=sa.Column(
-            sa.DateTime(timezone=True), nullable=False, default=_now, onupdate=_now
-        ),
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
     )
     deleted_at: datetime | None = Field(
         default=None,

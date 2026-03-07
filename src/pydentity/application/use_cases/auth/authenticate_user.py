@@ -2,21 +2,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydentity.application.dtos.auth import AuthenticateUserOutput
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import InvalidCredentialsError
 from pydentity.domain.exceptions.domain import DeviceOwnershipError, DeviceRevokedError
 from pydentity.domain.models.enums import DevicePlatform
 from pydentity.domain.models.value_objects import DeviceId, DeviceName, EmailAddress
+from pydentity.domain.services.register_device import RegisterDevice
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pydentity.application.dtos.auth import (
-        AuthenticateUserInput,
-        AuthenticateUserOutput,
-    )
+    from pydentity.application.dtos.auth import AuthenticateUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
+    from pydentity.domain.factories.device_factory import DeviceFactory
     from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
-    from pydentity.domain.services.register_device import RegisterDevice
 
 
 class AuthenticateUser:
@@ -36,7 +35,7 @@ class AuthenticateUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         password_hasher: PasswordHasherPort,
-        register_device: RegisterDevice,
+        device_factory: DeviceFactory,
         session_factory: SessionFactory,
         raw_token_generator: RawTokenGeneratorPort,
         token_signer: TokenSignerPort,
@@ -49,7 +48,7 @@ class AuthenticateUser:
     ) -> None:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
-        self._register_device = register_device
+        self._device_factory = device_factory
         self._session_factory = session_factory
         self._raw_token_generator = raw_token_generator
         self._token_signer = token_signer
@@ -61,12 +60,15 @@ class AuthenticateUser:
         self._token_issuer = token_issuer
 
     async def execute(self, command: AuthenticateUserInput) -> AuthenticateUserOutput:
-        from pydentity.application.dtos.auth import AuthenticateUserOutput
-
         email = EmailAddress.from_string(command.email)
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
+            register_device = RegisterDevice(
+                device_repo=uow.devices,
+                device_factory=self._device_factory,
+            )
+
             # ------------------------------------------------------------------
             # 1. Authenticate user
             # ------------------------------------------------------------------
@@ -93,7 +95,7 @@ class AuthenticateUser:
             device = await uow.devices.get_by_id(DeviceId(value=command.device_id))
 
             if device is None:
-                device = await self._register_device.execute(
+                device = await register_device.execute(
                     device_id=DeviceId(value=command.device_id),
                     user_id=user.id,
                     name=DeviceName(value=command.device_name),

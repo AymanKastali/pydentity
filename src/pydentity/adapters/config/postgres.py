@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING
+from pydantic import PostgresDsn  # noqa: TC002
 
 from pydentity.adapters.config.base import BaseSettings
-
-if TYPE_CHECKING:
-    from pydantic import PostgresDsn
 
 
 class PostgresSettings(BaseSettings):

@@ -23,6 +23,7 @@ from pydentity.adapters.outbound.persistence.postgres.models import (
     SessionModel,
     UserModel,
 )
+from pydentity.domain.models.enums import DeviceStatus, SessionStatus
 
 # Ports
 from pydentity.domain.ports.repositories import (
@@ -162,7 +163,7 @@ class PostgresDeviceRepository(DeviceRepositoryPort):
         user_fk_stmt = select(col(UserModel.id)).where(
             col(UserModel.domain_id) == device.user_id.value
         )
-        user_fk = (await self._session.execute(user_fk_stmt)).scalar_one()
+        user_fk = (await self._session.execute(user_fk_stmt)).scalar_one_or_none()
         if user_fk is None:
             raise RuntimeError(
                 f"UserModel.id not found for domain_id={device.user_id.value}"
@@ -195,8 +196,6 @@ class PostgresDeviceRepository(DeviceRepositoryPort):
         return [model_to_device(m) for m in result.scalars().all()]
 
     async def revoke_all_for_user(self, user_id: UserId) -> None:
-        from pydentity.domain.models.enums import DeviceStatus
-
         stmt = select(DeviceModel).where(
             col(DeviceModel.user_domain_id) == user_id.value
         )
@@ -232,12 +231,12 @@ class PostgresSessionRepository(SessionRepositoryPort):
             col(DeviceModel.domain_id) == session.device_id.value
         )
 
-        user_fk = (await self._session.execute(u_stmt)).scalar_one()
+        user_fk = (await self._session.execute(u_stmt)).scalar_one_or_none()
         if user_fk is None:
             raise RuntimeError(
                 f"UserModel.id not found for domain_id={session.user_id.value}"
             )
-        device_fk = (await self._session.execute(d_stmt)).scalar_one()
+        device_fk = (await self._session.execute(d_stmt)).scalar_one_or_none()
         if device_fk is None:
             raise RuntimeError(
                 f"DeviceModel.id not found for domain_id={session.device_id.value}"
@@ -267,8 +266,6 @@ class PostgresSessionRepository(SessionRepositoryPort):
         return model_to_session(model) if model else None
 
     async def get_active_by_device(self, device_id: DeviceId) -> Session | None:
-        from pydentity.domain.models.enums import SessionStatus
-
         stmt = select(SessionModel).where(
             col(SessionModel.device_domain_id) == device_id.value,
             col(SessionModel.status) == SessionStatus.ACTIVE.value,
@@ -277,8 +274,6 @@ class PostgresSessionRepository(SessionRepositoryPort):
         return model_to_session(model) if model else None
 
     async def find_active_by_user_id(self, user_id: UserId) -> list[Session]:
-        from pydentity.domain.models.enums import SessionStatus
-
         stmt = select(SessionModel).where(
             col(SessionModel.user_domain_id) == user_id.value,
             col(SessionModel.status) == SessionStatus.ACTIVE.value,
