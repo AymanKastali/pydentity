@@ -47,7 +47,7 @@ class OnUserRegistered(EventHandler["UserRegistered"]):
     async def handle(self, event: UserRegistered) -> None:
         await self._notification.send_welcome_email(email=event.email)
         await self._audit_log.record(
-            action="user.registered",
+            action=event.name,
             user_id=event.user_id,
         )
 
@@ -72,7 +72,7 @@ class OnAccountLocked(EventHandler["AccountLocked"]):
             locked_until=str(event.locked_until),
         )
         await self._audit_log.record(
-            action="user.account_locked",
+            action=event.name,
             user_id=event.user_id,
             metadata={"locked_until": str(event.locked_until)},
         )
@@ -96,7 +96,7 @@ class OnLoginFailed(EventHandler["LoginFailed"]):
 
     async def handle(self, event: LoginFailed) -> None:
         await self._audit_log.record(
-            action="user.login_failed",
+            action=event.name,
             user_id=event.user_id,
             metadata={"failed_attempts": str(event.failed_attempts)},
         )
@@ -119,9 +119,7 @@ class OnPasswordReset(EventHandler["PasswordReset"]):
 
     async def handle(self, event: PasswordReset) -> None:
         await self._notification.send_password_reset_confirmation(email=event.email)
-        await self._audit_log.record(
-            action="user.password_reset", user_id=event.user_id
-        )
+        await self._audit_log.record(action=event.name, user_id=event.user_id)
 
 
 class OnPasswordChanged(EventHandler["PasswordChanged"]):
@@ -131,9 +129,7 @@ class OnPasswordChanged(EventHandler["PasswordChanged"]):
 
     async def handle(self, event: PasswordChanged) -> None:
         await self._notification.send_password_changed_email(email=event.email)
-        await self._audit_log.record(
-            action="user.password_changed", user_id=event.user_id
-        )
+        await self._audit_log.record(action=event.name, user_id=event.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +156,7 @@ class OnDeviceRegistered(EventHandler["DeviceRegistered"]):
                 device_name=event.device_name,
             )
         await self._audit_log.record(
-            action="device.registered",
+            action=event.name,
             user_id=event.user_id,
             device_id=event.device_id,
             metadata={"device_name": event.device_name},
@@ -191,7 +187,7 @@ class OnDeviceRevoked(EventHandler["DeviceRevoked"]):
                 device_name=event.device_name,
             )
         await self._audit_log.record(
-            action="device.revoked",
+            action=event.name,
             user_id=event.user_id,
             device_id=event.device_id,
             metadata={"device_name": event.device_name},
@@ -221,7 +217,7 @@ class OnSessionTerminated(EventHandler["SessionTerminated"]):
                 email=user.email.address,
             )
         await self._audit_log.record(
-            action="session.terminated",
+            action=event.name,
             user_id=event.user_id,
             session_id=event.session_id,
         )
@@ -250,7 +246,7 @@ class OnRefreshTokenReused(EventHandler["RefreshTokenReused"]):
                 email=user.email.address,
             )
         await self._audit_log.record(
-            action="session.refresh_token_reused",
+            action=event.name,
             user_id=event.user_id,
             session_id=event.session_id,
         )
@@ -271,7 +267,7 @@ class OnVerificationTokenIssued(EventHandler["VerificationTokenIssued"]):
             raw_token=event.raw_token,
         )
         await self._audit_log.record(
-            action="user.verification_token_issued",
+            action=event.name,
             user_id=event.user_id,
         )
 
@@ -295,7 +291,7 @@ class OnPasswordResetRequested(EventHandler["PasswordResetRequested"]):
                 raw_token=event.raw_token,
             )
         await self._audit_log.record(
-            action="user.password_reset_requested",
+            action=event.name,
             user_id=event.user_id,
         )
 
@@ -324,7 +320,7 @@ class OnUserSuspended(EventHandler["UserSuspended"]):
                 reason=event.reason,
             )
         await self._audit_log.record(
-            action="user.suspended",
+            action=event.name,
             user_id=event.user_id,
             metadata={"reason": event.reason},
         )
@@ -353,7 +349,7 @@ class OnUserDeactivated(EventHandler["UserDeactivated"]):
                 email=user.email.address,
             )
         await self._audit_log.record(
-            action="user.deactivated",
+            action=event.name,
             user_id=event.user_id,
         )
 
@@ -369,7 +365,7 @@ class OnLoginSucceeded(EventHandler["LoginSucceeded"]):
 
     async def handle(self, event: LoginSucceeded) -> None:
         await self._audit_log.record(
-            action="user.login_succeeded",
+            action=event.name,
             user_id=event.user_id,
         )
 
@@ -385,7 +381,7 @@ class OnRoleAssignedToUser(EventHandler["RoleAssignedToUser"]):
 
     async def handle(self, event: RoleAssignedToUser) -> None:
         await self._audit_log.record(
-            action="user.role_assigned",
+            action=event.name,
             user_id=event.user_id,
             metadata={"role_id": event.role_id},
         )
@@ -402,7 +398,7 @@ class OnRoleRevokedFromUser(EventHandler["RoleRevokedFromUser"]):
 
     async def handle(self, event: RoleRevokedFromUser) -> None:
         await self._audit_log.record(
-            action="user.role_revoked",
+            action=event.name,
             user_id=event.user_id,
             metadata={"role_id": event.role_id},
         )
