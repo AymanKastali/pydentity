@@ -52,7 +52,7 @@ class Role(AggregateRoot[RoleId]):
         role._record_event(
             RoleCreated(
                 role_id=role_id.value,
-                name=role._name.value,
+                role_name=role._name.value,
                 description=description.value,
             )
         )

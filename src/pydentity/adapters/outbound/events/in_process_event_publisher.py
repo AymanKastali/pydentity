@@ -73,24 +73,39 @@ class InProcessEventPublisher(DomainEventPublisherPort):
     async def publish(self, events: list[DomainEvent]) -> None:
         if not events:
             return
+
         async with self._uow_factory() as uow:
-            handlers = self._build_handlers(uow.users)
+            # The registry is built dynamically to inject the current UoW's repository
+            registry = self._get_registry(uow.users)
+
             for event in events:
-                for handler in handlers.get(type(event), []):
+                handlers = registry.get(type(event), [])
+                for handler in handlers:
                     await handler.handle(event)
 
-    def _build_handlers(self, user_repo: UserRepositoryPort) -> dict[type, list[Any]]:
-        n = self._notification
-        a = self._audit_log
-        r = user_repo
+    def _get_registry(
+        self, user_repo: UserRepositoryPort
+    ) -> dict[type[DomainEvent], list[Any]]:
+        """The Central Registry: Maps Event Types to initialized Handlers."""
+        # Short aliases for readability within the dictionary
+        n, a, r = self._notification, self._audit_log, user_repo
 
         return {
+            # Registration & Access
             UserRegistered: [OnUserRegistered(notification=n, audit_log=a)],
-            AccountLocked: [OnAccountLocked(notification=n, audit_log=a)],
-            LoginFailed: [OnLoginFailed(notification=n, audit_log=a)],
+            VerificationTokenIssued: [
+                OnVerificationTokenIssued(notification=n, audit_log=a)
+            ],
             LoginSucceeded: [OnLoginSucceeded(audit_log=a)],
+            LoginFailed: [OnLoginFailed(notification=n, audit_log=a)],
+            # Account Security
+            AccountLocked: [OnAccountLocked(notification=n, audit_log=a)],
+            PasswordResetRequested: [
+                OnPasswordResetRequested(user_repo=r, notification=n, audit_log=a)
+            ],
             PasswordReset: [OnPasswordReset(notification=n, audit_log=a)],
             PasswordChanged: [OnPasswordChanged(notification=n, audit_log=a)],
+            # Session & Device Management
             DeviceRegistered: [
                 OnDeviceRegistered(user_repo=r, notification=n, audit_log=a)
             ],
@@ -101,12 +116,7 @@ class InProcessEventPublisher(DomainEventPublisherPort):
             RefreshTokenReused: [
                 OnRefreshTokenReused(user_repo=r, notification=n, audit_log=a)
             ],
-            VerificationTokenIssued: [
-                OnVerificationTokenIssued(notification=n, audit_log=a)
-            ],
-            PasswordResetRequested: [
-                OnPasswordResetRequested(user_repo=r, notification=n, audit_log=a)
-            ],
+            # Administrative Actions
             UserSuspended: [OnUserSuspended(user_repo=r, notification=n, audit_log=a)],
             UserDeactivated: [
                 OnUserDeactivated(user_repo=r, notification=n, audit_log=a)

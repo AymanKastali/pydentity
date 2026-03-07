@@ -3,15 +3,17 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.14",
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
+  "initializeCommand": "docker network create pydentity 2>/dev/null || true",
   "runArgs": [
-    "--add-host=host.docker.internal:host-gateway"
+    "--add-host=host.docker.internal:host-gateway",
+    "--network=pydentity"
   ],
   "containerEnv": {
     "UV_LINK_MODE": "copy",
     "VIRTUAL_ENV": "/workspaces/pydentity/.venv"
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "moby": false
     }
   },

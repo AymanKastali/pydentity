@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup docker-up docker-down docker-build docker-logs docker-ps
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network docker-up docker-down docker-build docker-logs docker-ps
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -65,10 +65,13 @@ COMPOSE := docker compose -f docker/docker-compose.yml
 env-setup: ## Create .env from .env.example if it does not exist
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example — fill in required secrets before starting.")
 
-docker-up: env-setup ## Start all services (detached)
+ensure-network: ## Create the shared pydentity Docker network if it does not exist
+	@docker network create pydentity 2>/dev/null || true
+
+docker-up: env-setup ensure-network ## Start all services (detached)
 	$(COMPOSE) up -d
 
-docker-build: env-setup ## Build and start all services
+docker-build: env-setup ensure-network ## Build and start all services
 	$(COMPOSE) up --build -d
 
 docker-down: ## Stop and remove containers
