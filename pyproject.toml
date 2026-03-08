@@ -10,6 +10,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "fastapi>=0.115.0",
     "aiosmtplib>=3.0.0",
+    "redis[hiredis]>=5.0.0",
     "email-validator>=2.0.0",
     "pydantic-settings>=2.13.1",
     "rich>=13.0.0",

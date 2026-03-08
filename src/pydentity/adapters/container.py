@@ -10,10 +10,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Request
+from redis.asyncio import Redis
 
 from pydentity.adapters.config.app import get_app_settings
-from pydentity.adapters.outbound.events.in_process_event_publisher import (
-    InProcessEventPublisher,
+from pydentity.adapters.outbound.events.redis_event_publisher import (
+    RedisEventPublisher,
+)
+from pydentity.adapters.outbound.events.redis_event_subscriber import (
+    RedisEventSubscriber,
 )
 from pydentity.adapters.outbound.log_audit import LogAuditLog
 from pydentity.adapters.outbound.persistence.postgres.container import get_uow
@@ -103,6 +107,8 @@ class Container:
     verification_token_generator: VerificationTokenGeneratorPort
     reset_token_generator: ResetTokenGeneratorPort
     event_publisher: DomainEventPublisherPort
+    event_subscriber: RedisEventSubscriber
+    redis: Redis
     notification: NotificationPort
     password_policy: PasswordPolicy
     email_verification_policy: EmailVerificationPolicy
@@ -115,13 +121,25 @@ class Container:
     def build(cls) -> Container:
         settings = get_app_settings()
         sec = settings.security
+        redis_settings = settings.redis
+
+        redis_client = Redis.from_url(redis_settings.url, decode_responses=True)
+
         notification = SmtpNotification(settings.smtp)
         audit_log = LogAuditLog()
-        event_publisher = InProcessEventPublisher(
+
+        event_publisher = RedisEventPublisher(
+            redis=redis_client,
+            channel=redis_settings.event_channel,
+        )
+        event_subscriber = RedisEventSubscriber(
+            redis=redis_client,
+            channel=redis_settings.event_channel,
             uow_factory=get_uow,
             notification=notification,
             audit_log=audit_log,
         )
+
         return cls(
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
@@ -132,6 +150,8 @@ class Container:
             verification_token_generator=HashedVerificationTokenGenerator(),
             reset_token_generator=HashedResetTokenGenerator(),
             event_publisher=event_publisher,
+            event_subscriber=event_subscriber,
+            redis=redis_client,
             notification=notification,
             password_policy=sec.password_policy,
             email_verification_policy=sec.email_verification_policy,

@@ -27,8 +27,15 @@ if TYPE_CHECKING:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await run_migrations()
-    app.state.container = Container.build()
-    yield
+    container = Container.build()
+    app.state.container = container
+
+    await container.event_subscriber.start()
+    try:
+        yield
+    finally:
+        await container.event_subscriber.stop()
+        await container.redis.aclose()
 
 
 def create_app() -> FastAPI:
