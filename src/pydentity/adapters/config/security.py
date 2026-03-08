@@ -13,7 +13,6 @@ from pydentity.domain.models.value_objects import (
 
 class SecuritySettings(BaseSettings):
     jwt_secret: SecretStr
-    jwt_algorithm: str = "HS256"
     token_issuer: str = "pydentity"
 
     password_min_length: int = 8
