@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 
 from pydentity.adapters.container import (
     get_authenticate_user,
@@ -37,6 +38,28 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@dataclass(frozen=True, slots=True)
+class DeviceHeaders:
+    device_id: str
+    device_name: str
+    raw_fingerprint: str
+    platform: str
+
+
+def get_device_headers(
+    device_id: Annotated[str, Header(alias="X-Device-Id")],
+    device_name: Annotated[str, Header(alias="X-Device-Name")],
+    raw_fingerprint: Annotated[str, Header(alias="X-Device-Fingerprint")],
+    platform: Annotated[str, Header(alias="X-Device-Platform")],
+) -> DeviceHeaders:
+    return DeviceHeaders(
+        device_id=device_id,
+        device_name=device_name,
+        raw_fingerprint=raw_fingerprint,
+        platform=platform,
+    )
+
+
 @router.post("/register", status_code=200)
 async def register(
     body: RegisterRequest,
@@ -51,16 +74,17 @@ async def register(
 @router.post("/login", status_code=200)
 async def login(
     body: LoginRequest,
+    device: Annotated[DeviceHeaders, Depends(get_device_headers)],
     use_case: AuthenticateUser = Depends(get_authenticate_user),
 ) -> LoginResponse:
     result = await use_case.execute(
         AuthenticateUserInput(
             email=body.email,
             password=body.password,
-            device_id=body.device_id,
-            device_name=body.device_name,
-            raw_fingerprint=body.raw_fingerprint,
-            platform=body.platform,
+            device_id=device.device_id,
+            device_name=device.device_name,
+            raw_fingerprint=device.raw_fingerprint,
+            platform=device.platform,
         )
     )
     return LoginResponse(
