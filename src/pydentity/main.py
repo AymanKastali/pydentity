@@ -23,22 +23,30 @@ class TraceFilter(logging.Filter):
         return True
 
 
-_handler = RichHandler(
-    rich_tracebacks=True,
-    tracebacks_show_locals=True,
-    show_time=True,
-    show_path=True,
-    markup=True,
-)
-_handler.addFilter(TraceFilter())
+def _setup_logging() -> logging.Logger:
+    settings = get_app_settings().fastapi
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    show_locals = level == logging.DEBUG
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(trace_id)s%(message)s",
-    datefmt="[%X]",
-    handlers=[_handler],
-)
-logger = logging.getLogger("pydentity")
+    handler = RichHandler(
+        rich_tracebacks=True,
+        tracebacks_show_locals=show_locals,
+        show_time=True,
+        show_path=True,
+        markup=True,
+    )
+    handler.addFilter(TraceFilter())
+
+    logging.basicConfig(
+        level=level,
+        format="%(trace_id)s%(message)s",
+        datefmt="[%X]",
+        handlers=[handler],
+    )
+    return logging.getLogger("pydentity")
+
+
+logger = _setup_logging()
 
 
 def create_app() -> FastAPI:

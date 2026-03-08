@@ -23,3 +23,8 @@ class EmailAlreadyRegisteredError(ApplicationError):
 class InvalidTokenError(ApplicationError):
     def __init__(self) -> None:
         super().__init__("The provided token is invalid or has expired.")
+
+
+class PersistenceConsistencyError(ApplicationError):
+    def __init__(self, *, detail: str) -> None:
+        super().__init__(f"Data consistency violation: {detail}")

@@ -48,10 +48,18 @@ class DeviceHeaders:
 
 
 def get_device_headers(
-    device_id: Annotated[str, Header(alias="X-Device-Id")],
-    device_name: Annotated[str, Header(alias="X-Device-Name")],
-    raw_fingerprint: Annotated[str, Header(alias="X-Device-Fingerprint")],
-    platform: Annotated[str, Header(alias="X-Device-Platform")],
+    device_id: Annotated[
+        str, Header(alias="X-Device-Id", min_length=1, max_length=255)
+    ],
+    device_name: Annotated[
+        str, Header(alias="X-Device-Name", min_length=1, max_length=255)
+    ],
+    raw_fingerprint: Annotated[
+        str, Header(alias="X-Device-Fingerprint", min_length=1, max_length=255)
+    ],
+    platform: Annotated[
+        str, Header(alias="X-Device-Platform", min_length=1, max_length=255)
+    ],
 ) -> DeviceHeaders:
     return DeviceHeaders(
         device_id=device_id,
@@ -61,7 +69,7 @@ def get_device_headers(
     )
 
 
-@router.post("/register", status_code=200)
+@router.post("/register", status_code=201)
 async def register(
     body: RegisterRequest,
     use_case: RegisterUser = Depends(get_register_user),

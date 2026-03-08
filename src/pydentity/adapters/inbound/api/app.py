@@ -7,10 +7,6 @@ from fastapi import FastAPI
 
 from pydentity.adapters.config.app import get_app_settings
 from pydentity.adapters.container import Container
-from pydentity.adapters.outbound.persistence.postgres.migrator import run_migrations
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
 from pydentity.adapters.inbound.api.exception_handlers import (
     register_exception_handlers,
 )
@@ -22,6 +18,10 @@ from pydentity.adapters.inbound.api.routes import (
     password,
     roles,
 )
+from pydentity.adapters.outbound.persistence.postgres.migrator import run_migrations
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 @asynccontextmanager

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydentity.application.dtos.auth import RefreshAccessTokenOutput
 from pydentity.application.exceptions import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import AccountNotActiveError
@@ -10,10 +11,7 @@ from pydentity.domain.models.value_objects import SessionId
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pydentity.application.dtos.auth import (
-        RefreshAccessTokenInput,
-        RefreshAccessTokenOutput,
-    )
+    from pydentity.application.dtos.auth import RefreshAccessTokenInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.token_signer import TokenSignerPort
     from pydentity.domain.models.value_objects import TokenLifetimePolicy
@@ -51,8 +49,6 @@ class RefreshAccessToken:
     async def execute(
         self, command: RefreshAccessTokenInput
     ) -> RefreshAccessTokenOutput:
-        from pydentity.application.dtos.auth import RefreshAccessTokenOutput
-
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
