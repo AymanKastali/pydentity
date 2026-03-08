@@ -15,10 +15,6 @@ class RegisterResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
-    device_id: str
-    device_name: str
-    raw_fingerprint: str
-    platform: str
 
 
 class LoginResponse(BaseModel):
