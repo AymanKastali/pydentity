@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from pydentity.adapters.inbound.api.exception_handlers import (
     register_exception_handlers,
 )
+from pydentity.adapters.inbound.api.middleware.trace import TraceMiddleware
 from pydentity.adapters.inbound.api.routes import (
     account,
     auth,
@@ -38,6 +39,8 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         lifespan=lifespan,
     )
+
+    app.add_middleware(TraceMiddleware)
 
     register_exception_handlers(app)
 
