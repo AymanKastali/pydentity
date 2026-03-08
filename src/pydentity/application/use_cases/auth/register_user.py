@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydentity.application.dtos.auth import RegisterUserOutput
 from pydentity.domain.exceptions.domain import EmailAlreadyTakenError
-from pydentity.domain.models.value_objects import EmailAddress
+from pydentity.domain.models.value_objects import EmailAddress, RoleName
 from pydentity.domain.services.register_user import RegisterUser as RegisterUserService
 
 if TYPE_CHECKING:
@@ -31,6 +31,7 @@ class RegisterUser:
         email_verification_policy: EmailVerificationPolicy,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        default_role_name: str | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._user_factory = user_factory
@@ -38,6 +39,7 @@ class RegisterUser:
         self._email_verification_policy = email_verification_policy
         self._clock = clock
         self._event_publisher = event_publisher
+        self._default_role_name = default_role_name
 
     async def execute(self, command: RegisterUserInput) -> RegisterUserOutput:
         email = EmailAddress.from_string(command.email)
@@ -65,6 +67,13 @@ class RegisterUser:
                 )
             except EmailAlreadyTakenError:
                 return RegisterUserOutput(email=email.address)
+
+            if self._default_role_name is not None:
+                default_role = await uow.roles.find_by_name(
+                    RoleName(self._default_role_name)
+                )
+                if default_role is not None:
+                    user.assign_role(default_role.id)
 
             await uow.users.upsert(user)
             await uow.commit()
