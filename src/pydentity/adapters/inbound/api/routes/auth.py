@@ -20,6 +20,7 @@ from pydentity.adapters.inbound.api.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
 )
+from pydentity.adapters.inbound.api.schemas.response import ApiResponse
 from pydentity.application.dtos.auth import (
     AuthenticateUserInput,
     LogoutUserInput,
@@ -64,11 +65,11 @@ def get_device_headers(
 async def register(
     body: RegisterRequest,
     use_case: RegisterUser = Depends(get_register_user),
-) -> RegisterResponse:
+) -> ApiResponse[RegisterResponse]:
     result = await use_case.execute(
         RegisterUserInput(email=body.email, password=body.password)
     )
-    return RegisterResponse(email=result.email)
+    return ApiResponse(data=RegisterResponse(email=result.email))
 
 
 @router.post("/login", status_code=200)
@@ -76,7 +77,7 @@ async def login(
     body: LoginRequest,
     device: Annotated[DeviceHeaders, Depends(get_device_headers)],
     use_case: AuthenticateUser = Depends(get_authenticate_user),
-) -> LoginResponse:
+) -> ApiResponse[LoginResponse]:
     result = await use_case.execute(
         AuthenticateUserInput(
             email=body.email,
@@ -87,12 +88,14 @@ async def login(
             platform=device.platform,
         )
     )
-    return LoginResponse(
-        access_token=result.access_token,
-        refresh_token=result.refresh_token,
-        user_id=result.user_id,
-        session_id=result.session_id,
-        device_id=result.device_id,
+    return ApiResponse(
+        data=LoginResponse(
+            access_token=result.access_token,
+            refresh_token=result.refresh_token,
+            user_id=result.user_id,
+            session_id=result.session_id,
+            device_id=result.device_id,
+        )
     )
 
 
@@ -100,16 +103,18 @@ async def login(
 async def refresh(
     body: RefreshRequest,
     use_case: RefreshAccessToken = Depends(get_refresh_access_token),
-) -> RefreshResponse:
+) -> ApiResponse[RefreshResponse]:
     result = await use_case.execute(
         RefreshAccessTokenInput(
             refresh_token=body.refresh_token,
             session_id=body.session_id,
         )
     )
-    return RefreshResponse(
-        access_token=result.access_token,
-        refresh_token=result.refresh_token,
+    return ApiResponse(
+        data=RefreshResponse(
+            access_token=result.access_token,
+            refresh_token=result.refresh_token,
+        )
     )
 
 

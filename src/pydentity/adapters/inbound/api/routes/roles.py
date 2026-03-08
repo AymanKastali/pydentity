@@ -13,6 +13,7 @@ from pydentity.adapters.container import (
     get_rename_role,
     get_revoke_role_from_user,
 )
+from pydentity.adapters.inbound.api.schemas.response import ApiResponse
 from pydentity.adapters.inbound.api.schemas.roles import (
     AssignRoleRequest,
     ChangeRoleDescriptionRequest,
@@ -58,14 +59,16 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 async def create_role(
     body: CreateRoleRequest,
     use_case: CreateRole = Depends(get_create_role),
-) -> CreateRoleResponse:
+) -> ApiResponse[CreateRoleResponse]:
     result = await use_case.execute(
         CreateRoleInput(name=body.name, description=body.description)
     )
-    return CreateRoleResponse(
-        role_id=result.role_id,
-        name=result.name,
-        description=result.description,
+    return ApiResponse(
+        data=CreateRoleResponse(
+            role_id=result.role_id,
+            name=result.name,
+            description=result.description,
+        )
     )
 
 

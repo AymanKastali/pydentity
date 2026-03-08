@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from rich.console import Console
 
+from pydentity.adapters.inbound.api.context import trace_id_var
+
 _LEVELS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
 
 _LEVEL_STYLES: dict[str, str] = {
@@ -43,7 +45,9 @@ class RichConsoleLogger:
     def _log(self, level: str, message: str, context: dict[str, object]) -> None:
         if _LEVELS[level] < self._threshold:
             return
-        args: list[object] = [message]
+        tid = trace_id_var.get("")
+        prefix = f"[{tid}] " if tid else ""
+        args: list[object] = [f"{prefix}{message}"]
         if context:
             args.append(context)
         self._console.log(*args, style=_LEVEL_STYLES[level], _stack_offset=3)

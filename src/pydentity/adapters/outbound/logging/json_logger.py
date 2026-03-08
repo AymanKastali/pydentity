@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import IO
 
 from pydentity import __app_name__, __version__
+from pydentity.adapters.inbound.api.context import trace_id_var
 
 _LEVELS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
 
@@ -54,6 +55,7 @@ class JsonLogger:
             "level": level,
             "message": message,
             "timestamp": datetime.now(UTC).isoformat(),
+            "trace_id": trace_id_var.get(""),
             "context": context,
         }
         self._stream.write(json.dumps(record, default=str) + "\n")

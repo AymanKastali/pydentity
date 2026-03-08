@@ -10,23 +10,33 @@ from rich.logging import RichHandler
 
 from pydentity.adapters.config.app import get_app_settings
 from pydentity.adapters.inbound.api.app import create_app as _factory
+from pydentity.adapters.inbound.api.context import trace_id_var
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
+
+class TraceFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        tid = trace_id_var.get("")
+        record.trace_id = f"[{tid}] " if tid else ""
+        return True
+
+
+_handler = RichHandler(
+    rich_tracebacks=True,
+    tracebacks_show_locals=True,
+    show_time=True,
+    show_path=True,
+    markup=True,
+)
+_handler.addFilter(TraceFilter())
+
 logging.basicConfig(
     level=logging.DEBUG,
-    format="%(message)s",
+    format="%(trace_id)s%(message)s",
     datefmt="[%X]",
-    handlers=[
-        RichHandler(
-            rich_tracebacks=True,
-            tracebacks_show_locals=True,
-            show_time=True,
-            show_path=True,
-            markup=True,
-        ),
-    ],
+    handlers=[_handler],
 )
 logger = logging.getLogger("pydentity")
 
