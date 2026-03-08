@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from pydantic import Field
+
 from pydentity.adapters.config.base import BaseSettings
 from pydentity.adapters.config.fastapi import FastAPISettings  # noqa: TC001
 from pydentity.adapters.config.postgres import PostgresSettings  # noqa: TC001
@@ -8,10 +10,10 @@ from pydentity.adapters.config.smtp import SmtpSettings  # noqa: TC001
 
 
 class AppSettings(BaseSettings):
-    fastapi: FastAPISettings
+    fastapi: FastAPISettings = Field(default_factory=FastAPISettings)
     postgres: PostgresSettings
     security: SecuritySettings
-    smtp: SmtpSettings
+    smtp: SmtpSettings = Field(default_factory=SmtpSettings)
 
 
 @lru_cache(maxsize=1)
