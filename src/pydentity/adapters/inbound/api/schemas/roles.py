@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreateRoleRequest(BaseModel):
-    name: str
-    description: str
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=500)
 
 
 class CreateRoleResponse(BaseModel):
@@ -15,21 +15,21 @@ class CreateRoleResponse(BaseModel):
 
 
 class RenameRoleRequest(BaseModel):
-    new_name: str
+    new_name: str = Field(min_length=1, max_length=100)
 
 
 class ChangeRoleDescriptionRequest(BaseModel):
-    new_description: str
+    new_description: str = Field(min_length=1, max_length=500)
 
 
 class PermissionRequest(BaseModel):
-    resource: str
-    action: str
+    resource: str = Field(min_length=1, max_length=100)
+    action: str = Field(min_length=1, max_length=100)
 
 
 class AssignRoleRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(min_length=1, max_length=255)
 
 
 class RevokeRoleRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(min_length=1, max_length=255)

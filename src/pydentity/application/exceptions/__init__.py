@@ -2,6 +2,7 @@ from pydentity.application.exceptions.app import (
     ApplicationError,
     EmailAlreadyRegisteredError,
     InvalidTokenError,
+    PersistenceConsistencyError,
     RoleNotFoundError,
     UserNotFoundError,
 )
@@ -9,7 +10,8 @@ from pydentity.application.exceptions.app import (
 __all__ = [
     "ApplicationError",
     "EmailAlreadyRegisteredError",
+    "InvalidTokenError",
+    "PersistenceConsistencyError",
     "RoleNotFoundError",
     "UserNotFoundError",
-    "InvalidTokenError",
 ]

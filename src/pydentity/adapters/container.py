@@ -16,7 +16,6 @@ from pydentity.adapters.outbound.events.in_process_event_publisher import (
     InProcessEventPublisher,
 )
 from pydentity.adapters.outbound.log_audit import LogAuditLog
-from pydentity.adapters.outbound.log_notification import LogNotification
 from pydentity.adapters.outbound.persistence.postgres.container import get_uow
 from pydentity.adapters.outbound.security.clock import UtcClock
 from pydentity.adapters.outbound.security.identity_generator import (
@@ -30,6 +29,7 @@ from pydentity.adapters.outbound.security.token_generators import (
     SecretsRawTokenGenerator,
 )
 from pydentity.adapters.outbound.security.token_hasher import Sha256TokenHasher
+from pydentity.adapters.outbound.smtp_notification import SmtpNotification
 from pydentity.application.use_cases.account.change_email import ChangeEmail
 from pydentity.application.use_cases.account.deactivate_user import DeactivateUser
 from pydentity.application.use_cases.account.reactivate_user import ReactivateUser
@@ -113,8 +113,9 @@ class Container:
 
     @classmethod
     def build(cls) -> Container:
-        sec = get_app_settings().security
-        notification = LogNotification()
+        settings = get_app_settings()
+        sec = settings.security
+        notification = SmtpNotification(settings.smtp)
         audit_log = LogAuditLog()
         event_publisher = InProcessEventPublisher(
             uow_factory=get_uow,

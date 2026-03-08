@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
 
 
 class RegisterResponse(BaseModel):
@@ -13,8 +13,8 @@ class RegisterResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
 
 
 class LoginResponse(BaseModel):
@@ -26,8 +26,8 @@ class LoginResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
-    session_id: str
+    refresh_token: str = Field(min_length=1, max_length=512)
+    session_id: str = Field(min_length=1, max_length=255)
 
 
 class RefreshResponse(BaseModel):
@@ -36,4 +36,4 @@ class RefreshResponse(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(min_length=1, max_length=255)

@@ -23,6 +23,7 @@ from pydentity.adapters.outbound.persistence.postgres.models import (
     SessionModel,
     UserModel,
 )
+from pydentity.application.exceptions import PersistenceConsistencyError
 from pydentity.domain.models.enums import DeviceStatus, SessionStatus
 
 # Ports
@@ -165,8 +166,8 @@ class PostgresDeviceRepository(DeviceRepositoryPort):
         )
         user_fk = (await self._session.execute(user_fk_stmt)).scalar_one_or_none()
         if user_fk is None:
-            raise RuntimeError(
-                f"UserModel.id not found for domain_id={device.user_id.value}"
+            raise PersistenceConsistencyError(
+                detail=f"UserModel.id not found for domain_id={device.user_id.value}"
             )
 
         stmt = select(DeviceModel).where(col(DeviceModel.domain_id) == device.id.value)
@@ -233,13 +234,14 @@ class PostgresSessionRepository(SessionRepositoryPort):
 
         user_fk = (await self._session.execute(u_stmt)).scalar_one_or_none()
         if user_fk is None:
-            raise RuntimeError(
-                f"UserModel.id not found for domain_id={session.user_id.value}"
+            raise PersistenceConsistencyError(
+                detail=f"UserModel.id not found for domain_id={session.user_id.value}"
             )
         device_fk = (await self._session.execute(d_stmt)).scalar_one_or_none()
         if device_fk is None:
-            raise RuntimeError(
-                f"DeviceModel.id not found for domain_id={session.device_id.value}"
+            raise PersistenceConsistencyError(
+                detail=f"DeviceModel.id not found for domain_id="
+                f"{session.device_id.value}"
             )
 
         stmt = select(SessionModel).where(

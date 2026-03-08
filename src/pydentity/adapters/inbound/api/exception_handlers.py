@@ -136,7 +136,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         message = "; ".join(
-            f"{' -> '.join(str(loc) for loc in e['loc'])}: {e['msg']}"
+            f"{e['loc'][-1]}: {e['msg']}" if e.get("loc") else e["msg"]
             for e in exc.errors()
         )
         return JSONResponse(

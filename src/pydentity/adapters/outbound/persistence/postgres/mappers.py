@@ -161,10 +161,12 @@ def model_to_role(model: RoleModel) -> Role:
     role_id = RoleId(model.domain_id)
     name = RoleName(model.name)
     description = RoleDescription(model.description)
-    permissions = {
-        Permission(resource=raw.split(":")[0], action=raw.split(":")[1])
-        for raw in model.permissions
-    }
+    permissions: set[Permission] = set()
+    for raw in model.permissions:
+        resource, sep, action = raw.partition(":")
+        if not sep:
+            raise ValueError(f"Malformed permission string: {raw!r}")
+        permissions.add(Permission(resource=resource, action=action))
 
     return Role._reconstitute(
         role_id=role_id,
