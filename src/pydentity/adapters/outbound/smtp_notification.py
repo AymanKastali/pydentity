@@ -152,3 +152,10 @@ class SmtpNotification(NotificationPort):
             subject="Account deactivated",
             body="Your account has been deactivated.",
         )
+
+    async def send_email_verified_email(self, *, email: str) -> None:
+        await self._send(
+            to=email,
+            subject="Email verified",
+            body="Your email address has been verified and your account is now active.",
+        )

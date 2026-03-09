@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         DeviceFingerprint,
         DeviceId,
         EmailAddress,
+        HashedVerificationToken,
         RoleId,
         RoleName,
         SessionId,
@@ -73,6 +74,18 @@ class PostgresUserRepository(UserRepositoryPort):
         stmt = (
             select(UserModel)
             .where(col(UserModel.email) == email.address)
+            .options(selectinload(cast("QueryableAttribute[Any]", UserModel.roles)))
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        return model_to_user(model) if model else None
+
+    async def find_by_verification_token_hash(
+        self, token_hash: HashedVerificationToken
+    ) -> User | None:
+        stmt = (
+            select(UserModel)
+            .where(col(UserModel.email_verification_token_hash) == token_hash.value)
             .options(selectinload(cast("QueryableAttribute[Any]", UserModel.roles)))
         )
         result = await self._session.execute(stmt)

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
         DeviceFingerprint,
         DeviceId,
         EmailAddress,
+        HashedVerificationToken,
         RoleId,
         RoleName,
         SessionId,
@@ -25,6 +26,11 @@ class UserRepositoryPort(ABC):
 
     @abstractmethod
     async def find_by_email(self, email: EmailAddress) -> User | None: ...
+
+    @abstractmethod
+    async def find_by_verification_token_hash(
+        self, token_hash: HashedVerificationToken
+    ) -> User | None: ...
 
     @abstractmethod
     async def upsert(self, user: User) -> None: ...

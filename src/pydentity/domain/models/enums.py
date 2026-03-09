@@ -5,6 +5,7 @@ from enum import StrEnum, auto
 
 class UserStatus(StrEnum):
     ACTIVE = auto()
+    PENDING_VERIFICATION = auto()
     SUSPENDED = auto()
     DEACTIVATED = auto()
 

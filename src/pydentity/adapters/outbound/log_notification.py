@@ -58,3 +58,6 @@ class LogNotification(NotificationPort):
 
     async def send_account_deactivated_email(self, *, email: str) -> None:
         _log.info("send_account_deactivated_email to=%s", email)
+
+    async def send_email_verified_email(self, *, email: str) -> None:
+        _log.info("send_email_verified_email to=%s", email)

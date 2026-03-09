@@ -31,7 +31,7 @@ async def verify_email(
     body: VerifyEmailRequest,
     use_case: VerifyEmail = Depends(get_verify_email),
 ) -> None:
-    await use_case.execute(VerifyEmailInput(user_id=body.user_id, token=body.token))
+    await use_case.execute(VerifyEmailInput(token=body.token))
 
 
 @router.post("/resend-verification", status_code=204)

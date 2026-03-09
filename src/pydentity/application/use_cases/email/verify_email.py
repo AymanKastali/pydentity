@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
-from pydentity.domain.models.value_objects import HashedVerificationToken, UserId
+from pydentity.application.exceptions import InvalidTokenError
+from pydentity.domain.models.value_objects import HashedVerificationToken
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,15 +31,14 @@ class VerifyEmail:
 
     async def execute(self, command: VerifyEmailInput) -> None:
         now = self._clock.now()
+        token_hash = HashedVerificationToken(
+            value=self._token_hasher.hash(command.token)
+        )
 
         async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
+            user = await uow.users.find_by_verification_token_hash(token_hash)
             if user is None:
-                raise UserNotFoundError(user_id=command.user_id)
-
-            token_hash = HashedVerificationToken(
-                value=self._token_hasher.hash(command.token)
-            )
+                raise InvalidTokenError()
 
             user.verify_email(token_hash, now)
 

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class VerifyEmailInput:
-    user_id: str
     token: str
 
 

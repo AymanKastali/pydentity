@@ -55,3 +55,6 @@ class NotificationPort(ABC):
 
     @abstractmethod
     async def send_account_deactivated_email(self, *, email: str) -> None: ...
+
+    @abstractmethod
+    async def send_email_verified_email(self, *, email: str) -> None: ...
