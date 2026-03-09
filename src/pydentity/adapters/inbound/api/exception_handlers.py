@@ -10,6 +10,7 @@ from pydentity.adapters.inbound.api.schemas.response import ErrorDetail, ErrorRe
 from pydentity.application.exceptions.app import (
     ApplicationError,
     EmailAlreadyRegisteredError,
+    InsufficientPermissionsError,
     InvalidTokenError,
     RoleNotFoundError,
     UserNotFoundError,
@@ -92,6 +93,7 @@ _APP_STATUS_MAP: dict[type[ApplicationError], int] = {
     RoleNotFoundError: status.HTTP_404_NOT_FOUND,
     EmailAlreadyRegisteredError: status.HTTP_409_CONFLICT,
     InvalidTokenError: status.HTTP_401_UNAUTHORIZED,
+    InsufficientPermissionsError: status.HTTP_403_FORBIDDEN,
 }
 
 _APP_CODE_MAP: dict[type[ApplicationError], str] = {
@@ -99,6 +101,7 @@ _APP_CODE_MAP: dict[type[ApplicationError], str] = {
     RoleNotFoundError: "ROLE_NOT_FOUND",
     EmailAlreadyRegisteredError: "EMAIL_ALREADY_REGISTERED",
     InvalidTokenError: "INVALID_TOKEN",
+    InsufficientPermissionsError: "INSUFFICIENT_PERMISSIONS",
 }
 
 

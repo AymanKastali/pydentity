@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends
 
@@ -9,6 +9,7 @@ from pydentity.adapters.container import (
     get_request_password_reset,
     get_reset_password,
 )
+from pydentity.adapters.inbound.api.dependencies.auth import require_authenticated
 from pydentity.adapters.inbound.api.schemas.password import (
     ChangePasswordRequest,
     RequestPasswordResetRequest,
@@ -19,6 +20,7 @@ from pydentity.application.dtos.password import (
     RequestPasswordResetInput,
     ResetPasswordInput,
 )
+from pydentity.application.models.access_token_claims import AccessTokenClaims
 
 if TYPE_CHECKING:
     from pydentity.application.use_cases.password.change_password import ChangePassword
@@ -55,11 +57,12 @@ async def reset_password(
 @router.post("/change", status_code=204)
 async def change_password(
     body: ChangePasswordRequest,
+    claims: Annotated[AccessTokenClaims, Depends(require_authenticated)],
     use_case: ChangePassword = Depends(get_change_password),
 ) -> None:
     await use_case.execute(
         ChangePasswordInput(
-            user_id=body.user_id,
+            user_id=claims.subject.value,
             current_password=body.current_password,
             new_password=body.new_password,
         )

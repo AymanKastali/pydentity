@@ -25,6 +25,11 @@ class InvalidTokenError(ApplicationError):
         super().__init__("The provided token is invalid or has expired.")
 
 
+class InsufficientPermissionsError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__("You do not have the required permissions for this action.")
+
+
 class PersistenceConsistencyError(ApplicationError):
     def __init__(self, *, detail: str) -> None:
         super().__init__(f"Data consistency violation: {detail}")

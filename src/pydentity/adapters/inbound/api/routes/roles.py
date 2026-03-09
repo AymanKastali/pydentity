@@ -13,6 +13,7 @@ from pydentity.adapters.container import (
     get_rename_role,
     get_revoke_role_from_user,
 )
+from pydentity.adapters.inbound.api.dependencies.auth import require_permissions
 from pydentity.adapters.inbound.api.schemas.response import ApiResponse
 from pydentity.adapters.inbound.api.schemas.roles import (
     AssignRoleRequest,
@@ -52,7 +53,11 @@ if TYPE_CHECKING:
         RevokeRoleFromUser,
     )
 
-router = APIRouter(prefix="/roles", tags=["roles"])
+router = APIRouter(
+    prefix="/roles",
+    tags=["roles"],
+    dependencies=[Depends(require_permissions("roles:manage"))],
+)
 
 
 @router.post("", status_code=201)

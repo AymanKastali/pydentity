@@ -26,6 +26,9 @@ from pydentity.adapters.outbound.security.identity_generator import (
     UlidIdentityGenerator,
 )
 from pydentity.adapters.outbound.security.jwt_token_signer import HmacSha256JwtSigner
+from pydentity.adapters.outbound.security.jwt_token_verifier import (
+    HmacSha256JwtVerifier,
+)
 from pydentity.adapters.outbound.security.password_hasher import ScryptPasswordHasher
 from pydentity.adapters.outbound.security.token_generators import (
     HashedResetTokenGenerator,
@@ -79,6 +82,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.notification import NotificationPort
     from pydentity.application.ports.token_signer import TokenSignerPort
+    from pydentity.application.ports.token_verifier import TokenVerifierPort
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
         EmailVerificationPolicy,
@@ -101,6 +105,7 @@ class Container:
     password_hasher: PasswordHasherPort
     token_hasher: TokenHasherPort
     token_signer: TokenSignerPort
+    token_verifier: TokenVerifierPort
     identity_generator: IdentityGeneratorPort
     clock: ClockPort
     raw_token_generator: RawTokenGeneratorPort
@@ -143,6 +148,7 @@ class Container:
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
             token_signer=HmacSha256JwtSigner(secret=sec.jwt_secret),
+            token_verifier=HmacSha256JwtVerifier(secret=sec.jwt_secret),
             identity_generator=UlidIdentityGenerator(),
             clock=UtcClock(),
             raw_token_generator=SecretsRawTokenGenerator(),
