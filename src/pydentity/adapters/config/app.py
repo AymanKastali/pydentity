@@ -9,6 +9,7 @@ from pydentity.adapters.config.postgres import PostgresSettings  # noqa: TC001
 from pydentity.adapters.config.redis import RedisSettings  # noqa: TC001
 from pydentity.adapters.config.security import SecuritySettings  # noqa: TC001
 from pydentity.adapters.config.smtp import SmtpSettings  # noqa: TC001
+from pydentity.adapters.config.super_admin import SuperAdminSettings  # noqa: TC001
 
 
 class AppSettings(BaseSettings):
@@ -17,6 +18,7 @@ class AppSettings(BaseSettings):
     security: SecuritySettings
     smtp: SmtpSettings = Field(default_factory=SmtpSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    super_admin: SuperAdminSettings | None = None
     middleware: MiddlewareSettings = Field(default_factory=MiddlewareSettings)
 
 

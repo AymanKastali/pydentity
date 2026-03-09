@@ -51,7 +51,9 @@ async def change_email(
 @router.post("/suspend", status_code=204)
 async def suspend_user(
     body: SuspendUserRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("users:manage"))],
+    _claims: Annotated[
+        AccessTokenClaims, Depends(require_permissions("users:suspend"))
+    ],
     use_case: SuspendUser = Depends(get_suspend_user),
 ) -> None:
     await use_case.execute(SuspendUserInput(user_id=body.user_id, reason=body.reason))
@@ -60,7 +62,9 @@ async def suspend_user(
 @router.post("/reactivate", status_code=204)
 async def reactivate_user(
     body: ReactivateUserRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("users:manage"))],
+    _claims: Annotated[
+        AccessTokenClaims, Depends(require_permissions("users:reactivate"))
+    ],
     use_case: ReactivateUser = Depends(get_reactivate_user),
 ) -> None:
     await use_case.execute(ReactivateUserInput(user_id=body.user_id))
@@ -69,7 +73,9 @@ async def reactivate_user(
 @router.post("/deactivate", status_code=204)
 async def deactivate_user(
     body: DeactivateUserRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("users:manage"))],
+    _claims: Annotated[
+        AccessTokenClaims, Depends(require_permissions("users:deactivate"))
+    ],
     use_case: DeactivateUser = Depends(get_deactivate_user),
 ) -> None:
     await use_case.execute(DeactivateUserInput(user_id=body.user_id))
