@@ -7,12 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from pydentity.adapters.container import Container, get_container
 from pydentity.application.exceptions.app import InsufficientPermissionsError
-from pydentity.domain.models.value_objects import Permission
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
     from pydentity.application.models.access_token_claims import AccessTokenClaims
+    from pydentity.domain.models.value_objects import Permission
 
 _bearer = HTTPBearer()
 
@@ -28,12 +28,9 @@ require_authenticated = get_current_claims
 
 
 def require_permissions(
-    *permission_strings: str,
+    *permissions: Permission,
 ) -> Callable[..., Coroutine[Any, Any, AccessTokenClaims]]:
-    required = frozenset(
-        Permission(resource=p.split(":")[0], action=p.split(":")[1])
-        for p in permission_strings
-    )
+    required = frozenset(permissions)
 
     async def _check(
         claims: Annotated[AccessTokenClaims, Depends(get_current_claims)],

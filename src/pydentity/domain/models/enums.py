@@ -24,3 +24,22 @@ class DevicePlatform(StrEnum):
     WEB = auto()
     MOBILE = auto()
     DESKTOP = auto()
+
+
+class Resource(StrEnum):
+    USERS = auto()
+    ROLES = auto()
+    SESSIONS = auto()
+    DEVICES = auto()
+
+
+class Action(StrEnum):
+    READ = auto()
+    CREATE = auto()
+    UPDATE = auto()
+    DELETE = auto()
+    SUSPEND = auto()
+    REACTIVATE = auto()
+    DEACTIVATE = auto()
+    ASSIGN = auto()
+    REVOKE = auto()

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends
 
+from pydentity.adapters.config.permissions import PermissionRegistry as Perms
 from pydentity.adapters.container import (
     get_add_permission_to_role,
     get_assign_role_to_user,
@@ -63,7 +64,10 @@ router = APIRouter(
 @router.post("", status_code=201)
 async def create_role(
     body: CreateRoleRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:create"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_CREATE)),
+    ],
     use_case: CreateRole = Depends(get_create_role),
 ) -> ApiResponse[CreateRoleResponse]:
     result = await use_case.execute(
@@ -82,7 +86,10 @@ async def create_role(
 async def rename_role(
     role_id: str,
     body: RenameRoleRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:update"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_UPDATE)),
+    ],
     use_case: RenameRole = Depends(get_rename_role),
 ) -> None:
     await use_case.execute(RenameRoleInput(role_id=role_id, new_name=body.new_name))
@@ -92,7 +99,10 @@ async def rename_role(
 async def change_role_description(
     role_id: str,
     body: ChangeRoleDescriptionRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:update"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_UPDATE)),
+    ],
     use_case: ChangeRoleDescription = Depends(get_change_role_description),
 ) -> None:
     await use_case.execute(
@@ -106,7 +116,10 @@ async def change_role_description(
 async def add_permission(
     role_id: str,
     body: PermissionRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:update"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_UPDATE)),
+    ],
     use_case: AddPermissionToRole = Depends(get_add_permission_to_role),
 ) -> None:
     await use_case.execute(
@@ -120,7 +133,10 @@ async def add_permission(
 async def remove_permission(
     role_id: str,
     body: PermissionRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:update"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_UPDATE)),
+    ],
     use_case: RemovePermissionFromRole = Depends(get_remove_permission_from_role),
 ) -> None:
     await use_case.execute(
@@ -134,7 +150,10 @@ async def remove_permission(
 async def assign_role(
     role_id: str,
     body: AssignRoleRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:assign"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_ASSIGN)),
+    ],
     use_case: AssignRoleToUser = Depends(get_assign_role_to_user),
 ) -> None:
     await use_case.execute(AssignRoleToUserInput(user_id=body.user_id, role_id=role_id))
@@ -144,7 +163,10 @@ async def assign_role(
 async def revoke_role(
     role_id: str,
     body: RevokeRoleRequest,
-    _claims: Annotated[AccessTokenClaims, Depends(require_permissions("roles:revoke"))],
+    _claims: Annotated[
+        AccessTokenClaims,
+        Depends(require_permissions(Perms.ROLES_REVOKE)),
+    ],
     use_case: RevokeRoleFromUser = Depends(get_revoke_role_from_user),
 ) -> None:
     await use_case.execute(

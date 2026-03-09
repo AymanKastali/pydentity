@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends
 
+from pydentity.adapters.config.permissions import PermissionRegistry as Perms
 from pydentity.adapters.container import (
     get_change_email,
     get_deactivate_user,
@@ -52,7 +53,7 @@ async def change_email(
 async def suspend_user(
     body: SuspendUserRequest,
     _claims: Annotated[
-        AccessTokenClaims, Depends(require_permissions("users:suspend"))
+        AccessTokenClaims, Depends(require_permissions(Perms.USERS_SUSPEND))
     ],
     use_case: SuspendUser = Depends(get_suspend_user),
 ) -> None:
@@ -63,7 +64,7 @@ async def suspend_user(
 async def reactivate_user(
     body: ReactivateUserRequest,
     _claims: Annotated[
-        AccessTokenClaims, Depends(require_permissions("users:reactivate"))
+        AccessTokenClaims, Depends(require_permissions(Perms.USERS_REACTIVATE))
     ],
     use_case: ReactivateUser = Depends(get_reactivate_user),
 ) -> None:
@@ -74,7 +75,7 @@ async def reactivate_user(
 async def deactivate_user(
     body: DeactivateUserRequest,
     _claims: Annotated[
-        AccessTokenClaims, Depends(require_permissions("users:deactivate"))
+        AccessTokenClaims, Depends(require_permissions(Perms.USERS_DEACTIVATE))
     ],
     use_case: DeactivateUser = Depends(get_deactivate_user),
 ) -> None:
