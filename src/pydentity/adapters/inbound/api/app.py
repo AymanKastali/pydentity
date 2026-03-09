@@ -18,7 +18,12 @@ from pydentity.adapters.inbound.api.routes import (
     password,
     roles,
 )
+from pydentity.adapters.outbound.persistence.postgres.container import get_uow
 from pydentity.adapters.outbound.persistence.postgres.migrator import run_migrations
+from pydentity.adapters.outbound.persistence.postgres.seeder import (
+    seed_roles,
+    seed_super_admin,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -29,6 +34,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await run_migrations()
     container = Container.build()
     app.state.container = container
+
+    settings = get_app_settings()
+
+    await seed_roles(
+        uow_factory=get_uow,
+        identity_generator=container.identity_generator,
+    )
+
+    await seed_super_admin(
+        uow_factory=get_uow,
+        identity_generator=container.identity_generator,
+        password_hasher=container.password_hasher,
+        password_policy=container.password_policy,
+        super_admin_settings=settings.super_admin,
+    )
 
     await container.event_subscriber.start()
     try:

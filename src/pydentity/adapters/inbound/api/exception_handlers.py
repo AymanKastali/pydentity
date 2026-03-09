@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from pydentity.adapters.inbound.api.schemas.response import ErrorDetail, ErrorResponse
 from pydentity.application.exceptions.app import (
@@ -142,4 +143,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_error_response(code="VALIDATION_ERROR", message=message),
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(
+        request: Request, exc: IntegrityError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=_error_response(
+                code="CONFLICT",
+                message="The request conflicts with existing data.",
+            ),
         )

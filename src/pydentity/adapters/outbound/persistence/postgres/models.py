@@ -164,6 +164,9 @@ class SessionModel(SQLModel, table=True):
 
 class DeviceModel(SQLModel, table=True):
     __tablename__: ClassVar[str] = "devices"
+    __table_args__: ClassVar[tuple[UniqueConstraint, ...]] = (
+        UniqueConstraint("user_fk", "fingerprint", name="uq_devices_user_fingerprint"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
@@ -180,7 +183,7 @@ class DeviceModel(SQLModel, table=True):
     user_fk: int = Field(foreign_key="users.id", nullable=False)
     user_domain_id: str = Field(nullable=False)
     name: str = Field(nullable=False)
-    fingerprint: str = Field(unique=True, nullable=False)
+    fingerprint: str = Field(nullable=False)
     platform: str = Field(nullable=False)
     status: str = Field(nullable=False)
     is_trusted: bool = Field(default=False, nullable=False)

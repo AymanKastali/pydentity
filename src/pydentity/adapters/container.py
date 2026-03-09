@@ -70,6 +70,7 @@ from pydentity.domain.factories.device_factory import DeviceFactory
 from pydentity.domain.factories.role_factory import RoleFactory
 from pydentity.domain.factories.session_factory import SessionFactory
 from pydentity.domain.factories.user_factory import UserFactory
+from pydentity.domain.models.permissions import DEFAULT_ROLE_NAME
 from pydentity.domain.services.change_user_password import ChangeUserPassword
 from pydentity.domain.services.reset_user_password import ResetUserPassword
 
@@ -185,6 +186,7 @@ def get_register_user(
         email_verification_policy=c.email_verification_policy,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        default_role_name=DEFAULT_ROLE_NAME,
     )
 
 
