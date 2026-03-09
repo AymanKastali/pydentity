@@ -22,6 +22,8 @@ from pydentity.domain.models.base import ValueObject
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
 
+    from pydentity.domain.models.enums import Action, Resource
+
 # --- Identity VOs ---
 
 
@@ -110,18 +112,8 @@ class DeviceLastActive(ValueObject):
 
 @dataclass(frozen=True, slots=True)
 class Permission(ValueObject):
-    resource: str
-    action: str
-
-    def __post_init__(self) -> None:
-        stripped_resource = self.resource.strip()
-        stripped_action = self.action.strip()
-        if not stripped_resource:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.resource")
-        if not stripped_action:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.action")
-        object.__setattr__(self, "resource", stripped_resource)
-        object.__setattr__(self, "action", stripped_action)
+    resource: Resource
+    action: Action
 
 
 # --- Auth VOs ---

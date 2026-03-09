@@ -10,6 +10,7 @@ import jwt
 from pydentity.application.exceptions.app import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.application.ports.token_verifier import TokenVerifierPort
+from pydentity.domain.models.enums import Action, Resource
 from pydentity.domain.models.value_objects import Permission, SessionId, UserId
 
 if TYPE_CHECKING:
@@ -48,7 +49,10 @@ class HmacSha256JwtVerifier(TokenVerifierPort):
             expires_at=datetime.fromtimestamp(int(exp), tz=UTC),
             token_id=str(payload["jti"]),
             permissions=frozenset(
-                Permission(resource=p.split(":")[0], action=p.split(":")[1])
+                Permission(
+                    resource=Resource(p.split(":")[0]),
+                    action=Action(p.split(":")[1]),
+                )
                 for p in raw_permissions
             ),
         )

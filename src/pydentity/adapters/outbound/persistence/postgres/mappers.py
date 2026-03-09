@@ -8,8 +8,10 @@ from pydentity.adapters.outbound.persistence.postgres.models import (
 )
 from pydentity.domain.models.device import Device
 from pydentity.domain.models.enums import (
+    Action,
     DevicePlatform,
     DeviceStatus,
+    Resource,
     SessionStatus,
     UserStatus,
 )
@@ -166,7 +168,7 @@ def model_to_role(model: RoleModel) -> Role:
         resource, sep, action = raw.partition(":")
         if not sep:
             raise ValueError(f"Malformed permission string: {raw!r}")
-        permissions.add(Permission(resource=resource, action=action))
+        permissions.add(Permission(resource=Resource(resource), action=Action(action)))
 
     return Role._reconstitute(
         role_id=role_id,

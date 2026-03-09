@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import RoleNotFoundError
+from pydentity.domain.models.enums import Action, Resource
 from pydentity.domain.models.value_objects import Permission, RoleId
 
 if TYPE_CHECKING:
@@ -30,7 +31,10 @@ class RemovePermissionFromRole:
                 raise RoleNotFoundError(role_id=command.role_id)
 
             role.remove_permission(
-                Permission(resource=command.resource, action=command.action)
+                Permission(
+                    resource=Resource(command.resource),
+                    action=Action(command.action),
+                )
             )
 
             await uow.roles.upsert(role)

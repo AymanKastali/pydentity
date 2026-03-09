@@ -5,13 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pydentity.adapters.config.permissions import PermissionRegistry
 from pydentity.domain.factories.role_factory import RoleFactory
-from pydentity.domain.models.permissions import (
-    DEFAULT_ROLE_NAME,
-    DEFAULT_USER_PERMISSIONS,
-    SUPER_ADMIN_PERMISSIONS,
-    SUPER_ADMIN_ROLE_NAME,
-)
 from pydentity.domain.models.value_objects import (
     EmailAddress,
     RoleDescription,
@@ -22,23 +17,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydentity.adapters.config.super_admin import SuperAdminSettings
-    from pydentity.domain.models.value_objects import Permission
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
-_PREDEFINED_ROLES: dict[str, tuple[str, frozenset[Permission]]] = {
-    SUPER_ADMIN_ROLE_NAME: (
-        "Full system access",
-        SUPER_ADMIN_PERMISSIONS,
-    ),
-    DEFAULT_ROLE_NAME: (
-        "Default role for registered users",
-        DEFAULT_USER_PERMISSIONS,
-    ),
-}
+_PREDEFINED_ROLES = PermissionRegistry.PREDEFINED_ROLES
 
 
 async def seed_roles(
@@ -96,7 +81,9 @@ async def seed_super_admin(
         return
 
     async with uow_factory() as uow:
-        super_admin_role = await uow.roles.find_by_name(RoleName(SUPER_ADMIN_ROLE_NAME))
+        super_admin_role = await uow.roles.find_by_name(
+            RoleName(PermissionRegistry.SUPER_ADMIN_ROLE_NAME)
+        )
         if super_admin_role is None:
             logger.warning("Super admin role not found — seed roles first")
             return
