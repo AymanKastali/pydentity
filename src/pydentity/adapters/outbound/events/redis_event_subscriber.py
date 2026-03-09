@@ -16,6 +16,7 @@ from pydentity.application.event_handlers.handlers import (
     OnAccountLocked,
     OnDeviceRegistered,
     OnDeviceRevoked,
+    OnEmailVerified,
     OnLoginFailed,
     OnLoginSucceeded,
     OnPasswordChanged,
@@ -25,6 +26,7 @@ from pydentity.application.event_handlers.handlers import (
     OnRoleAssignedToUser,
     OnRoleRevokedFromUser,
     OnSessionTerminated,
+    OnUserActivated,
     OnUserDeactivated,
     OnUserRegistered,
     OnUserSuspended,
@@ -40,6 +42,7 @@ from pydentity.domain.events.session_events import (
 )
 from pydentity.domain.events.user_events import (
     AccountLocked,
+    EmailVerified,
     LoginFailed,
     LoginSucceeded,
     PasswordChanged,
@@ -47,6 +50,7 @@ from pydentity.domain.events.user_events import (
     PasswordResetRequested,
     RoleAssignedToUser,
     RoleRevokedFromUser,
+    UserActivated,
     UserDeactivated,
     UserRegistered,
     UserSuspended,
@@ -140,6 +144,8 @@ class RedisEventSubscriber:
             VerificationTokenIssued: [
                 OnVerificationTokenIssued(notification=n, audit_log=a)
             ],
+            UserActivated: [OnUserActivated(audit_log=a)],
+            EmailVerified: [OnEmailVerified(user_repo=r, notification=n, audit_log=a)],
             LoginSucceeded: [OnLoginSucceeded(audit_log=a)],
             LoginFailed: [OnLoginFailed(notification=n, audit_log=a)],
             AccountLocked: [OnAccountLocked(notification=n, audit_log=a)],

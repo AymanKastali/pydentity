@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     )
     from pydentity.domain.events.user_events import (
         AccountLocked,
+        EmailVerified,
         LoginFailed,
         LoginSucceeded,
         PasswordChanged,
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
         PasswordResetRequested,
         RoleAssignedToUser,
         RoleRevokedFromUser,
+        UserActivated,
         UserDeactivated,
         UserRegistered,
         UserSuspended,
@@ -401,4 +403,41 @@ class OnRoleRevokedFromUser(EventHandler["RoleRevokedFromUser"]):
             action=event.name,
             user_id=event.user_id,
             metadata={"role_id": event.role_id},
+        )
+
+
+# ---------------------------------------------------------------------------
+# EmailVerified
+# ---------------------------------------------------------------------------
+
+
+class OnEmailVerified(EventHandler["EmailVerified"]):
+    def __init__(
+        self,
+        user_repo: UserRepositoryPort,
+        notification: NotificationPort,
+        audit_log: AuditLogPort,
+    ) -> None:
+        self._user_repo = user_repo
+        self._notification = notification
+        self._audit_log = audit_log
+
+    async def handle(self, event: EmailVerified) -> None:
+        await self._notification.send_email_verified_email(email=event.email)
+        await self._audit_log.record(action=event.name, user_id=event.user_id)
+
+
+# ---------------------------------------------------------------------------
+# UserActivated
+# ---------------------------------------------------------------------------
+
+
+class OnUserActivated(EventHandler["UserActivated"]):
+    def __init__(self, audit_log: AuditLogPort) -> None:
+        self._audit_log = audit_log
+
+    async def handle(self, event: UserActivated) -> None:
+        await self._audit_log.record(
+            action=event.name,
+            user_id=event.user_id,
         )

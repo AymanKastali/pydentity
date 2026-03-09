@@ -12,6 +12,7 @@ from pydentity.domain.events.user_events import (
     PasswordResetRequested,
     RoleAssignedToUser,
     RoleRevokedFromUser,
+    UserActivated,
     UserDeactivated,
     UserEmailChanged,
     UserReactivated,
@@ -95,7 +96,9 @@ class User(AggregateRoot[UserId]):
         user = cls(
             user_id=user_id,
             email=email,
-            status=UserStatus.ACTIVE,
+            status=UserStatus.PENDING_VERIFICATION
+            if verification_token is not None
+            else UserStatus.ACTIVE,
             email_verification=EmailVerification(
                 is_verified=verification_token is None,
                 token=verification_token,
@@ -198,15 +201,17 @@ class User(AggregateRoot[UserId]):
     # --- Helpers ---
 
     def _ensure_active(self) -> None:
-        if self._status == UserStatus.DEACTIVATED:
-            raise AccountDeactivatedError()
         if self._status != UserStatus.ACTIVE:
             raise AccountNotActiveError(status=self._status)
+
+    def _ensure_not_deactivated(self) -> None:
+        if self._status == UserStatus.DEACTIVATED:
+            raise AccountDeactivatedError()
 
     # --- Commands ---
 
     def verify_email(self, token_hash: HashedVerificationToken, now: datetime) -> None:
-        self._ensure_active()
+        self._ensure_not_deactivated()
 
         if self._email_verification.is_verified:
             raise EmailAlreadyVerifiedError()
@@ -219,7 +224,13 @@ class User(AggregateRoot[UserId]):
 
         self._email_verification = EmailVerification(is_verified=True, token=None)
 
-        self._record_event(EmailVerified(user_id=self._id.value))
+        if self._status == UserStatus.PENDING_VERIFICATION:
+            self._status = UserStatus.ACTIVE
+            self._record_event(UserActivated(user_id=self._id.value))
+
+        self._record_event(
+            EmailVerified(user_id=self._id.value, email=self._email.address)
+        )
 
     def request_password_reset(self, token: PasswordResetToken, raw_token: str) -> None:
         self._ensure_active()
@@ -363,7 +374,7 @@ class User(AggregateRoot[UserId]):
         )
 
     def reissue_verification_token(self, token: EmailVerificationToken) -> None:
-        self._ensure_active()
+        self._ensure_not_deactivated()
 
         if self._email_verification.is_verified:
             raise EmailAlreadyVerifiedError()

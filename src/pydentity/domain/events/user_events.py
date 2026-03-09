@@ -18,6 +18,7 @@ class UserRegistered(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class EmailVerified(DomainEvent):
     user_id: str
+    email: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +96,11 @@ class RoleAssignedToUser(DomainEvent):
 class RoleRevokedFromUser(DomainEvent):
     user_id: str
     role_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class UserActivated(DomainEvent):
+    user_id: str
 
 
 @dataclass(frozen=True, slots=True)
