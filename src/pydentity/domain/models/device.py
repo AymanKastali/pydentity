@@ -212,8 +212,8 @@ class Device(AggregateRoot[DeviceId]):
         self._record_event(
             DeviceRevoked(
                 device_id=self._id.value,
-                device_name=self._name.value,
                 user_id=self._user_id.value,
+                device_name=self._name.value,
             )
         )
 

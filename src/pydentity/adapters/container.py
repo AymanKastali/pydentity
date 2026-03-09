@@ -135,7 +135,6 @@ class Container:
         event_subscriber = RedisEventSubscriber(
             redis=redis_client,
             channel=redis_settings.event_channel,
-            uow_factory=get_uow,
             notification=notification,
             audit_log=audit_log,
         )

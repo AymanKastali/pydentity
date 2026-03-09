@@ -92,7 +92,10 @@ class RefreshAccessToken:
             # ------------------------------------------------------------------
             new_raw_refresh = self._raw_token_generator.generate()
             session.rotate_refresh_token(
-                command.refresh_token, new_raw_refresh, self._token_hasher, now
+                command.refresh_token,
+                new_raw_refresh,
+                self._token_hasher,
+                now,
             )
 
             # ------------------------------------------------------------------

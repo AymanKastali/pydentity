@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.event_handlers.base import EventHandler
-from pydentity.domain.models.value_objects import UserId
 
 if TYPE_CHECKING:
     from pydentity.application.ports.audit_log import AuditLogPort
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
         UserSuspended,
         VerificationTokenIssued,
     )
-    from pydentity.domain.ports.repositories import UserRepositoryPort
 
 
 # ---------------------------------------------------------------------------
@@ -90,11 +88,9 @@ class OnLoginFailed(EventHandler["LoginFailed"]):
         self,
         notification: NotificationPort,
         audit_log: AuditLogPort,
-        alert_threshold: int = 3,
     ) -> None:
         self._notification = notification
         self._audit_log = audit_log
-        self._alert_threshold = alert_threshold
 
     async def handle(self, event: LoginFailed) -> None:
         await self._audit_log.record(
@@ -102,11 +98,10 @@ class OnLoginFailed(EventHandler["LoginFailed"]):
             user_id=event.user_id,
             metadata={"failed_attempts": str(event.failed_attempts)},
         )
-        if event.failed_attempts >= self._alert_threshold:
-            await self._notification.send_login_failed_alert(
-                email=event.email,
-                failed_attempts=event.failed_attempts,
-            )
+        await self._notification.send_login_failed_alert(
+            email=event.email,
+            failed_attempts=event.failed_attempts,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -140,23 +135,10 @@ class OnPasswordChanged(EventHandler["PasswordChanged"]):
 
 
 class OnDeviceRegistered(EventHandler["DeviceRegistered"]):
-    def __init__(
-        self,
-        user_repo: UserRepositoryPort,
-        notification: NotificationPort,
-        audit_log: AuditLogPort,
-    ) -> None:
-        self._user_repo = user_repo
-        self._notification = notification
+    def __init__(self, audit_log: AuditLogPort) -> None:
         self._audit_log = audit_log
 
     async def handle(self, event: DeviceRegistered) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_new_device_email(
-                email=user.email.address,
-                device_name=event.device_name,
-            )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -171,23 +153,10 @@ class OnDeviceRegistered(EventHandler["DeviceRegistered"]):
 
 
 class OnDeviceRevoked(EventHandler["DeviceRevoked"]):
-    def __init__(
-        self,
-        user_repo: UserRepositoryPort,
-        notification: NotificationPort,
-        audit_log: AuditLogPort,
-    ) -> None:
-        self._user_repo = user_repo
-        self._notification = notification
+    def __init__(self, audit_log: AuditLogPort) -> None:
         self._audit_log = audit_log
 
     async def handle(self, event: DeviceRevoked) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_device_revoked_email(
-                email=user.email.address,
-                device_name=event.device_name,
-            )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -202,22 +171,10 @@ class OnDeviceRevoked(EventHandler["DeviceRevoked"]):
 
 
 class OnSessionTerminated(EventHandler["SessionTerminated"]):
-    def __init__(
-        self,
-        user_repo: UserRepositoryPort,
-        notification: NotificationPort,
-        audit_log: AuditLogPort,
-    ) -> None:
-        self._user_repo = user_repo
-        self._notification = notification
+    def __init__(self, audit_log: AuditLogPort) -> None:
         self._audit_log = audit_log
 
     async def handle(self, event: SessionTerminated) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_session_terminated_email(
-                email=user.email.address,
-            )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -231,22 +188,10 @@ class OnSessionTerminated(EventHandler["SessionTerminated"]):
 
 
 class OnRefreshTokenReused(EventHandler["RefreshTokenReused"]):
-    def __init__(
-        self,
-        user_repo: UserRepositoryPort,
-        notification: NotificationPort,
-        audit_log: AuditLogPort,
-    ) -> None:
-        self._user_repo = user_repo
-        self._notification = notification
+    def __init__(self, audit_log: AuditLogPort) -> None:
         self._audit_log = audit_log
 
     async def handle(self, event: RefreshTokenReused) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_refresh_token_reuse_alert(
-                email=user.email.address,
-            )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -277,21 +222,17 @@ class OnVerificationTokenIssued(EventHandler["VerificationTokenIssued"]):
 class OnPasswordResetRequested(EventHandler["PasswordResetRequested"]):
     def __init__(
         self,
-        user_repo: UserRepositoryPort,
         notification: NotificationPort,
         audit_log: AuditLogPort,
     ) -> None:
-        self._user_repo = user_repo
         self._notification = notification
         self._audit_log = audit_log
 
     async def handle(self, event: PasswordResetRequested) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_password_reset_email(
-                email=user.email.address,
-                raw_token=event.raw_token,
-            )
+        await self._notification.send_password_reset_email(
+            email=event.email,
+            raw_token=event.raw_token,
+        )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -306,21 +247,17 @@ class OnPasswordResetRequested(EventHandler["PasswordResetRequested"]):
 class OnUserSuspended(EventHandler["UserSuspended"]):
     def __init__(
         self,
-        user_repo: UserRepositoryPort,
         notification: NotificationPort,
         audit_log: AuditLogPort,
     ) -> None:
-        self._user_repo = user_repo
         self._notification = notification
         self._audit_log = audit_log
 
     async def handle(self, event: UserSuspended) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_account_suspended_email(
-                email=user.email.address,
-                reason=event.reason,
-            )
+        await self._notification.send_account_suspended_email(
+            email=event.email,
+            reason=event.reason,
+        )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -336,20 +273,16 @@ class OnUserSuspended(EventHandler["UserSuspended"]):
 class OnUserDeactivated(EventHandler["UserDeactivated"]):
     def __init__(
         self,
-        user_repo: UserRepositoryPort,
         notification: NotificationPort,
         audit_log: AuditLogPort,
     ) -> None:
-        self._user_repo = user_repo
         self._notification = notification
         self._audit_log = audit_log
 
     async def handle(self, event: UserDeactivated) -> None:
-        user = await self._user_repo.find_by_id(UserId(value=event.user_id))
-        if user is not None:
-            await self._notification.send_account_deactivated_email(
-                email=user.email.address,
-            )
+        await self._notification.send_account_deactivated_email(
+            email=event.email,
+        )
         await self._audit_log.record(
             action=event.name,
             user_id=event.user_id,
@@ -414,11 +347,9 @@ class OnRoleRevokedFromUser(EventHandler["RoleRevokedFromUser"]):
 class OnEmailVerified(EventHandler["EmailVerified"]):
     def __init__(
         self,
-        user_repo: UserRepositoryPort,
         notification: NotificationPort,
         audit_log: AuditLogPort,
     ) -> None:
-        self._user_repo = user_repo
         self._notification = notification
         self._audit_log = audit_log
 
