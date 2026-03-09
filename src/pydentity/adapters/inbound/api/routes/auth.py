@@ -11,10 +11,10 @@ from pydentity.adapters.container import (
     get_refresh_access_token,
     get_register_user,
 )
+from pydentity.adapters.inbound.api.dependencies.auth import require_authenticated
 from pydentity.adapters.inbound.api.schemas.auth import (
     LoginRequest,
     LoginResponse,
-    LogoutRequest,
     RefreshRequest,
     RefreshResponse,
     RegisterRequest,
@@ -27,6 +27,7 @@ from pydentity.application.dtos.auth import (
     RefreshAccessTokenInput,
     RegisterUserInput,
 )
+from pydentity.application.models.access_token_claims import AccessTokenClaims
 
 if TYPE_CHECKING:
     from pydentity.application.use_cases.auth.authenticate_user import AuthenticateUser
@@ -128,7 +129,7 @@ async def refresh(
 
 @router.post("/logout", status_code=204)
 async def logout(
-    body: LogoutRequest,
+    claims: Annotated[AccessTokenClaims, Depends(require_authenticated)],
     use_case: LogoutUser = Depends(get_logout_user),
 ) -> None:
-    await use_case.execute(LogoutUserInput(session_id=body.session_id))
+    await use_case.execute(LogoutUserInput(session_id=claims.session_id.value))

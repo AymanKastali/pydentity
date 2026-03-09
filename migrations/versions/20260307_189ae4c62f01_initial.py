@@ -96,7 +96,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("domain_id"),
-        sa.UniqueConstraint("fingerprint"),
+        sa.UniqueConstraint("fingerprint", name="devices_fingerprint_key"),
     )
     op.create_table(
         "user_roles",

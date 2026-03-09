@@ -33,7 +33,3 @@ class RefreshRequest(BaseModel):
 class RefreshResponse(BaseModel):
     access_token: str
     refresh_token: str
-
-
-class LogoutRequest(BaseModel):
-    session_id: str = Field(min_length=1, max_length=255)
