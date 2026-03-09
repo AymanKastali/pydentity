@@ -189,7 +189,8 @@ class Session(AggregateRoot[SessionId]):
             self._status = SessionStatus.REVOKED
             self._record_event(
                 RefreshTokenReused(
-                    session_id=self._id.value, user_id=self._user_id.value
+                    session_id=self._id.value,
+                    user_id=self._user_id.value,
                 )
             )
             raise RefreshTokenReuseDetectedError()
@@ -210,7 +211,10 @@ class Session(AggregateRoot[SessionId]):
         self._status = SessionStatus.REVOKED
 
         self._record_event(
-            SessionTerminated(session_id=self._id.value, user_id=self._user_id.value)
+            SessionTerminated(
+                session_id=self._id.value,
+                user_id=self._user_id.value,
+            )
         )
 
     def is_expired(self, now: datetime) -> bool:

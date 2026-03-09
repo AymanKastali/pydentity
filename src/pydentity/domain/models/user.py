@@ -238,7 +238,11 @@ class User(AggregateRoot[UserId]):
         self._credentials = self._credentials.with_reset_requested(token)
 
         self._record_event(
-            PasswordResetRequested(user_id=self._id.value, raw_token=raw_token)
+            PasswordResetRequested(
+                user_id=self._id.value,
+                email=self._email.address,
+                raw_token=raw_token,
+            )
         )
 
     def reset_password(
@@ -326,6 +330,7 @@ class User(AggregateRoot[UserId]):
         self._record_event(
             UserSuspended(
                 user_id=self._id.value,
+                email=self._email.address,
                 reason=stripped_reason,
             )
         )
@@ -346,7 +351,9 @@ class User(AggregateRoot[UserId]):
 
         self._status = UserStatus.DEACTIVATED
 
-        self._record_event(UserDeactivated(user_id=self._id.value))
+        self._record_event(
+            UserDeactivated(user_id=self._id.value, email=self._email.address)
+        )
 
     def change_email(
         self,

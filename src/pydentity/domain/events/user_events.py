@@ -42,6 +42,7 @@ class PasswordChanged(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class PasswordResetRequested(DomainEvent):
     user_id: str
+    email: str
     raw_token: str
 
 
@@ -73,6 +74,7 @@ class AccountLocked(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class UserSuspended(DomainEvent):
     user_id: str
+    email: str
     reason: str
 
 
@@ -84,6 +86,7 @@ class UserReactivated(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class UserDeactivated(DomainEvent):
     user_id: str
+    email: str
 
 
 @dataclass(frozen=True, slots=True)
