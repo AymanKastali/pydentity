@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.email import VerifyEmailInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -23,11 +24,13 @@ class VerifyEmail:
         token_hasher: TokenHasherPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._token_hasher = token_hasher
         self._clock = clock
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: VerifyEmailInput) -> None:
         now = self._clock.now()
@@ -45,6 +48,7 @@ class VerifyEmail:
             await uow.users.upsert(user)
             await uow.commit()
 
-        events = user.collect_events()
+        self._logger.info("email verified")
 
+        events = user.collect_events()
         await self._event_publisher.publish(events)

@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from pydentity.adapters.inbound.api.context import trace_id_var
-
 if TYPE_CHECKING:
     from starlette.middleware.base import RequestResponseEndpoint
     from starlette.requests import Request
     from starlette.responses import Response
+    from starlette.types import ASGIApp
 
     from pydentity.adapters.config.middleware import RequestLoggingSettings
 
@@ -19,8 +18,8 @@ _log = logging.getLogger(__name__)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: object, settings: RequestLoggingSettings) -> None:
-        super().__init__(app)  # type: ignore[arg-type]
+    def __init__(self, app: ASGIApp, settings: RequestLoggingSettings) -> None:
+        super().__init__(app)
         self._excluded_paths = set(settings.excluded_paths)
 
     async def dispatch(
@@ -34,16 +33,22 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
-        client_ip = request.client.host if request.client else "unknown"
-        trace_id = trace_id_var.get("")
+        user_agent = request.headers.get("user-agent", "-")
+        host = request.headers.get("host", "-")
+        query = str(request.url.query)
+        res_size = response.headers.get("content-length", "-")
 
-        _log.info(
-            "method=%s path=%s status=%d duration_ms=%.2f trace_id=%s client_ip=%s",
-            request.method,
-            path,
-            response.status_code,
-            duration_ms,
-            trace_id,
-            client_ip,
+        parts = (
+            f"method={request.method}"
+            f" path={path}"
+            f" status={response.status_code}"
+            f" duration_ms={duration_ms:.2f}"
+            f" host={host}"
+            f" user_agent={user_agent}"
+            f" res_size={res_size}"
         )
+        if query:
+            parts += f" query={query}"
+
+        _log.info(parts)
         return response

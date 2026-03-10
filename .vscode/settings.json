@@ -24,6 +24,7 @@
   "plantuml.server": "https://www.plantuml.com/plantuml",
   "plantuml.exportOutDir": "docs/diagrams",
   "cSpell.words": [
+    "ASGI",
     "asyncpg",
     "autoflush",
     "creds",

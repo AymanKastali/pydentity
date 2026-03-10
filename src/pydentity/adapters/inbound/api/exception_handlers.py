@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from fastapi import status
@@ -42,6 +43,8 @@ from pydentity.domain.exceptions.domain import (
 
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request
+
+_log = logging.getLogger(__name__)
 
 _DOMAIN_STATUS_MAP: dict[type[DomainError], int] = {
     InvalidCredentialsError: status.HTTP_401_UNAUTHORIZED,
@@ -152,10 +155,24 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def integrity_error_handler(
         request: Request, exc: IntegrityError
     ) -> JSONResponse:
+        _log.warning("integrity error: %s", exc.orig)
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_error_response(
                 code="CONFLICT",
                 message="The request conflicts with existing data.",
+            ),
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        _log.exception("unhandled exception: %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=_error_response(
+                code="INTERNAL_ERROR",
+                message="An unexpected error occurred.",
             ),
         )

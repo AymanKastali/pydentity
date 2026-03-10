@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.account import ReactivateUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -19,9 +20,11 @@ class ReactivateUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: ReactivateUserInput) -> None:
         async with self._uow_factory() as uow:
@@ -34,6 +37,7 @@ class ReactivateUser:
             await uow.users.upsert(user)
             await uow.commit()
 
-        events = user.collect_events()
+        self._logger.info("user reactivated", user_id=command.user_id)
 
+        events = user.collect_events()
         await self._event_publisher.publish(events)

@@ -22,6 +22,7 @@ from pydentity.adapters.outbound.events.redis_event_subscriber import (
     RedisEventSubscriber,
 )
 from pydentity.adapters.outbound.log_audit_trail import LogAuditTrail
+from pydentity.adapters.outbound.logging.rich_console_logger import RichConsoleLogger
 from pydentity.adapters.outbound.persistence.postgres.audit_trail import (
     PostgresAuditTrail,
 )
@@ -88,6 +89,7 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.notification import NotificationPort
     from pydentity.application.ports.token_signer import TokenSignerPort
     from pydentity.application.ports.token_verifier import TokenVerifierPort
@@ -110,6 +112,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class Container:
+    logger: LoggerPort
     password_hasher: PasswordHasherPort
     token_hasher: TokenHasherPort
     token_signer: TokenSignerPort
@@ -159,6 +162,7 @@ class Container:
         )
 
         return cls(
+            logger=RichConsoleLogger(level=settings.fastapi.log_level),
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
             token_signer=HmacSha256JwtSigner(secret=sec.jwt_secret),
@@ -206,6 +210,7 @@ def get_register_user(
         clock=c.clock,
         event_publisher=c.event_publisher,
         default_role_name=PermissionRegistry.DEFAULT_ROLE_NAME,
+        logger=c.logger,
     )
 
 
@@ -230,6 +235,7 @@ def get_authenticate_user(
         lockout_policy=c.lockout_policy,
         token_lifetime_policy=c.token_lifetime_policy,
         token_issuer=c.token_issuer,
+        logger=c.logger,
     )
 
 
@@ -246,6 +252,7 @@ def get_refresh_access_token(
         event_publisher=c.event_publisher,
         token_lifetime_policy=c.token_lifetime_policy,
         token_issuer=c.token_issuer,
+        logger=c.logger,
     )
 
 
@@ -255,6 +262,7 @@ def get_logout_user(
     return LogoutUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -270,6 +278,7 @@ def get_change_email(
         clock=c.clock,
         event_publisher=c.event_publisher,
         email_verification_policy=c.email_verification_policy,
+        logger=c.logger,
     )
 
 
@@ -279,6 +288,7 @@ def get_suspend_user(
     return SuspendUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -288,6 +298,7 @@ def get_reactivate_user(
     return ReactivateUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -297,6 +308,7 @@ def get_deactivate_user(
     return DeactivateUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -311,6 +323,7 @@ def get_verify_email(
         token_hasher=c.token_hasher,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -323,6 +336,7 @@ def get_reissue_verification_token(
         clock=c.clock,
         event_publisher=c.event_publisher,
         email_verification_policy=c.email_verification_policy,
+        logger=c.logger,
     )
 
 
@@ -338,6 +352,7 @@ def get_request_password_reset(
         clock=c.clock,
         event_publisher=c.event_publisher,
         reset_token_ttl=c.reset_token_ttl,
+        logger=c.logger,
     )
 
 
@@ -368,6 +383,7 @@ def get_change_password(
         uow_factory=get_uow,
         change_user_password=change_user_password,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -382,6 +398,7 @@ def get_create_role(
         uow_factory=get_uow,
         role_factory=role_factory,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -391,6 +408,7 @@ def get_rename_role(
     return RenameRole(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -400,6 +418,7 @@ def get_change_role_description(
     return ChangeRoleDescription(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -409,6 +428,7 @@ def get_add_permission_to_role(
     return AddPermissionToRole(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -418,6 +438,7 @@ def get_remove_permission_from_role(
     return RemovePermissionFromRole(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -427,6 +448,7 @@ def get_assign_role_to_user(
     return AssignRoleToUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 
@@ -436,4 +458,5 @@ def get_revoke_role_from_user(
     return RevokeRoleFromUser(
         uow_factory=get_uow,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )

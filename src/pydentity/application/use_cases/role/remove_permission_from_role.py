@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.role import RemovePermissionFromRoleInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -20,9 +21,11 @@ class RemovePermissionFromRole:
         *,
         uow_factory: Callable[[], UnitOfWork],
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: RemovePermissionFromRoleInput) -> None:
         async with self._uow_factory() as uow:
@@ -39,6 +42,13 @@ class RemovePermissionFromRole:
 
             await uow.roles.upsert(role)
             await uow.commit()
+
+        self._logger.info(
+            "permission removed from role",
+            role_id=command.role_id,
+            resource=command.resource,
+            action=command.action,
+        )
 
         events = role.collect_events()
         await self._event_publisher.publish(events)
