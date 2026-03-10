@@ -1,45 +1,45 @@
 from __future__ import annotations
 
-from enum import StrEnum, auto
+from enum import StrEnum
 
 
 class UserStatus(StrEnum):
-    ACTIVE = auto()
-    PENDING_VERIFICATION = auto()
-    SUSPENDED = auto()
-    DEACTIVATED = auto()
+    ACTIVE = "ACTIVE"
+    PENDING_VERIFICATION = "PENDING_VERIFICATION"
+    SUSPENDED = "SUSPENDED"
+    DEACTIVATED = "DEACTIVATED"
 
 
 class SessionStatus(StrEnum):
-    ACTIVE = auto()
-    REVOKED = auto()
+    ACTIVE = "ACTIVE"
+    REVOKED = "REVOKED"
 
 
 class DeviceStatus(StrEnum):
-    ACTIVE = auto()
-    REVOKED = auto()
+    ACTIVE = "ACTIVE"
+    REVOKED = "REVOKED"
 
 
 class DevicePlatform(StrEnum):
-    WEB = auto()
-    MOBILE = auto()
-    DESKTOP = auto()
+    WEB = "WEB"
+    MOBILE = "MOBILE"
+    DESKTOP = "DESKTOP"
 
 
 class Resource(StrEnum):
-    USERS = auto()
-    ROLES = auto()
-    SESSIONS = auto()
-    DEVICES = auto()
+    USERS = "USERS"
+    ROLES = "ROLES"
+    SESSIONS = "SESSIONS"
+    DEVICES = "DEVICES"
 
 
 class Action(StrEnum):
-    READ = auto()
-    CREATE = auto()
-    UPDATE = auto()
-    DELETE = auto()
-    SUSPEND = auto()
-    REACTIVATE = auto()
-    DEACTIVATE = auto()
-    ASSIGN = auto()
-    REVOKE = auto()
+    READ = "READ"
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+    SUSPEND = "SUSPEND"
+    REACTIVATE = "REACTIVATE"
+    DEACTIVATE = "DEACTIVATE"
+    ASSIGN = "ASSIGN"
+    REVOKE = "REVOKE"

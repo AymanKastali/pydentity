@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 from typing import ClassVar
 
-from sqlalchemy import DateTime
+from sqlalchemy import BigInteger, DateTime, Index
+from sqlalchemy import String as SaString
 from sqlmodel import (
     ARRAY,
+    JSON,
     Column,
     Field,
     LargeBinary,
@@ -194,3 +196,60 @@ class DeviceModel(SQLModel, table=True):
     # relationships
     user: UserModel = Relationship(back_populates="devices")
     sessions: list[SessionModel] = Relationship(back_populates="device")
+
+
+# ── AuditEventModel ──────────────────────────────────────────────────────
+
+
+class AuditEventModel(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "audit_events"
+    __table_args__: ClassVar[tuple[Index, ...]] = (
+        Index("ix_audit_events_actor_user_id", "actor_user_id"),
+        Index("ix_audit_events_action", "action"),
+        Index("ix_audit_events_category", "category"),
+        Index("ix_audit_events_occurred_at", "occurred_at"),
+        Index(
+            "ix_audit_events_trace_id",
+            "trace_id",
+            postgresql_where="trace_id IS NOT NULL",
+        ),
+        Index(
+            "ix_audit_events_target",
+            "target_entity_type",
+            "target_entity_id",
+            postgresql_where="target_entity_type IS NOT NULL",
+        ),
+    )
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(BigInteger, primary_key=True, autoincrement=True),
+    )
+    occurred_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_now)
+    )
+    action: str = Field(sa_column=Column(SaString(100), nullable=False))
+    category: str = Field(sa_column=Column(SaString(20), nullable=False))
+    actor_user_id: str = Field(sa_column=Column(SaString(64), nullable=False))
+    session_id: str | None = Field(
+        default=None, sa_column=Column(SaString(64), nullable=True)
+    )
+    device_id: str | None = Field(
+        default=None, sa_column=Column(SaString(64), nullable=True)
+    )
+    ip_address: str | None = Field(
+        default=None, sa_column=Column(SaString(45), nullable=True)
+    )
+    trace_id: str | None = Field(
+        default=None, sa_column=Column(SaString(64), nullable=True)
+    )
+    target_entity_type: str | None = Field(
+        default=None, sa_column=Column(SaString(50), nullable=True)
+    )
+    target_entity_id: str | None = Field(
+        default=None, sa_column=Column(SaString(64), nullable=True)
+    )
+    metadata_: dict[str, object] | None = Field(
+        default=None,
+        sa_column=Column("metadata", JSON, nullable=False, server_default="{}"),
+    )

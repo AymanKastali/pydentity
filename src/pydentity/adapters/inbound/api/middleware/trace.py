@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from starlette.middleware.base import BaseHTTPMiddleware
 from ulid import ULID
 
-from pydentity.adapters.inbound.api.context import trace_id_var
+from pydentity.adapters.inbound.api.context import client_ip_var, trace_id_var
 
 if TYPE_CHECKING:
     from starlette.middleware.base import RequestResponseEndpoint
@@ -19,6 +19,7 @@ class TraceMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         trace_id = str(ULID())
         trace_id_var.set(trace_id)
+        client_ip_var.set(request.client.host if request.client else "")
         response = await call_next(request)
         response.headers["X-Trace-Id"] = trace_id
         return response

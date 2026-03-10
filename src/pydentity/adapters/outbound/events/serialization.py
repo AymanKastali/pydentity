@@ -1,6 +1,7 @@
 """Serialize / deserialize frozen-dataclass domain events to JSON.
 
-Each event is encoded as ``{"type": "ClassName", "data": {...fields...}}``.
+Each event is encoded as
+``{"type": "ClassName", "data": {...}, "context": {...}}``.
 The ``datetime`` type is handled specially since it is not JSON-serializable
 by default.
 """
@@ -8,7 +9,7 @@ by default.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, fields
+from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 
 from pydentity.domain.events.base import DomainEvent  # noqa: TC001
@@ -91,25 +92,40 @@ _EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class EventEnvelope:
+    event: DomainEvent
+    context: dict[str, str]
+
+
 def _default(obj: object) -> str:
     if isinstance(obj, datetime):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def serialize_event(event: DomainEvent) -> str:
-    """Encode a domain event as a JSON string."""
+def serialize_event(
+    event: DomainEvent,
+    *,
+    context: dict[str, str] | None = None,
+) -> str:
+    """Encode a domain event as a JSON string with optional request context."""
     return json.dumps(
-        {"type": event.name, "data": asdict(event)},
+        {
+            "type": event.name,
+            "data": asdict(event),
+            "context": context or {},
+        },
         default=_default,
     )
 
 
-def deserialize_event(raw: str | bytes) -> DomainEvent:
-    """Decode a JSON string back into a domain event instance."""
+def deserialize_event(raw: str | bytes) -> EventEnvelope:
+    """Decode a JSON string back into an EventEnvelope."""
     payload = json.loads(raw)
     event_type_name: str = payload["type"]
     data: dict[str, object] = payload["data"]
+    context: dict[str, str] = payload.get("context", {})
 
     event_cls = _EVENT_REGISTRY.get(event_type_name)
     if event_cls is None:
@@ -120,4 +136,4 @@ def deserialize_event(raw: str | bytes) -> DomainEvent:
         if f.type == "datetime" and isinstance(data.get(f.name), str):
             data[f.name] = datetime.fromisoformat(data[f.name])  # type: ignore[arg-type]
 
-    return event_cls(**data)
+    return EventEnvelope(event=event_cls(**data), context=context)
