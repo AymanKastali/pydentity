@@ -8,7 +8,6 @@ from pydentity.domain.models.value_objects import DeviceFingerprint
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from pydentity.domain.models.enums import DevicePlatform
     from pydentity.domain.models.value_objects import DeviceId, DeviceName, UserId
 
 
@@ -20,7 +19,7 @@ class DeviceFactory:
         user_id: UserId,
         name: DeviceName,
         raw_fingerprint: str,
-        platform: DevicePlatform,
+        platform: str,
         now: datetime,
         trusted: bool = False,
     ) -> Device:

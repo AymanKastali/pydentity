@@ -8,10 +8,7 @@ from pydentity.adapters.outbound.persistence.postgres.models import (
 )
 from pydentity.domain.models.device import Device
 from pydentity.domain.models.enums import (
-    Action,
-    DevicePlatform,
     DeviceStatus,
-    Resource,
     SessionStatus,
     UserStatus,
 )
@@ -149,7 +146,7 @@ def model_to_user(model: UserModel) -> User:
 
 
 def role_to_model(role: Role) -> RoleModel:
-    permissions = [f"{p.resource}:{p.action}" for p in role.permissions]
+    permissions = [p.value for p in role.permissions]
 
     return RoleModel(
         domain_id=role.id.value,
@@ -165,10 +162,9 @@ def model_to_role(model: RoleModel) -> Role:
     description = RoleDescription(model.description)
     permissions: set[Permission] = set()
     for raw in model.permissions:
-        resource, sep, action = raw.partition(":")
-        if not sep:
+        if ":" not in raw:
             raise ValueError(f"Malformed permission string: {raw!r}")
-        permissions.add(Permission(resource=Resource(resource), action=Action(action)))
+        permissions.add(Permission(value=raw))
 
     return Role._reconstitute(
         role_id=role_id,
@@ -244,7 +240,7 @@ def device_to_model(device: Device, user_fk: int) -> DeviceModel:
         user_domain_id=device.user_id.value,
         name=device.name.value,
         fingerprint=device.fingerprint.value,
-        platform=device.platform.value,
+        platform=device.platform,
         status=device.status.value,
         is_trusted=device.is_trusted,
         last_active=last_active,
@@ -256,7 +252,7 @@ def model_to_device(model: DeviceModel) -> Device:
     user_id = UserId(model.user_domain_id)
     name = DeviceName(model.name)
     fingerprint = DeviceFingerprint(model.fingerprint)
-    platform = DevicePlatform(model.platform)
+    platform = model.platform
     status = DeviceStatus(model.status)
     last_active = DeviceLastActive(last_active_at=model.last_active)
 

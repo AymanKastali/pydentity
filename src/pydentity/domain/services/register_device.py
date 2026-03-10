@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
     from pydentity.domain.factories.device_factory import DeviceFactory
     from pydentity.domain.models.device import Device
-    from pydentity.domain.models.enums import DevicePlatform
     from pydentity.domain.models.value_objects import DeviceId, DeviceName, UserId
     from pydentity.domain.ports.repositories import DeviceRepositoryPort
 
@@ -32,7 +31,7 @@ class RegisterDevice:
         user_id: UserId,
         name: DeviceName,
         raw_fingerprint: str,
-        platform: DevicePlatform,
+        platform: str,
         now: datetime,
         trusted: bool = False,
     ) -> Device:

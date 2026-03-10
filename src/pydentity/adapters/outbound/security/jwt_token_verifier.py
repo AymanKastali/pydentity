@@ -10,8 +10,12 @@ import jwt
 from pydentity.application.exceptions.app import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.application.ports.token_verifier import TokenVerifierPort
-from pydentity.domain.models.enums import Action, Resource
-from pydentity.domain.models.value_objects import Permission, SessionId, UserId
+from pydentity.domain.models.value_objects import (
+    Permission,
+    RoleName,
+    SessionId,
+    UserId,
+)
 
 if TYPE_CHECKING:
     from pydantic import SecretStr
@@ -36,6 +40,10 @@ class HmacSha256JwtVerifier(TokenVerifierPort):
         if not isinstance(raw_permissions, list):
             raise InvalidTokenError
 
+        raw_roles = payload.get("roles", [])
+        if not isinstance(raw_roles, list):
+            raise InvalidTokenError
+
         iat = payload["iat"]
         exp = payload["exp"]
         if not isinstance(iat, int | float) or not isinstance(exp, int | float):
@@ -48,11 +56,6 @@ class HmacSha256JwtVerifier(TokenVerifierPort):
             issued_at=datetime.fromtimestamp(int(iat), tz=UTC),
             expires_at=datetime.fromtimestamp(int(exp), tz=UTC),
             token_id=str(payload["jti"]),
-            permissions=frozenset(
-                Permission(
-                    resource=Resource(p.split(":")[0]),
-                    action=Action(p.split(":")[1]),
-                )
-                for p in raw_permissions
-            ),
+            permissions=frozenset(Permission(value=p) for p in raw_permissions),
+            roles=frozenset(RoleName(value=r) for r in raw_roles),
         )

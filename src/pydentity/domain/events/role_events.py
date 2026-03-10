@@ -29,12 +29,10 @@ class RoleDescriptionChanged(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class PermissionAddedToRole(DomainEvent):
     role_id: str
-    resource: str
-    action: str
+    permission: str
 
 
 @dataclass(frozen=True, slots=True)
 class PermissionRemovedFromRole(DomainEvent):
     role_id: str
-    resource: str
-    action: str
+    permission: str

@@ -22,8 +22,6 @@ from pydentity.domain.models.base import ValueObject
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
 
-    from pydentity.domain.models.enums import Action, Resource
-
 # --- Identity VOs ---
 
 
@@ -112,8 +110,14 @@ class DeviceLastActive(ValueObject):
 
 @dataclass(frozen=True, slots=True)
 class Permission(ValueObject):
-    resource: Resource
-    action: Action
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value or ":" not in self.value:
+            raise InvalidValueError(
+                field_name="Permission",
+                reason="must be non-empty and contain ':'",
+            )
 
 
 # --- Auth VOs ---

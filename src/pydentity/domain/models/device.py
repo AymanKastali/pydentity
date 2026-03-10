@@ -17,7 +17,7 @@ from pydentity.domain.exceptions.domain import (
     DeviceRevokedError,
 )
 from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.enums import DevicePlatform, DeviceStatus
+from pydentity.domain.models.enums import DeviceStatus
 from pydentity.domain.models.value_objects import (
     DeviceFingerprint,
     DeviceId,
@@ -38,7 +38,7 @@ class Device(AggregateRoot[DeviceId]):
         user_id: UserId,
         name: DeviceName,
         fingerprint: DeviceFingerprint,
-        platform: DevicePlatform,
+        platform: str,
         status: DeviceStatus,
         is_trusted: bool,
         last_active: DeviceLastActive,
@@ -64,7 +64,7 @@ class Device(AggregateRoot[DeviceId]):
         user_id: UserId,
         name: DeviceName,
         fingerprint: DeviceFingerprint,
-        platform: DevicePlatform,
+        platform: str,
         now: datetime,
         trusted: bool = False,
     ) -> Device:
@@ -95,7 +95,7 @@ class Device(AggregateRoot[DeviceId]):
         user_id: UserId,
         name: DeviceName,
         fingerprint: DeviceFingerprint,
-        platform: DevicePlatform,
+        platform: str,
         status: DeviceStatus,
         is_trusted: bool,
         last_active: DeviceLastActive,
@@ -128,7 +128,7 @@ class Device(AggregateRoot[DeviceId]):
         return self._fingerprint
 
     @property
-    def platform(self) -> DevicePlatform:
+    def platform(self) -> str:
         return self._platform
 
     @property

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from pydentity.domain.exceptions import EmptyValueError, InvalidValueError
 from pydentity.domain.services.permission_collector import collect_permissions
+from pydentity.domain.services.role_name_collector import collect_role_names
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from pydentity.domain.models.role import Role
     from pydentity.domain.models.value_objects import (
         Permission,
+        RoleName,
         SessionId,
         TokenLifetimePolicy,
         UserId,
@@ -28,6 +30,7 @@ class AccessTokenClaims:
     expires_at: datetime
     token_id: str
     permissions: frozenset[Permission]
+    roles: frozenset[RoleName]
 
     def __post_init__(self) -> None:
         if not self.issuer:
@@ -52,7 +55,9 @@ class AccessTokenClaims:
         token_id: str,
         roles: Iterable[Role],
     ) -> AccessTokenClaims:
-        permissions = collect_permissions(roles)
+        materialized_roles = tuple(roles)
+        permissions = collect_permissions(materialized_roles)
+        role_names = collect_role_names(materialized_roles)
         return AccessTokenClaims(
             issuer=issuer,
             subject=subject,
@@ -61,4 +66,5 @@ class AccessTokenClaims:
             expires_at=issued_at + token_lifetime_policy.access_token_ttl,
             token_id=token_id,
             permissions=permissions,
+            roles=role_names,
         )

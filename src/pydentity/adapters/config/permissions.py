@@ -10,36 +10,62 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from pydentity.domain.models.enums import Action, Resource
+from pydentity.adapters.config.enums import Action, Resource
 from pydentity.domain.models.value_objects import Permission
+
+# ── Private helper ────────────────────────────────────────────────────
+
+
+def _p(resource: Resource, action: Action) -> Permission:
+    """Create a permission with validation.
+
+    Private helper to ensure consistent permission creation and enable
+    future validation rules (e.g., checking that action is valid for resource).
+
+    Args:
+        resource: The resource this permission applies to
+        action: The action allowed on the resource
+
+    Returns:
+        A validated Permission instance
+
+    Example:
+        _p(Resource.USERS, Action.READ) -> Permission("users:read")
+    """
+    # Future validation could go here, e.g.:
+    # if action == Action.SUSPEND and resource != Resource.USERS:
+    #     raise ValueError(f"Action {action} is not valid for resource {resource}")
+
+    return Permission(value=f"{resource}:{action}")
+
 
 # ── Permission constants (grouped by resource) ──────────────────────────
 
 
 class PermissionRegistry:
     # Users
-    USERS_READ = Permission(resource=Resource.USERS, action=Action.READ)
-    USERS_CREATE = Permission(resource=Resource.USERS, action=Action.CREATE)
-    USERS_UPDATE = Permission(resource=Resource.USERS, action=Action.UPDATE)
-    USERS_DELETE = Permission(resource=Resource.USERS, action=Action.DELETE)
-    USERS_SUSPEND = Permission(resource=Resource.USERS, action=Action.SUSPEND)
-    USERS_REACTIVATE = Permission(resource=Resource.USERS, action=Action.REACTIVATE)
-    USERS_DEACTIVATE = Permission(resource=Resource.USERS, action=Action.DEACTIVATE)
+    USERS_READ = _p(Resource.USERS, Action.READ)
+    USERS_CREATE = _p(Resource.USERS, Action.CREATE)
+    USERS_UPDATE = _p(Resource.USERS, Action.UPDATE)
+    USERS_DELETE = _p(Resource.USERS, Action.DELETE)
+    USERS_SUSPEND = _p(Resource.USERS, Action.SUSPEND)
+    USERS_REACTIVATE = _p(Resource.USERS, Action.REACTIVATE)
+    USERS_DEACTIVATE = _p(Resource.USERS, Action.DEACTIVATE)
 
     # Roles
-    ROLES_READ = Permission(resource=Resource.ROLES, action=Action.READ)
-    ROLES_CREATE = Permission(resource=Resource.ROLES, action=Action.CREATE)
-    ROLES_UPDATE = Permission(resource=Resource.ROLES, action=Action.UPDATE)
-    ROLES_DELETE = Permission(resource=Resource.ROLES, action=Action.DELETE)
-    ROLES_ASSIGN = Permission(resource=Resource.ROLES, action=Action.ASSIGN)
-    ROLES_REVOKE = Permission(resource=Resource.ROLES, action=Action.REVOKE)
+    ROLES_READ = _p(Resource.ROLES, Action.READ)
+    ROLES_CREATE = _p(Resource.ROLES, Action.CREATE)
+    ROLES_UPDATE = _p(Resource.ROLES, Action.UPDATE)
+    ROLES_DELETE = _p(Resource.ROLES, Action.DELETE)
+    ROLES_ASSIGN = _p(Resource.ROLES, Action.ASSIGN)
+    ROLES_REVOKE = _p(Resource.ROLES, Action.REVOKE)
 
     # Sessions
-    SESSIONS_READ = Permission(resource=Resource.SESSIONS, action=Action.READ)
-    SESSIONS_REVOKE = Permission(resource=Resource.SESSIONS, action=Action.REVOKE)
+    SESSIONS_READ = _p(Resource.SESSIONS, Action.READ)
+    SESSIONS_REVOKE = _p(Resource.SESSIONS, Action.REVOKE)
 
     # Devices
-    DEVICES_READ = Permission(resource=Resource.DEVICES, action=Action.READ)
+    DEVICES_READ = _p(Resource.DEVICES, Action.READ)
 
     # ── Predefined role permission sets ──────────────────────────────────
 
@@ -90,4 +116,6 @@ class PermissionRegistry:
 
     @classmethod
     def for_resource(cls, resource: Resource) -> frozenset[Permission]:
-        return frozenset(p for p in cls.all_permissions() if p.resource == resource)
+        return frozenset(
+            p for p in cls.all_permissions() if p.value.startswith(f"{resource}:")
+        )
