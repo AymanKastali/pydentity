@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pydentity.adapters.inbound.api.context import client_ip_var, trace_id_var
 from pydentity.adapters.outbound.events.serialization import serialize_event
 from pydentity.application.ports.event_publisher import DomainEventPublisherPort
 
@@ -29,7 +30,15 @@ class RedisEventPublisher(DomainEventPublisherPort):
         if not events:
             return
 
+        context: dict[str, str] = {}
+        trace_id = trace_id_var.get("")
+        if trace_id:
+            context["trace_id"] = trace_id
+        client_ip = client_ip_var.get("")
+        if client_ip:
+            context["ip_address"] = client_ip
+
         for event in events:
-            payload = serialize_event(event)
+            payload = serialize_event(event, context=context)
             await self._redis.publish(self._channel, payload)
             _log.debug("published %s to %s", event.name, self._channel)

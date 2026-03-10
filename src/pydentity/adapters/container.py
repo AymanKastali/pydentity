@@ -14,14 +14,21 @@ from redis.asyncio import Redis
 
 from pydentity.adapters.config.app import get_app_settings
 from pydentity.adapters.config.permissions import PermissionRegistry
+from pydentity.adapters.outbound.composite_audit_trail import CompositeAuditTrail
 from pydentity.adapters.outbound.events.redis_event_publisher import (
     RedisEventPublisher,
 )
 from pydentity.adapters.outbound.events.redis_event_subscriber import (
     RedisEventSubscriber,
 )
-from pydentity.adapters.outbound.log_audit import LogAuditLog
-from pydentity.adapters.outbound.persistence.postgres.container import get_uow
+from pydentity.adapters.outbound.log_audit_trail import LogAuditTrail
+from pydentity.adapters.outbound.persistence.postgres.audit_trail import (
+    PostgresAuditTrail,
+)
+from pydentity.adapters.outbound.persistence.postgres.container import (
+    get_session_factory,
+    get_uow,
+)
 from pydentity.adapters.outbound.security.clock import UtcClock
 from pydentity.adapters.outbound.security.identity_generator import (
     UlidIdentityGenerator,
@@ -132,7 +139,13 @@ class Container:
         redis_client = Redis.from_url(redis_settings.url, decode_responses=True)
 
         notification = SmtpNotification(settings.smtp)
-        audit_log = LogAuditLog()
+        log_audit_trail = LogAuditTrail()
+        postgres_audit_trail = PostgresAuditTrail(
+            session_factory=get_session_factory(),
+        )
+        audit_trail = CompositeAuditTrail(
+            delegates=[log_audit_trail, postgres_audit_trail],
+        )
 
         event_publisher = RedisEventPublisher(
             redis=redis_client,
@@ -142,7 +155,7 @@ class Container:
             redis=redis_client,
             channel=redis_settings.event_channel,
             notification=notification,
-            audit_log=audit_log,
+            audit_trail=audit_trail,
         )
 
         return cls(

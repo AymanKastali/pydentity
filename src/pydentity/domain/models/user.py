@@ -398,7 +398,7 @@ class User(AggregateRoot[UserId]):
         )
 
     def assign_role(self, role_id: RoleId) -> None:
-        self._ensure_active()
+        self._ensure_not_deactivated()
 
         if role_id in self._role_ids:
             raise RoleAlreadyAssignedError(role_id=role_id, user_id=self._id)
@@ -413,7 +413,7 @@ class User(AggregateRoot[UserId]):
         )
 
     def revoke_role(self, role_id: RoleId) -> None:
-        self._ensure_active()
+        self._ensure_not_deactivated()
 
         if role_id not in self._role_ids:
             raise RoleNotAssignedError(role_id=role_id, user_id=self._id)
