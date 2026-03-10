@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.dtos.role import CreateRoleOutput
-from pydentity.domain.exceptions.domain import RoleAlreadyExistsError
 from pydentity.domain.models.value_objects import RoleDescription, RoleName
 from pydentity.domain.services.create_role import CreateRole as CreateRoleService
 
@@ -12,6 +11,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.role import CreateRoleInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.factories.role_factory import RoleFactory
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
@@ -23,10 +23,12 @@ class CreateRole:
         uow_factory: Callable[[], UnitOfWork],
         role_factory: RoleFactory,
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._role_factory = role_factory
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: CreateRoleInput) -> CreateRoleOutput:
         async with self._uow_factory() as uow:
@@ -34,16 +36,15 @@ class CreateRole:
                 role_repo=uow.roles,
                 role_factory=self._role_factory,
             )
-            try:
-                role = await create_role_service.execute(
-                    name=RoleName(value=command.name),
-                    description=RoleDescription(value=command.description),
-                )
-            except RoleAlreadyExistsError:
-                raise
+            role = await create_role_service.execute(
+                name=RoleName(value=command.name),
+                description=RoleDescription(value=command.description),
+            )
 
             await uow.roles.upsert(role)
             await uow.commit()
+
+        self._logger.info("role created", role_name=command.name)
 
         events = role.collect_events()
         await self._event_publisher.publish(events)

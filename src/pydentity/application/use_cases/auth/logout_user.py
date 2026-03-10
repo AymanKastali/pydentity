@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.auth import LogoutUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -19,9 +20,11 @@ class LogoutUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: LogoutUserInput) -> None:
         async with self._uow_factory() as uow:
@@ -34,6 +37,8 @@ class LogoutUser:
 
             await uow.sessions.upsert(session)
             await uow.commit()
+
+        self._logger.info("session revoked", session_id=command.session_id)
 
         events = session.collect_events()
         await self._event_publisher.publish(events)

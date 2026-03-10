@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.auth import AuthenticateUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.token_signer import TokenSignerPort
     from pydentity.domain.factories.device_factory import DeviceFactory
     from pydentity.domain.factories.session_factory import SessionFactory
@@ -45,6 +46,7 @@ class AuthenticateUser:
         lockout_policy: AccountLockoutPolicy,
         token_lifetime_policy: TokenLifetimePolicy,
         token_issuer: str,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
@@ -58,10 +60,13 @@ class AuthenticateUser:
         self._lockout_policy = lockout_policy
         self._token_lifetime_policy = token_lifetime_policy
         self._token_issuer = token_issuer
+        self._logger = logger
 
     async def execute(self, command: AuthenticateUserInput) -> AuthenticateUserOutput:
         email = EmailAddress.from_string(command.email)
         now = self._clock.now()
+
+        self._logger.info("auth attempt", email=email.address)
 
         async with self._uow_factory() as uow:
             register_device = RegisterDevice(
@@ -74,6 +79,9 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             user = await uow.users.find_by_email(email)
             if user is None:
+                self._logger.warning(
+                    "auth failed — invalid credentials", email=email.address
+                )
                 raise InvalidCredentialsError()
 
             password_valid = await user.verify_password(
@@ -81,6 +89,9 @@ class AuthenticateUser:
             )
 
             if not password_valid:
+                self._logger.warning(
+                    "auth failed — invalid credentials", email=email.address
+                )
                 user.record_failed_login(self._lockout_policy, now)
                 await uow.users.upsert(user)
                 await uow.commit()
@@ -163,6 +174,13 @@ class AuthenticateUser:
             )
         )
         await self._event_publisher.publish(events)
+
+        self._logger.info(
+            "auth success",
+            user_id=user.id.value,
+            session_id=session.id.value,
+            device_id=device.id.value,
+        )
 
         return AuthenticateUserOutput(
             access_token=access_token,

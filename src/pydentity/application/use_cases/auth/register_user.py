@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.auth import RegisterUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.factories.user_factory import UserFactory
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
@@ -32,6 +33,7 @@ class RegisterUser:
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
         default_role_name: str | None = None,
+        logger: LoggerPort | None = None,  # optional: tests don't pass one
     ) -> None:
         self._uow_factory = uow_factory
         self._user_factory = user_factory
@@ -40,6 +42,7 @@ class RegisterUser:
         self._clock = clock
         self._event_publisher = event_publisher
         self._default_role_name = default_role_name
+        self._logger = logger
 
     async def execute(self, command: RegisterUserInput) -> RegisterUserOutput:
         email = EmailAddress.from_string(command.email)
@@ -77,6 +80,9 @@ class RegisterUser:
 
             await uow.users.upsert(user)
             await uow.commit()
+
+        if self._logger is not None:
+            self._logger.info("user registered", email=email.address)
 
         events = user.collect_events()
 
