@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import RoleNotFoundError
-from pydentity.domain.models.enums import Action, Resource
 from pydentity.domain.models.value_objects import Permission, RoleId
 
 if TYPE_CHECKING:
@@ -34,10 +33,7 @@ class AddPermissionToRole:
                 raise RoleNotFoundError(role_id=command.role_id)
 
             role.add_permission(
-                Permission(
-                    resource=Resource(command.resource),
-                    action=Action(command.action),
-                )
+                Permission(value=f"{command.resource}:{command.action}")
             )
 
             await uow.roles.upsert(role)

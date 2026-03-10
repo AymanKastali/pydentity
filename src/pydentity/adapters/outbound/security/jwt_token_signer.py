@@ -26,8 +26,7 @@ class HmacSha256JwtSigner(TokenSignerPort):
             "iat": int(claims.issued_at.timestamp()),
             "exp": int(claims.expires_at.timestamp()),
             "jti": claims.token_id,
-            "permissions": sorted(
-                f"{p.resource}:{p.action}" for p in claims.permissions
-            ),
+            "permissions": sorted(p.value for p in claims.permissions),
+            "roles": sorted(r.value for r in claims.roles),
         }
         return jwt.encode(payload, self._secret, algorithm="HS256")

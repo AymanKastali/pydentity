@@ -284,7 +284,7 @@ class PermissionAlreadyGrantedError(DomainError):
     ) -> None:
         if permission is not None and role_name is not None:
             message = (
-                f"Permission ({permission.resource}, {permission.action}) "
+                f"Permission {permission.value!r} "
                 f"is already granted to role {role_name!r}"
             )
         else:
@@ -305,8 +305,7 @@ class PermissionNotGrantedError(DomainError):
     ) -> None:
         if permission is not None and role_name is not None:
             message = (
-                f"Permission ({permission.resource}, {permission.action}) "
-                f"is not granted to role {role_name!r}"
+                f"Permission {permission.value!r} is not granted to role {role_name!r}"
             )
         else:
             message = "Permission is not granted to this role"

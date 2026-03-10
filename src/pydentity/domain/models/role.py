@@ -100,8 +100,7 @@ class Role(AggregateRoot[RoleId]):
         self._record_event(
             PermissionAddedToRole(
                 role_id=self._id.value,
-                resource=permission.resource,
-                action=permission.action,
+                permission=permission.value,
             )
         )
 
@@ -116,8 +115,7 @@ class Role(AggregateRoot[RoleId]):
         self._record_event(
             PermissionRemovedFromRole(
                 role_id=self._id.value,
-                resource=permission.resource,
-                action=permission.action,
+                permission=permission.value,
             )
         )
 

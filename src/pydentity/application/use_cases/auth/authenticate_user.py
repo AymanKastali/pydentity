@@ -6,7 +6,6 @@ from pydentity.application.dtos.auth import AuthenticateUserOutput
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import InvalidCredentialsError
 from pydentity.domain.exceptions.domain import DeviceOwnershipError, DeviceRevokedError
-from pydentity.domain.models.enums import DevicePlatform
 from pydentity.domain.models.value_objects import DeviceId, DeviceName, EmailAddress
 from pydentity.domain.services.register_device import RegisterDevice
 
@@ -111,7 +110,7 @@ class AuthenticateUser:
                     user_id=user.id,
                     name=DeviceName(value=command.device_name),
                     raw_fingerprint=command.raw_fingerprint,
-                    platform=DevicePlatform(command.platform),
+                    platform=command.platform,
                     now=now,
                 )
             else:
