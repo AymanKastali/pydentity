@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import RoleNotFoundError
-from pydentity.domain.models.value_objects import RoleDescription, RoleId
+from pydentity.domain.models.value_objects import RoleDescription, RoleName
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,16 +28,16 @@ class ChangeRoleDescription:
 
     async def execute(self, command: ChangeRoleDescriptionInput) -> None:
         async with self._uow_factory() as uow:
-            role = await uow.roles.find_by_id(RoleId(value=command.role_id))
+            role = await uow.roles.find_by_name(RoleName(value=command.role_name))
             if role is None:
-                raise RoleNotFoundError(role_id=command.role_id)
+                raise RoleNotFoundError(role_name=command.role_name)
 
             role.change_description(RoleDescription(value=command.new_description))
 
             await uow.roles.upsert(role)
             await uow.commit()
 
-        self._logger.info("role description changed", role_id=command.role_id)
+        self._logger.info("role description changed", role_name=command.role_name)
 
         events = role.collect_events()
         await self._event_publisher.publish(events)

@@ -52,15 +52,6 @@ class DeviceId(ValueObject):
             raise EmptyValueError(field_name=self.__class__.__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class RoleId(ValueObject):
-    value: str
-
-    def __post_init__(self) -> None:
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-
-
 # --- Naming VOs ---
 
 

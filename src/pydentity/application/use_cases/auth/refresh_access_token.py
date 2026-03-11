@@ -116,7 +116,7 @@ class RefreshAccessToken:
             # ------------------------------------------------------------------
             # 6. Sign new access token
             # ------------------------------------------------------------------
-            roles = await uow.roles.find_by_ids(user.role_ids)
+            roles = await uow.roles.find_by_names(user.role_names)
             claims = AccessTokenClaims.create(
                 issuer=self._token_issuer,
                 subject=user.id,

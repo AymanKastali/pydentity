@@ -29,7 +29,6 @@ from pydentity.application.dtos.role import (
     CreateRoleInput,
     CreateRoleOutput,
     RemovePermissionFromRoleInput,
-    RenameRoleInput,
     RevokeRoleFromUserInput,
 )
 
@@ -52,7 +51,6 @@ __all__ = [
     "RegisterUserOutput",
     "ReissueVerificationTokenInput",
     "RemovePermissionFromRoleInput",
-    "RenameRoleInput",
     "RequestPasswordResetInput",
     "ResetPasswordInput",
     "RevokeRoleFromUserInput",

@@ -7,43 +7,38 @@ from pydentity.domain.events.role_events import (
     PermissionRemovedFromRole,
     RoleCreated,
     RoleDescriptionChanged,
-    RoleRenamed,
 )
 from pydentity.domain.exceptions import (
     PermissionAlreadyGrantedError,
     PermissionNotGrantedError,
 )
 from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.value_objects import RoleDescription, RoleId, RoleName
+from pydentity.domain.models.value_objects import RoleDescription, RoleName
 
 if TYPE_CHECKING:
     from pydentity.domain.models.value_objects import Permission
 
 
-class Role(AggregateRoot[RoleId]):
+class Role(AggregateRoot[RoleName]):
     def __init__(
         self,
         *,
-        role_id: RoleId,
         name: RoleName,
         description: RoleDescription,
         permissions: set[Permission],
     ) -> None:
         super().__init__()
-        self._id = role_id
-        self._name = name
+        self._id = name
         self._description = description
         self._permissions = set(permissions)
 
     @classmethod
     def create(
         cls,
-        role_id: RoleId,
         name: RoleName,
         description: RoleDescription,
     ) -> Role:
         role = cls(
-            role_id=role_id,
             name=name,
             description=description,
             permissions=set(),
@@ -51,8 +46,7 @@ class Role(AggregateRoot[RoleId]):
 
         role._record_event(
             RoleCreated(
-                role_id=role_id.value,
-                role_name=role._name.value,
+                role_name=role._id.value,
                 description=description.value,
             )
         )
@@ -61,13 +55,11 @@ class Role(AggregateRoot[RoleId]):
     @classmethod
     def _reconstitute(
         cls,
-        role_id: RoleId,
         name: RoleName,
         description: RoleDescription,
         permissions: set[Permission],
     ) -> Role:
         return cls(
-            role_id=role_id,
             name=name,
             description=description,
             permissions=permissions,
@@ -77,7 +69,7 @@ class Role(AggregateRoot[RoleId]):
 
     @property
     def name(self) -> RoleName:
-        return self._name
+        return self._id
 
     @property
     def description(self) -> RoleDescription:
@@ -92,14 +84,14 @@ class Role(AggregateRoot[RoleId]):
     def add_permission(self, permission: Permission) -> None:
         if permission in self._permissions:
             raise PermissionAlreadyGrantedError(
-                permission=permission, role_name=self._name.value
+                permission=permission, role_name=self._id.value
             )
 
         self._permissions.add(permission)
 
         self._record_event(
             PermissionAddedToRole(
-                role_id=self._id.value,
+                role_name=self._id.value,
                 permission=permission.value,
             )
         )
@@ -107,30 +99,15 @@ class Role(AggregateRoot[RoleId]):
     def remove_permission(self, permission: Permission) -> None:
         if permission not in self._permissions:
             raise PermissionNotGrantedError(
-                permission=permission, role_name=self._name.value
+                permission=permission, role_name=self._id.value
             )
 
         self._permissions.discard(permission)
 
         self._record_event(
             PermissionRemovedFromRole(
-                role_id=self._id.value,
+                role_name=self._id.value,
                 permission=permission.value,
-            )
-        )
-
-    def rename(self, new_name: RoleName) -> None:
-        if new_name == self._name:
-            return
-
-        old_name = self._name
-        self._name = new_name
-
-        self._record_event(
-            RoleRenamed(
-                role_id=self._id.value,
-                old_name=old_name.value,
-                new_name=self._name.value,
             )
         )
 
@@ -143,7 +120,7 @@ class Role(AggregateRoot[RoleId]):
 
         self._record_event(
             RoleDescriptionChanged(
-                role_id=self._id.value,
+                role_name=self._id.value,
                 old_description=old_description.value,
                 new_description=new_description.value,
             )

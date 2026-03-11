@@ -50,7 +50,6 @@ class CreateRole:
         await self._event_publisher.publish(events)
 
         return CreateRoleOutput(
-            role_id=role.id.value,
             name=role.name.value,
             description=role.description.value,
         )

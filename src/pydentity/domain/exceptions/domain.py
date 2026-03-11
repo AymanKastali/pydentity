@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from pydentity.domain.models.enums import UserStatus
-    from pydentity.domain.models.value_objects import Permission, RoleId, UserId
+    from pydentity.domain.models.value_objects import Permission, RoleName, UserId
 
 
 class DomainError(Exception):
@@ -236,12 +236,13 @@ class RoleAlreadyAssignedError(DomainError):
     def __init__(
         self,
         *,
-        role_id: RoleId | None = None,
+        role_name: RoleName | None = None,
         user_id: UserId | None = None,
     ) -> None:
-        if role_id is not None and user_id is not None:
+        if role_name is not None and user_id is not None:
             message = (
-                f"Role {role_id.value!r} is already assigned to user {user_id.value!r}"
+                f"Role {role_name.value!r} is already assigned"
+                f" to user {user_id.value!r}"
             )
         else:
             message = "Role is already assigned to this user"
@@ -256,12 +257,12 @@ class RoleNotAssignedError(DomainError):
     def __init__(
         self,
         *,
-        role_id: RoleId | None = None,
+        role_name: RoleName | None = None,
         user_id: UserId | None = None,
     ) -> None:
-        if role_id is not None and user_id is not None:
+        if role_name is not None and user_id is not None:
             message = (
-                f"Role {role_id.value!r} is not assigned to user {user_id.value!r}"
+                f"Role {role_name.value!r} is not assigned to user {user_id.value!r}"
             )
         else:
             message = "Role is not assigned to this user"

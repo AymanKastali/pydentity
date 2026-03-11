@@ -26,7 +26,6 @@ from pydentity.application.use_cases.role.create_role import CreateRole
 from pydentity.application.use_cases.role.remove_permission_from_role import (
     RemovePermissionFromRole,
 )
-from pydentity.application.use_cases.role.rename_role import RenameRole
 from pydentity.application.use_cases.role.revoke_role_from_user import (
     RevokeRoleFromUser,
 )
@@ -46,7 +45,6 @@ __all__ = [
     "RegisterUser",
     "ReissueVerificationToken",
     "RemovePermissionFromRole",
-    "RenameRole",
     "RequestPasswordReset",
     "ResetPassword",
     "RevokeRoleFromUser",

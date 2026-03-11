@@ -35,7 +35,6 @@ from pydentity.domain.models.value_objects import (
     Permission,
     RefreshTokenFamily,
     RoleDescription,
-    RoleId,
     RoleName,
     SessionCreatedAt,
     SessionExpiry,
@@ -129,7 +128,7 @@ def model_to_user(model: UserModel) -> User:
         lockout_expiry=lockout_expiry,
     )
 
-    role_ids = {RoleId(r.domain_id) for r in (model.roles or [])}
+    role_names = {RoleName(r.name) for r in (model.roles or [])}
 
     return User._reconstitute(
         user_id=UserId(model.domain_id),
@@ -138,7 +137,7 @@ def model_to_user(model: UserModel) -> User:
         email_verification=email_verification,
         credentials=credentials,
         login_tracking=login_tracking,
-        role_ids=role_ids,
+        role_names=role_names,
     )
 
 
@@ -149,15 +148,13 @@ def role_to_model(role: Role) -> RoleModel:
     permissions = [p.value for p in role.permissions]
 
     return RoleModel(
-        domain_id=role.id.value,
-        name=role.name.value,
+        name=role.id.value,
         description=role.description.value,
         permissions=permissions,
     )
 
 
 def model_to_role(model: RoleModel) -> Role:
-    role_id = RoleId(model.domain_id)
     name = RoleName(model.name)
     description = RoleDescription(model.description)
     permissions: set[Permission] = set()
@@ -167,7 +164,6 @@ def model_to_role(model: RoleModel) -> Role:
         permissions.add(Permission(value=raw))
 
     return Role._reconstitute(
-        role_id=role_id,
         name=name,
         description=description,
         permissions=permissions,

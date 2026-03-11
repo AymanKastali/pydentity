@@ -74,7 +74,6 @@ from pydentity.application.use_cases.role.create_role import CreateRole
 from pydentity.application.use_cases.role.remove_permission_from_role import (
     RemovePermissionFromRole,
 )
-from pydentity.application.use_cases.role.rename_role import RenameRole
 from pydentity.application.use_cases.role.revoke_role_from_user import (
     RevokeRoleFromUser,
 )
@@ -394,20 +393,10 @@ def get_change_password(
 def get_create_role(
     c: Annotated[Container, Depends(get_container)],
 ) -> CreateRole:
-    role_factory = RoleFactory(identity_generator=c.identity_generator)
+    role_factory = RoleFactory()
     return CreateRole(
         uow_factory=get_uow,
         role_factory=role_factory,
-        event_publisher=c.event_publisher,
-        logger=c.logger,
-    )
-
-
-def get_rename_role(
-    c: Annotated[Container, Depends(get_container)],
-) -> RenameRole:
-    return RenameRole(
-        uow_factory=get_uow,
         event_publisher=c.event_publisher,
         logger=c.logger,
     )

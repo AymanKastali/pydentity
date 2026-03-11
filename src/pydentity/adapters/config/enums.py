@@ -1,28 +1,28 @@
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import StrEnum, auto
 
 
 class DevicePlatform(StrEnum):
-    WEB = "WEB"
-    MOBILE = "MOBILE"
-    DESKTOP = "DESKTOP"
+    WEB = auto()
+    MOBILE = auto()
+    DESKTOP = auto()
 
 
 class Resource(StrEnum):
-    USERS = "USERS"
-    ROLES = "ROLES"
-    SESSIONS = "SESSIONS"
-    DEVICES = "DEVICES"
+    USERS = auto()
+    ROLES = auto()
+    SESSIONS = auto()
+    DEVICES = auto()
 
 
 class Action(StrEnum):
-    READ = "READ"
-    CREATE = "CREATE"
-    UPDATE = "UPDATE"
-    DELETE = "DELETE"
-    SUSPEND = "SUSPEND"
-    REACTIVATE = "REACTIVATE"
-    DEACTIVATE = "DEACTIVATE"
-    ASSIGN = "ASSIGN"
-    REVOKE = "REVOKE"
+    READ = auto()
+    CREATE = auto()
+    UPDATE = auto()
+    DELETE = auto()
+    SUSPEND = auto()
+    REACTIVATE = auto()
+    DEACTIVATE = auto()
+    ASSIGN = auto()
+    REVOKE = auto()

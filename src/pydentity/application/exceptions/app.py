@@ -11,8 +11,8 @@ class UserNotFoundError(ApplicationError):
 
 
 class RoleNotFoundError(ApplicationError):
-    def __init__(self, *, role_id: str) -> None:
-        super().__init__(f"Role not found: {role_id!r}")
+    def __init__(self, *, role_name: str) -> None:
+        super().__init__(f"Role not found: {role_name!r}")
 
 
 class EmailAlreadyRegisteredError(ApplicationError):

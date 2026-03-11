@@ -13,7 +13,6 @@ if TYPE_CHECKING:
         DeviceId,
         EmailAddress,
         HashedVerificationToken,
-        RoleId,
         RoleName,
         SessionId,
         UserId,
@@ -52,13 +51,10 @@ class SessionRepositoryPort(ABC):
 
 class RoleRepositoryPort(ABC):
     @abstractmethod
-    async def find_by_id(self, role_id: RoleId) -> Role | None: ...
-
-    @abstractmethod
-    async def find_by_ids(self, role_ids: frozenset[RoleId]) -> list[Role]: ...
-
-    @abstractmethod
     async def find_by_name(self, name: RoleName) -> Role | None: ...
+
+    @abstractmethod
+    async def find_by_names(self, names: frozenset[RoleName]) -> list[Role]: ...
 
     @abstractmethod
     async def upsert(self, role: Role) -> None: ...

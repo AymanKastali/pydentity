@@ -109,7 +109,6 @@ class RoleModel(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    domain_id: str = Field(unique=True, nullable=False)
     name: str = Field(unique=True, nullable=False)
     description: str = Field(nullable=False)
     permissions: list[str] = Field(

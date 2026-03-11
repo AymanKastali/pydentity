@@ -98,8 +98,8 @@ class PermissionRegistry:
 
     # ── Role name constants ──────────────────────────────────────────────
 
-    SUPER_ADMIN_ROLE_NAME: ClassVar[str] = "SUPER_ADMIN"
-    DEFAULT_ROLE_NAME: ClassVar[str] = "USER"
+    SUPER_ADMIN_ROLE_NAME: ClassVar[str] = "super_admin"
+    DEFAULT_ROLE_NAME: ClassVar[str] = "user"
 
     # ── Predefined role definitions ──────────────────────────────────────
 

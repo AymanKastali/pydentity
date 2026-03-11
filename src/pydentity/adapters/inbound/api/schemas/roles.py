@@ -9,13 +9,8 @@ class CreateRoleRequest(BaseModel):
 
 
 class CreateRoleResponse(BaseModel):
-    role_id: str
     name: str
     description: str
-
-
-class RenameRoleRequest(BaseModel):
-    new_name: str = Field(min_length=1, max_length=100)
 
 
 class ChangeRoleDescriptionRequest(BaseModel):

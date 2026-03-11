@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import UserNotFoundError
-from pydentity.domain.models.value_objects import RoleId, UserId
+from pydentity.domain.models.value_objects import RoleName, UserId
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,13 +32,13 @@ class RevokeRoleFromUser:
             if user is None:
                 raise UserNotFoundError(user_id=command.user_id)
 
-            user.revoke_role(RoleId(value=command.role_id))
+            user.revoke_role(RoleName(value=command.role_name))
 
             await uow.users.upsert(user)
             await uow.commit()
 
         self._logger.info(
-            "role revoked", role_id=command.role_id, user_id=command.user_id
+            "role revoked", role_name=command.role_name, user_id=command.user_id
         )
 
         events = user.collect_events()
