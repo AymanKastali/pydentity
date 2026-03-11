@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import RoleNotFoundError
-from pydentity.domain.models.value_objects import Permission, RoleId
+from pydentity.domain.models.value_objects import Permission, RoleName
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,9 +28,9 @@ class AddPermissionToRole:
 
     async def execute(self, command: AddPermissionToRoleInput) -> None:
         async with self._uow_factory() as uow:
-            role = await uow.roles.find_by_id(RoleId(value=command.role_id))
+            role = await uow.roles.find_by_name(RoleName(value=command.role_name))
             if role is None:
-                raise RoleNotFoundError(role_id=command.role_id)
+                raise RoleNotFoundError(role_name=command.role_name)
 
             role.add_permission(
                 Permission(value=f"{command.resource}:{command.action}")
@@ -41,7 +41,7 @@ class AddPermissionToRole:
 
         self._logger.info(
             "permission added to role",
-            role_id=command.role_id,
+            role_name=command.role_name,
             resource=command.resource,
             action=command.action,
         )

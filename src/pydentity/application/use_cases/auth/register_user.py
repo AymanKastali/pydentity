@@ -76,7 +76,7 @@ class RegisterUser:
                     RoleName(self._default_role_name)
                 )
                 if default_role is not None:
-                    user.assign_role(default_role.id)
+                    user.assign_role(default_role.name)
 
             await uow.users.upsert(user)
             await uow.commit()

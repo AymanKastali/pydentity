@@ -58,7 +58,7 @@ if TYPE_CHECKING:
         HashedVerificationToken,
         LockoutExpiry,
         PasswordResetToken,
-        RoleId,
+        RoleName,
     )
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
 
@@ -73,7 +73,7 @@ class User(AggregateRoot[UserId]):
         email_verification: EmailVerification,
         credentials: Credentials,
         login_tracking: LoginTracking,
-        role_ids: set[RoleId],
+        role_names: set[RoleName],
     ) -> None:
         super().__init__()
         self._id = user_id
@@ -82,7 +82,7 @@ class User(AggregateRoot[UserId]):
         self._email_verification = email_verification
         self._credentials = credentials
         self._login_tracking = login_tracking
-        self._role_ids = set(role_ids)
+        self._role_names = set(role_names)
 
     @classmethod
     def create(
@@ -112,7 +112,7 @@ class User(AggregateRoot[UserId]):
                 failed_login_attempts=FailedLoginAttempts(0),
                 lockout_expiry=None,
             ),
-            role_ids=set(),
+            role_names=set(),
         )
 
         user._record_event(UserRegistered(user_id=user_id.value, email=email.address))
@@ -128,7 +128,7 @@ class User(AggregateRoot[UserId]):
         email_verification: EmailVerification,
         credentials: Credentials,
         login_tracking: LoginTracking,
-        role_ids: set[RoleId],
+        role_names: set[RoleName],
     ) -> User:
         return cls(
             user_id=user_id,
@@ -137,7 +137,7 @@ class User(AggregateRoot[UserId]):
             email_verification=email_verification,
             credentials=credentials,
             login_tracking=login_tracking,
-            role_ids=role_ids,
+            role_names=role_names,
         )
 
     # --- Read-only properties ---
@@ -195,8 +195,8 @@ class User(AggregateRoot[UserId]):
         return self._credentials.password_history
 
     @property
-    def role_ids(self) -> frozenset[RoleId]:
-        return frozenset(self._role_ids)
+    def role_names(self) -> frozenset[RoleName]:
+        return frozenset(self._role_names)
 
     # --- Helpers ---
 
@@ -397,32 +397,32 @@ class User(AggregateRoot[UserId]):
             )
         )
 
-    def assign_role(self, role_id: RoleId) -> None:
+    def assign_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()
 
-        if role_id in self._role_ids:
-            raise RoleAlreadyAssignedError(role_id=role_id, user_id=self._id)
+        if role_name in self._role_names:
+            raise RoleAlreadyAssignedError(role_name=role_name, user_id=self._id)
 
-        self._role_ids.add(role_id)
+        self._role_names.add(role_name)
 
         self._record_event(
             RoleAssignedToUser(
                 user_id=self._id.value,
-                role_id=role_id.value,
+                role_name=role_name.value,
             )
         )
 
-    def revoke_role(self, role_id: RoleId) -> None:
+    def revoke_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()
 
-        if role_id not in self._role_ids:
-            raise RoleNotAssignedError(role_id=role_id, user_id=self._id)
+        if role_name not in self._role_names:
+            raise RoleNotAssignedError(role_name=role_name, user_id=self._id)
 
-        self._role_ids.discard(role_id)
+        self._role_names.discard(role_name)
 
         self._record_event(
             RoleRevokedFromUser(
                 user_id=self._id.value,
-                role_id=role_id.value,
+                role_name=role_name.value,
             )
         )

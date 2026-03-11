@@ -61,7 +61,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     try:
         await seed_roles(
             uow_factory=get_uow,
-            identity_generator=container.identity_generator,
         )
 
         await seed_super_admin(

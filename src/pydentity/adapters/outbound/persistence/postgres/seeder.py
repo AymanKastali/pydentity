@@ -29,9 +29,8 @@ _PREDEFINED_ROLES = PermissionRegistry.PREDEFINED_ROLES
 async def seed_roles(
     *,
     uow_factory: Callable[[], UnitOfWork],
-    identity_generator: IdentityGeneratorPort,
 ) -> None:
-    role_factory = RoleFactory(identity_generator=identity_generator)
+    role_factory = RoleFactory()
 
     async with uow_factory() as uow:
         for name, (description, permissions) in _PREDEFINED_ROLES.items():
@@ -91,7 +90,7 @@ async def seed_super_admin(
         existing = await uow.users.find_by_email(
             EmailAddress.from_string(super_admin_settings.email)
         )
-        if existing is not None and super_admin_role.id in existing.role_ids:
+        if existing is not None and super_admin_role.name in existing.role_names:
             logger.info("Super admin already exists — skipping")
             return
 
@@ -109,7 +108,7 @@ async def seed_super_admin(
             password_hash=password_hash,
             verification_token=None,
         )
-        user.assign_role(super_admin_role.id)
+        user.assign_role(super_admin_role.name)
         user.collect_events()
 
         await uow.users.upsert(user)

@@ -25,7 +25,6 @@ from pydentity.domain.events.role_events import (
     PermissionRemovedFromRole,
     RoleCreated,
     RoleDescriptionChanged,
-    RoleRenamed,
 )
 from pydentity.domain.events.session_events import (
     RefreshTokenReused,
@@ -85,7 +84,6 @@ _EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
     "SessionTerminated": SessionTerminated,
     # Role events
     "RoleCreated": RoleCreated,
-    "RoleRenamed": RoleRenamed,
     "RoleDescriptionChanged": RoleDescriptionChanged,
     "PermissionAddedToRole": PermissionAddedToRole,
     "PermissionRemovedFromRole": PermissionRemovedFromRole,

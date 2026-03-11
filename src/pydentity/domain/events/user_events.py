@@ -92,13 +92,13 @@ class UserDeactivated(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class RoleAssignedToUser(DomainEvent):
     user_id: str
-    role_id: str
+    role_name: str
 
 
 @dataclass(frozen=True, slots=True)
 class RoleRevokedFromUser(DomainEvent):
     user_id: str
-    role_id: str
+    role_name: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -47,7 +47,6 @@ if TYPE_CHECKING:
         DeviceId,
         EmailAddress,
         HashedVerificationToken,
-        RoleId,
         RoleName,
         SessionId,
         UserId,
@@ -115,9 +114,9 @@ class PostgresUserRepository(UserRepositoryPort):
             self._session.add(model)
 
         # Sync Roles Relationship
-        if user.role_ids:
+        if user.role_names:
             role_stmt = select(RoleModel).where(
-                col(RoleModel.domain_id).in_([r.value for r in user.role_ids])
+                col(RoleModel.name).in_([r.value for r in user.role_names])
             )
             roles_res = await self._session.execute(role_stmt)
             model.roles = list(roles_res.scalars().all())
@@ -134,25 +133,20 @@ class PostgresRoleRepository(RoleRepositoryPort):
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def find_by_id(self, role_id: RoleId) -> Role | None:
-        stmt = select(RoleModel).where(col(RoleModel.domain_id) == role_id.value)
-        model = (await self._session.execute(stmt)).scalar_one_or_none()
-        return model_to_role(model) if model else None
-
-    async def find_by_ids(self, role_ids: frozenset[RoleId]) -> list[Role]:
-        stmt = select(RoleModel).where(
-            col(RoleModel.domain_id).in_([r.value for r in role_ids])
-        )
-        result = await self._session.execute(stmt)
-        return [model_to_role(m) for m in result.scalars().all()]
-
     async def find_by_name(self, name: RoleName) -> Role | None:
         stmt = select(RoleModel).where(col(RoleModel.name) == name.value)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_role(model) if model else None
 
+    async def find_by_names(self, names: frozenset[RoleName]) -> list[Role]:
+        stmt = select(RoleModel).where(
+            col(RoleModel.name).in_([r.value for r in names])
+        )
+        result = await self._session.execute(stmt)
+        return [model_to_role(m) for m in result.scalars().all()]
+
     async def upsert(self, role: Role) -> None:
-        stmt = select(RoleModel).where(col(RoleModel.domain_id) == role.id.value)
+        stmt = select(RoleModel).where(col(RoleModel.name) == role.id.value)
         existing = (await self._session.execute(stmt)).scalar_one_or_none()
 
         model_data = role_to_model(role)

@@ -7,7 +7,7 @@ Pure mapping module: no I/O, no third-party imports.
 from __future__ import annotations
 
 from dataclasses import asdict, fields
-from enum import StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
 from pydentity.domain.events.device_events import (
@@ -22,7 +22,6 @@ from pydentity.domain.events.role_events import (
     PermissionRemovedFromRole,
     RoleCreated,
     RoleDescriptionChanged,
-    RoleRenamed,
 )
 from pydentity.domain.events.session_events import (
     RefreshTokenReused,
@@ -57,19 +56,19 @@ if TYPE_CHECKING:
 class AuditCategory(StrEnum):
     # Events related to system integrity: failed logins, MFA,
     # password resets, or detected threats.
-    SECURITY = "SECURITY"
+    SECURITY = auto()
 
     # Tracking user movement: successful logins, viewing sensitive records,
     # or session expirations.
-    ACCESS = "ACCESS"
+    ACCESS = auto()
 
     # The "Audit Trail": records 'Before' and 'After' snapshots of
     # database row creations, updates, or deletes.
-    DATA_CHANGE = "DATA_CHANGE"
+    DATA_CHANGE = auto()
 
     # High-level configuration: changing global system settings,
     # managing roles, or site-wide toggles.
-    ADMIN = "ADMIN"
+    ADMIN = auto()
 
 
 CATEGORY_MAP: dict[type[DomainEvent], str] = {
@@ -101,7 +100,6 @@ CATEGORY_MAP: dict[type[DomainEvent], str] = {
     UserDeactivated: AuditCategory.ADMIN,
     UserReactivated: AuditCategory.ADMIN,
     RoleCreated: AuditCategory.ADMIN,
-    RoleRenamed: AuditCategory.ADMIN,
     RoleDescriptionChanged: AuditCategory.ADMIN,
     PermissionAddedToRole: AuditCategory.ADMIN,
     PermissionRemovedFromRole: AuditCategory.ADMIN,
@@ -125,11 +123,10 @@ TARGET_MAP: dict[type[DomainEvent], tuple[str, str]] = {
     DeviceTrusted: ("Device", "device_id"),
     DeviceUntrusted: ("Device", "device_id"),
     # Role events
-    RoleCreated: ("Role", "role_id"),
-    RoleRenamed: ("Role", "role_id"),
-    RoleDescriptionChanged: ("Role", "role_id"),
-    PermissionAddedToRole: ("Role", "role_id"),
-    PermissionRemovedFromRole: ("Role", "role_id"),
+    RoleCreated: ("Role", "role_name"),
+    RoleDescriptionChanged: ("Role", "role_name"),
+    PermissionAddedToRole: ("Role", "role_name"),
+    PermissionRemovedFromRole: ("Role", "role_name"),
     # User lifecycle events
     UserRegistered: ("User", "user_id"),
     UserActivated: ("User", "user_id"),
@@ -152,7 +149,7 @@ TARGET_MAP: dict[type[DomainEvent], tuple[str, str]] = {
 
 # Fields extracted into dedicated columns — excluded from metadata JSONB.
 _KNOWN_FIELDS: frozenset[str] = frozenset(
-    {"user_id", "session_id", "device_id", "role_id"}
+    {"user_id", "session_id", "device_id", "role_name"}
 )
 
 
