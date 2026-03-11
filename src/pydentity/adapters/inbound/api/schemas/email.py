@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str
+    token: str = Field(min_length=1, max_length=512)
 
 
 class ResendVerificationRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(min_length=1, max_length=255)

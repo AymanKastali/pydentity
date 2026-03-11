@@ -33,3 +33,13 @@ class InsufficientPermissionsError(ApplicationError):
 class PersistenceConsistencyError(ApplicationError):
     def __init__(self, *, detail: str) -> None:
         super().__init__(f"Data consistency violation: {detail}")
+
+
+class SessionNotFoundError(ApplicationError):
+    def __init__(self, *, session_id: str) -> None:
+        super().__init__(f"Session not found: {session_id!r}")
+
+
+class DeviceNotFoundError(ApplicationError):
+    def __init__(self, *, device_id: str) -> None:
+        super().__init__(f"Device not found: {device_id!r}")
