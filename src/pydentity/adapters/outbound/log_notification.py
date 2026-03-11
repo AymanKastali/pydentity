@@ -27,25 +27,11 @@ class LogNotification(NotificationPort):
             "send_account_locked_email to=%s locked_until=%s", email, locked_until
         )
 
-    async def send_login_failed_alert(
-        self, *, email: str, failed_attempts: int
-    ) -> None:
-        _log.info("send_login_failed_alert to=%s attempts=%d", email, failed_attempts)
-
-    async def send_password_reset_confirmation(self, *, email: str) -> None:
-        _log.info("send_password_reset_confirmation to=%s", email)
-
     async def send_password_changed_email(self, *, email: str) -> None:
         _log.info("send_password_changed_email to=%s", email)
 
     async def send_new_device_email(self, *, email: str, device_name: str) -> None:
         _log.info("send_new_device_email to=%s device=%s", email, device_name)
-
-    async def send_device_revoked_email(self, *, email: str, device_name: str) -> None:
-        _log.info("send_device_revoked_email to=%s device=%s", email, device_name)
-
-    async def send_session_terminated_email(self, *, email: str) -> None:
-        _log.info("send_session_terminated_email to=%s", email)
 
     async def send_refresh_token_reuse_alert(self, *, email: str) -> None:
         _log.info("send_refresh_token_reuse_alert to=%s", email)
@@ -58,6 +44,3 @@ class LogNotification(NotificationPort):
 
     async def send_account_deactivated_email(self, *, email: str) -> None:
         _log.info("send_account_deactivated_email to=%s", email)
-
-    async def send_email_verified_email(self, *, email: str) -> None:
-        _log.info("send_email_verified_email to=%s", email)

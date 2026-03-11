@@ -6,17 +6,11 @@ from pydentity.application.event_handlers.base import EventHandler
 
 if TYPE_CHECKING:
     from pydentity.application.ports.notification import NotificationPort
-    from pydentity.domain.events.device_events import DeviceRegistered, DeviceRevoked
-    from pydentity.domain.events.session_events import (
-        RefreshTokenReused,
-        SessionTerminated,
-    )
+    from pydentity.domain.events.device_events import DeviceRegistered
+    from pydentity.domain.events.session_events import RefreshTokenReused
     from pydentity.domain.events.user_events import (
         AccountLocked,
-        EmailVerified,
-        LoginFailed,
         PasswordChanged,
-        PasswordReset,
         PasswordResetRequested,
         UserDeactivated,
         UserRegistered,
@@ -52,35 +46,6 @@ class OnAccountLocked(EventHandler["AccountLocked"]):
             email=event.email,
             locked_until=str(event.locked_until),
         )
-
-
-# ---------------------------------------------------------------------------
-# LoginFailed
-# ---------------------------------------------------------------------------
-
-
-class OnLoginFailed(EventHandler["LoginFailed"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: LoginFailed) -> None:
-        await self._notification.send_login_failed_alert(
-            email=event.email,
-            failed_attempts=event.failed_attempts,
-        )
-
-
-# ---------------------------------------------------------------------------
-# PasswordReset
-# ---------------------------------------------------------------------------
-
-
-class OnPasswordReset(EventHandler["PasswordReset"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: PasswordReset) -> None:
-        await self._notification.send_password_reset_confirmation(email=event.email)
 
 
 class OnPasswordChanged(EventHandler["PasswordChanged"]):
@@ -145,19 +110,6 @@ class OnUserDeactivated(EventHandler["UserDeactivated"]):
 
 
 # ---------------------------------------------------------------------------
-# EmailVerified
-# ---------------------------------------------------------------------------
-
-
-class OnEmailVerified(EventHandler["EmailVerified"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: EmailVerified) -> None:
-        await self._notification.send_email_verified_email(email=event.email)
-
-
-# ---------------------------------------------------------------------------
 # RefreshTokenReused
 # ---------------------------------------------------------------------------
 
@@ -170,38 +122,6 @@ class OnRefreshTokenReused(EventHandler["RefreshTokenReused"]):
         if event.email is None:
             return
         await self._notification.send_refresh_token_reuse_alert(email=event.email)
-
-
-# ---------------------------------------------------------------------------
-# DeviceRevoked
-# ---------------------------------------------------------------------------
-
-
-class OnDeviceRevoked(EventHandler["DeviceRevoked"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: DeviceRevoked) -> None:
-        if event.email is None:
-            return
-        await self._notification.send_device_revoked_email(
-            email=event.email, device_name=event.device_name
-        )
-
-
-# ---------------------------------------------------------------------------
-# SessionTerminated
-# ---------------------------------------------------------------------------
-
-
-class OnSessionTerminated(EventHandler["SessionTerminated"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: SessionTerminated) -> None:
-        if event.email is None:
-            return
-        await self._notification.send_session_terminated_email(email=event.email)
 
 
 # ---------------------------------------------------------------------------

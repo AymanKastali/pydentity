@@ -19,27 +19,19 @@ from pydentity.application.audit.registry import EXCLUDED_EVENTS, extract_audit_
 from pydentity.application.event_handlers.handlers import (
     OnAccountLocked,
     OnDeviceRegistered,
-    OnDeviceRevoked,
-    OnEmailVerified,
-    OnLoginFailed,
     OnPasswordChanged,
-    OnPasswordReset,
     OnPasswordResetRequested,
     OnRefreshTokenReused,
-    OnSessionTerminated,
     OnUserDeactivated,
     OnUserRegistered,
     OnUserSuspended,
     OnVerificationTokenIssued,
 )
-from pydentity.domain.events.device_events import DeviceRegistered, DeviceRevoked
-from pydentity.domain.events.session_events import RefreshTokenReused, SessionTerminated
+from pydentity.domain.events.device_events import DeviceRegistered
+from pydentity.domain.events.session_events import RefreshTokenReused
 from pydentity.domain.events.user_events import (
     AccountLocked,
-    EmailVerified,
-    LoginFailed,
     PasswordChanged,
-    PasswordReset,
     PasswordResetRequested,
     UserDeactivated,
     UserRegistered,
@@ -152,16 +144,11 @@ class RedisEventSubscriber:
         return {
             UserRegistered: [OnUserRegistered(notification=n)],
             VerificationTokenIssued: [OnVerificationTokenIssued(notification=n)],
-            EmailVerified: [OnEmailVerified(notification=n)],
-            LoginFailed: [OnLoginFailed(notification=n)],
             AccountLocked: [OnAccountLocked(notification=n)],
             PasswordResetRequested: [OnPasswordResetRequested(notification=n)],
-            PasswordReset: [OnPasswordReset(notification=n)],
             PasswordChanged: [OnPasswordChanged(notification=n)],
             UserSuspended: [OnUserSuspended(notification=n)],
             UserDeactivated: [OnUserDeactivated(notification=n)],
             RefreshTokenReused: [OnRefreshTokenReused(notification=n)],
-            DeviceRevoked: [OnDeviceRevoked(notification=n)],
-            SessionTerminated: [OnSessionTerminated(notification=n)],
             DeviceRegistered: [OnDeviceRegistered(notification=n)],
         }
