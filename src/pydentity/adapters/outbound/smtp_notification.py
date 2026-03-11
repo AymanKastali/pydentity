@@ -70,25 +70,6 @@ class SmtpNotification(NotificationPort):
             ),
         )
 
-    async def send_login_failed_alert(
-        self, *, email: str, failed_attempts: int
-    ) -> None:
-        await self._send(
-            to=email,
-            subject="Failed login attempt",
-            body=(
-                f"There have been {failed_attempts} failed login attempt(s) "
-                "on your account."
-            ),
-        )
-
-    async def send_password_reset_confirmation(self, *, email: str) -> None:
-        await self._send(
-            to=email,
-            subject="Password reset successful",
-            body="Your password has been reset successfully.",
-        )
-
     async def send_password_changed_email(self, *, email: str) -> None:
         await self._send(
             to=email,
@@ -106,20 +87,6 @@ class SmtpNotification(NotificationPort):
             body=(
                 f"A new device ({device_name}) has been used to log in to your account."
             ),
-        )
-
-    async def send_device_revoked_email(self, *, email: str, device_name: str) -> None:
-        await self._send(
-            to=email,
-            subject="Device revoked",
-            body=f"The device ({device_name}) has been revoked from your account.",
-        )
-
-    async def send_session_terminated_email(self, *, email: str) -> None:
-        await self._send(
-            to=email,
-            subject="Session terminated",
-            body="One of your active sessions has been terminated.",
         )
 
     async def send_refresh_token_reuse_alert(self, *, email: str) -> None:
@@ -151,11 +118,4 @@ class SmtpNotification(NotificationPort):
             to=email,
             subject="Account deactivated",
             body="Your account has been deactivated.",
-        )
-
-    async def send_email_verified_email(self, *, email: str) -> None:
-        await self._send(
-            to=email,
-            subject="Email verified",
-            body="Your email address has been verified and your account is now active.",
         )
