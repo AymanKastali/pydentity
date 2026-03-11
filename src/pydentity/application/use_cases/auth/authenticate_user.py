@@ -113,6 +113,7 @@ class AuthenticateUser:
                     raw_fingerprint=command.raw_fingerprint,
                     platform=DevicePlatform(command.platform),
                     now=now,
+                    email=user.email.address,
                 )
             else:
                 try:
@@ -127,7 +128,7 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             existing_session = await uow.sessions.get_active_by_device(device.id)
             if existing_session is not None:
-                existing_session.revoke()
+                existing_session.revoke(email=user.email.address)
 
             raw_refresh = self._raw_token_generator.generate()
             session = self._session_factory.create(
@@ -136,6 +137,7 @@ class AuthenticateUser:
                 raw_refresh_token=raw_refresh,
                 absolute_lifetime=self._token_lifetime_policy.session_absolute_ttl,
                 created_at=now,
+                email=user.email.address,
             )
 
             # ------------------------------------------------------------------

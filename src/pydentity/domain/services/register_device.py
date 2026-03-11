@@ -35,6 +35,7 @@ class RegisterDevice:
         platform: DevicePlatform,
         now: datetime,
         trusted: bool = False,
+        email: str | None = None,
     ) -> Device:
         fingerprint = DeviceFingerprint.from_raw(raw_fingerprint)
 
@@ -50,4 +51,5 @@ class RegisterDevice:
             platform=platform,
             now=now,
             trusted=trusted,
+            email=email,
         )

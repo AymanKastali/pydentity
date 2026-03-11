@@ -6,6 +6,11 @@ from pydentity.application.event_handlers.base import EventHandler
 
 if TYPE_CHECKING:
     from pydentity.application.ports.notification import NotificationPort
+    from pydentity.domain.events.device_events import DeviceRegistered, DeviceRevoked
+    from pydentity.domain.events.session_events import (
+        RefreshTokenReused,
+        SessionTerminated,
+    )
     from pydentity.domain.events.user_events import (
         AccountLocked,
         EmailVerified,
@@ -150,3 +155,67 @@ class OnEmailVerified(EventHandler["EmailVerified"]):
 
     async def handle(self, event: EmailVerified) -> None:
         await self._notification.send_email_verified_email(email=event.email)
+
+
+# ---------------------------------------------------------------------------
+# RefreshTokenReused
+# ---------------------------------------------------------------------------
+
+
+class OnRefreshTokenReused(EventHandler["RefreshTokenReused"]):
+    def __init__(self, notification: NotificationPort) -> None:
+        self._notification = notification
+
+    async def handle(self, event: RefreshTokenReused) -> None:
+        if event.email is None:
+            return
+        await self._notification.send_refresh_token_reuse_alert(email=event.email)
+
+
+# ---------------------------------------------------------------------------
+# DeviceRevoked
+# ---------------------------------------------------------------------------
+
+
+class OnDeviceRevoked(EventHandler["DeviceRevoked"]):
+    def __init__(self, notification: NotificationPort) -> None:
+        self._notification = notification
+
+    async def handle(self, event: DeviceRevoked) -> None:
+        if event.email is None:
+            return
+        await self._notification.send_device_revoked_email(
+            email=event.email, device_name=event.device_name
+        )
+
+
+# ---------------------------------------------------------------------------
+# SessionTerminated
+# ---------------------------------------------------------------------------
+
+
+class OnSessionTerminated(EventHandler["SessionTerminated"]):
+    def __init__(self, notification: NotificationPort) -> None:
+        self._notification = notification
+
+    async def handle(self, event: SessionTerminated) -> None:
+        if event.email is None:
+            return
+        await self._notification.send_session_terminated_email(email=event.email)
+
+
+# ---------------------------------------------------------------------------
+# DeviceRegistered
+# ---------------------------------------------------------------------------
+
+
+class OnDeviceRegistered(EventHandler["DeviceRegistered"]):
+    def __init__(self, notification: NotificationPort) -> None:
+        self._notification = notification
+
+    async def handle(self, event: DeviceRegistered) -> None:
+        if event.email is None:
+            return
+        await self._notification.send_new_device_email(
+            email=event.email, device_name=event.device_name
+        )

@@ -23,6 +23,7 @@ class DeviceFactory:
         platform: DevicePlatform,
         now: datetime,
         trusted: bool = False,
+        email: str | None = None,
     ) -> Device:
         fingerprint = DeviceFingerprint.from_raw(raw_fingerprint)
         return Device.register(
@@ -33,4 +34,5 @@ class DeviceFactory:
             platform=platform,
             now=now,
             trusted=trusted,
+            email=email,
         )

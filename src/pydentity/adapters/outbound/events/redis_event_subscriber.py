@@ -18,16 +18,22 @@ from pydentity.adapters.outbound.events.serialization import deserialize_event
 from pydentity.application.audit.registry import EXCLUDED_EVENTS, extract_audit_fields
 from pydentity.application.event_handlers.handlers import (
     OnAccountLocked,
+    OnDeviceRegistered,
+    OnDeviceRevoked,
     OnEmailVerified,
     OnLoginFailed,
     OnPasswordChanged,
     OnPasswordReset,
     OnPasswordResetRequested,
+    OnRefreshTokenReused,
+    OnSessionTerminated,
     OnUserDeactivated,
     OnUserRegistered,
     OnUserSuspended,
     OnVerificationTokenIssued,
 )
+from pydentity.domain.events.device_events import DeviceRegistered, DeviceRevoked
+from pydentity.domain.events.session_events import RefreshTokenReused, SessionTerminated
 from pydentity.domain.events.user_events import (
     AccountLocked,
     EmailVerified,
@@ -131,7 +137,14 @@ class RedisEventSubscriber:
         """Dispatch the event to registered notification handlers."""
         handlers = self._registry.get(type(event), [])
         for handler in handlers:
-            await handler.handle(event)
+            try:
+                await handler.handle(event)
+            except Exception:
+                _log.exception(
+                    "handler %s failed for %s",
+                    type(handler).__name__,
+                    event.name,
+                )
 
     def _build_registry(self) -> dict[type[DomainEvent], list[Any]]:
         n = self._notification
@@ -147,4 +160,8 @@ class RedisEventSubscriber:
             PasswordChanged: [OnPasswordChanged(notification=n)],
             UserSuspended: [OnUserSuspended(notification=n)],
             UserDeactivated: [OnUserDeactivated(notification=n)],
+            RefreshTokenReused: [OnRefreshTokenReused(notification=n)],
+            DeviceRevoked: [OnDeviceRevoked(notification=n)],
+            SessionTerminated: [OnSessionTerminated(notification=n)],
+            DeviceRegistered: [OnDeviceRegistered(notification=n)],
         }

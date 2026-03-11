@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
+
+_log = logging.getLogger(__name__)
 
 
 class RedisRateLimitStore:
@@ -14,6 +17,19 @@ class RedisRateLimitStore:
         self._redis = redis
 
     async def is_allowed(
+        self, *, key: str, limit: int, window_seconds: int
+    ) -> tuple[bool, int, int]:
+        try:
+            return await self._check(
+                key=key,
+                limit=limit,
+                window_seconds=window_seconds,
+            )
+        except Exception:
+            _log.exception("rate-limit Redis error — failing open")
+            return (True, limit, 0)
+
+    async def _check(
         self, *, key: str, limit: int, window_seconds: int
     ) -> tuple[bool, int, int]:
         now = time.time()

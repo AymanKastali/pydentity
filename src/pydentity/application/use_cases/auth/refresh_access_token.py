@@ -105,6 +105,7 @@ class RefreshAccessToken:
                 new_raw_refresh,
                 self._token_hasher,
                 now,
+                email=user.email.address,
             )
 
             # ------------------------------------------------------------------

@@ -369,6 +369,7 @@ def get_reset_password(
         token_hasher=c.token_hasher,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        logger=c.logger,
     )
 
 

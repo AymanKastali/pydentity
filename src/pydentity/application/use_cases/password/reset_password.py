@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from pydentity.application.dtos.password import ResetPasswordInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.logger import LoggerPort
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -25,12 +26,14 @@ class ResetPassword:
         token_hasher: TokenHasherPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._reset_user_password = reset_user_password
         self._token_hasher = token_hasher
         self._clock = clock
         self._event_publisher = event_publisher
+        self._logger = logger
 
     async def execute(self, command: ResetPasswordInput) -> None:
         now = self._clock.now()
@@ -51,6 +54,8 @@ class ResetPassword:
 
             await uow.users.upsert(user)
             await uow.commit()
+
+        self._logger.info("password reset", user_id=command.user_id)
 
         events = user.collect_events()
 

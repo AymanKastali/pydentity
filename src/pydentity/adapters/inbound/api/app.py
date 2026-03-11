@@ -47,36 +47,58 @@ _log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    await run_migrations()
+    try:
+        await run_migrations()
+    except Exception:
+        _log.exception("failed to run database migrations")
+        raise
+
     container = Container.build()
     app.state.container = container
 
     settings = get_app_settings()
 
-    await seed_roles(
-        uow_factory=get_uow,
-        identity_generator=container.identity_generator,
-    )
+    try:
+        await seed_roles(
+            uow_factory=get_uow,
+            identity_generator=container.identity_generator,
+        )
 
-    await seed_super_admin(
-        uow_factory=get_uow,
-        identity_generator=container.identity_generator,
-        password_hasher=container.password_hasher,
-        password_policy=container.password_policy,
-        super_admin_settings=settings.super_admin,
-    )
+        await seed_super_admin(
+            uow_factory=get_uow,
+            identity_generator=container.identity_generator,
+            password_hasher=container.password_hasher,
+            password_policy=container.password_policy,
+            super_admin_settings=settings.super_admin,
+        )
+    except Exception:
+        _log.exception("failed to seed database")
+        raise
 
     rate_limit_redis: Redis | None = None
     settings = get_app_settings()
     if settings.middleware.rate_limit.enabled:
-        rate_limit_redis = Redis.from_url(
-            settings.redis.url,
-            decode_responses=True,
-        )
-        app.state.rate_limit_store = RedisRateLimitStore(rate_limit_redis)
-        _log.info("rate-limit Redis connection established")
+        try:
+            rate_limit_redis = Redis.from_url(
+                settings.redis.url,
+                decode_responses=True,
+            )
+            app.state.rate_limit_store = RedisRateLimitStore(rate_limit_redis)
+            _log.info("rate-limit Redis connection established")
+        except Exception:
+            _log.exception(
+                "failed to connect to rate-limit Redis — rate limiting disabled",
+            )
+            rate_limit_redis = None
 
-    await container.event_subscriber.start()
+    try:
+        await container.event_subscriber.start()
+    except Exception:
+        _log.warning(
+            "failed to start event subscriber — events will not be processed",
+            exc_info=True,
+        )
+
     try:
         yield
     finally:
@@ -142,7 +164,13 @@ class _LazyRateLimitStore:
     async def is_allowed(
         self, *, key: str, limit: int, window_seconds: int
     ) -> tuple[bool, int, int]:
-        store: RedisRateLimitStore = self._app.state.rate_limit_store
+        store: RedisRateLimitStore | None = getattr(
+            self._app.state,
+            "rate_limit_store",
+            None,
+        )
+        if store is None:
+            return (True, limit, 0)
         return await store.is_allowed(
             key=key,
             limit=limit,

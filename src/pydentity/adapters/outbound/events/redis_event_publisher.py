@@ -40,5 +40,8 @@ class RedisEventPublisher(DomainEventPublisherPort):
 
         for event in events:
             payload = serialize_event(event, context=context)
-            await self._redis.publish(self._channel, payload)
-            _log.debug("published %s to %s", event.name, self._channel)
+            try:
+                await self._redis.publish(self._channel, payload)
+                _log.debug("published %s to %s", event.name, self._channel)
+            except Exception:
+                _log.exception("failed to publish %s to %s", event.name, self._channel)
