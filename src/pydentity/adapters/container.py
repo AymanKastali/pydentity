@@ -22,7 +22,7 @@ from pydentity.adapters.outbound.events.redis_event_subscriber import (
     RedisEventSubscriber,
 )
 from pydentity.adapters.outbound.log_audit_trail import LogAuditTrail
-from pydentity.adapters.outbound.logging.rich_console_logger import RichConsoleLogger
+from pydentity.adapters.outbound.logging.setup import setup_logging
 from pydentity.adapters.outbound.persistence.postgres.audit_trail import (
     PostgresAuditTrail,
 )
@@ -161,7 +161,7 @@ class Container:
         )
 
         return cls(
-            logger=RichConsoleLogger(level=settings.fastapi.log_level),
+            logger=setup_logging(),
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
             token_signer=HmacSha256JwtSigner(secret=sec.jwt_secret),

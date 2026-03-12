@@ -8,18 +8,23 @@
     "--add-host=host.docker.internal:host-gateway",
     "--network=pydentity"
   ],
+  "mounts": [
+    "source=pydentity-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
+  ],
   "containerEnv": {
-    "UV_LINK_MODE": "copy",
-    "VIRTUAL_ENV": "/workspaces/pydentity/.venv"
+    "UV_LINK_MODE": "copy"
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "moby": false
     }
   },
-  "postCreateCommand": "make setup",
+  "postCreateCommand": "sudo chown vscode:vscode .venv && make setup",
   "customizations": {
     "vscode": {
+      "settings": {
+        "python.terminal.useEnvFile": true
+      },
       "extensions": [
         "ms-python.python",
         "ms-python.debugpy",

@@ -7,7 +7,7 @@ services:
       - ../.env
     ports:
       - "8000:8000"
-    command: /app/.venv/bin/python -m pydentity
+    # command: /app/.venv/bin/python -m pydentity
     depends_on:
       postgres:
         condition: service_healthy
