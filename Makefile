@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network docker-up docker-down docker-build docker-logs docker-ps
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network dev infra docker-up docker-down docker-build docker-logs docker-ps
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -67,6 +67,12 @@ env-setup: ## Create .env from .env.example if it does not exist
 
 ensure-network: ## Create the shared pydentity Docker network if it does not exist
 	@docker network create pydentity 2>/dev/null || true
+
+infra: env-setup ensure-network ## Start infrastructure only (postgres, redis, mailhog)
+	$(COMPOSE) up -d postgres redis mailhog
+
+dev: infra ## Start infra + run app locally with hot-reload
+	uv run python -m pydentity
 
 docker-up: env-setup ensure-network ## Start all services (detached)
 	$(COMPOSE) up -d

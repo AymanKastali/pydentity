@@ -19,7 +19,7 @@
       "moby": false
     }
   },
-  "postCreateCommand": "sudo chown vscode:vscode .venv && make setup",
+  "postCreateCommand": "sudo chown -R vscode:vscode .venv && make setup",
   "customizations": {
     "vscode": {
       "settings": {

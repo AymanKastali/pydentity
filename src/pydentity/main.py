@@ -31,6 +31,7 @@ def main() -> None:
         host=settings.host,
         port=settings.port,
         reload=settings.reload,
+        reload_dirs=["src/pydentity"] if settings.reload else [],
         log_level=settings.log_level,
     )
 
