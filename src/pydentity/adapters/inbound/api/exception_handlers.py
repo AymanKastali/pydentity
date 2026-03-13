@@ -40,6 +40,7 @@ from pydentity.domain.exceptions.domain import (
     InvalidCredentialsError,
     InvalidEmailAddressError,
     InvalidPolicyValueError,
+    InvalidTypeError,
     InvalidValueError,
     PasswordPolicyViolationError,
     PasswordReuseError,
@@ -102,6 +103,7 @@ _DOMAIN_STATUS_MAP: dict[type[DomainError], int] = {
     InvalidValueError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     InvalidEmailAddressError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     InvalidPolicyValueError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    InvalidTypeError: status.HTTP_422_UNPROCESSABLE_CONTENT,
 }
 
 _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
@@ -141,6 +143,7 @@ _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
     InvalidValueError: "INVALID_VALUE",
     InvalidEmailAddressError: "INVALID_EMAIL_ADDRESS",
     InvalidPolicyValueError: "INVALID_POLICY_VALUE",
+    InvalidTypeError: "INVALID_TYPE",
 }
 
 _APP_STATUS_MAP: dict[type[ApplicationError], int] = {

@@ -15,6 +15,7 @@ from pydentity.domain.exceptions import (
     SessionRevokedError,
 )
 from pydentity.domain.exceptions.domain import SessionAlreadyRevokedError
+from pydentity.domain.guards import verify_types
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.value_objects import (
@@ -47,6 +48,17 @@ class Session(AggregateRoot[SessionId]):
         expiry: SessionExpiry,
     ) -> None:
         super().__init__()
+        verify_types(
+            session_id=(session_id, SessionId),
+            user_id=(user_id, UserId),
+            device_id=(device_id, DeviceId),
+            refresh_token_hash=(refresh_token_hash, HashedRefreshToken),
+            refresh_token_family=(refresh_token_family, RefreshTokenFamily),
+            status=(status, SessionStatus),
+            created_at=(created_at, SessionCreatedAt),
+            last_refresh=(last_refresh, SessionLastRefresh),
+            expiry=(expiry, SessionExpiry),
+        )
         self._id = session_id
         self._user_id = user_id
         self._device_id = device_id
@@ -169,6 +181,10 @@ class Session(AggregateRoot[SessionId]):
         if self.is_expired(now):
             raise SessionExpiredError()
 
+    def _ensure_not_already_revoked(self) -> None:
+        if self._status == SessionStatus.REVOKED:
+            raise SessionAlreadyRevokedError()
+
     # --- Commands ---
 
     def rotate_refresh_token(
@@ -198,8 +214,7 @@ class Session(AggregateRoot[SessionId]):
         )
 
     def revoke(self) -> None:
-        if self._status == SessionStatus.REVOKED:
-            raise SessionAlreadyRevokedError()
+        self._ensure_not_already_revoked()
 
         self._status = SessionStatus.REVOKED
 
