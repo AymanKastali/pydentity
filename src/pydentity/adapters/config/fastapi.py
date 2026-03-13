@@ -9,8 +9,6 @@ class FastAPISettings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     is_production: bool = True
-    log_level: str = "info"
-    log_format: str = "rich"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

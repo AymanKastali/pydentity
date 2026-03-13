@@ -44,4 +44,9 @@ class RedisEventPublisher(DomainEventPublisherPort):
                 await self._redis.publish(self._channel, payload)
                 _log.debug("published %s to %s", event.name, self._channel)
             except Exception:
-                _log.exception("failed to publish %s to %s", event.name, self._channel)
+                _log.critical(
+                    "LOST EVENT — failed to publish %s to %s. Payload: %s",
+                    event.name,
+                    self._channel,
+                    payload,
+                )

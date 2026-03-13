@@ -6,7 +6,12 @@
   "initializeCommand": "docker network create pydentity 2>/dev/null || true",
   "runArgs": [
     "--add-host=host.docker.internal:host-gateway",
-    "--network=pydentity"
+    "--network=pydentity",
+    "-p",
+    "8000:8000"
+  ],
+  "forwardPorts": [
+    8000
   ],
   "mounts": [
     "source=pydentity-venv,target=${containerWorkspaceFolder}/.venv,type=volume"

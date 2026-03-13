@@ -4,6 +4,7 @@ from pydantic import Field
 
 from pydentity.adapters.config.base import BaseSettings
 from pydentity.adapters.config.fastapi import FastAPISettings  # noqa: TC001
+from pydentity.adapters.config.logging import LoggingSettings  # noqa: TC001
 from pydentity.adapters.config.middleware import MiddlewareSettings  # noqa: TC001
 from pydentity.adapters.config.postgres import PostgresSettings  # noqa: TC001
 from pydentity.adapters.config.redis import RedisSettings  # noqa: TC001
@@ -14,6 +15,7 @@ from pydentity.adapters.config.super_admin import SuperAdminSettings  # noqa: TC
 
 class AppSettings(BaseSettings):
     fastapi: FastAPISettings = Field(default_factory=FastAPISettings)
+    logging: LoggingSettings = Field(default_factory=LoggingSettings)
     postgres: PostgresSettings
     security: SecuritySettings
     smtp: SmtpSettings = Field(default_factory=SmtpSettings)

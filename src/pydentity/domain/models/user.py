@@ -29,7 +29,6 @@ from pydentity.domain.exceptions import (
     EmailAlreadyVerifiedError,
     EmailUnchangedError,
     EmptyValueError,
-    PasswordReuseError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
     VerificationTokenExpiredError,
@@ -60,7 +59,6 @@ if TYPE_CHECKING:
         PasswordResetToken,
         RoleName,
     )
-    from pydentity.domain.ports.password_hasher import PasswordHasherPort
 
 
 class User(AggregateRoot[UserId]):
@@ -116,6 +114,11 @@ class User(AggregateRoot[UserId]):
         )
 
         user._record_event(UserRegistered(user_id=user_id.value, email=email.address))
+
+        if verification_token is not None:
+            user._record_event(
+                VerificationTokenIssued(user_id=user_id.value, email=email.address)
+            )
 
         return user
 
@@ -232,7 +235,7 @@ class User(AggregateRoot[UserId]):
             EmailVerified(user_id=self._id.value, email=self._email.address)
         )
 
-    def request_password_reset(self, token: PasswordResetToken, raw_token: str) -> None:
+    def request_password_reset(self, token: PasswordResetToken) -> None:
         self._ensure_active()
 
         self._credentials = self._credentials.with_reset_requested(token)
@@ -241,48 +244,43 @@ class User(AggregateRoot[UserId]):
             PasswordResetRequested(
                 user_id=self._id.value,
                 email=self._email.address,
-                raw_token=raw_token,
             )
         )
 
     def reset_password(
-        self, new_hash: HashedPassword, token_hash: HashedResetToken, now: datetime
+        self,
+        new_hash: HashedPassword,
+        token_hash: HashedResetToken,
+        now: datetime,
+        *,
+        history_size: int,
     ) -> None:
         self._ensure_active()
         self._credentials = self._credentials.with_password_reset(
-            token_hash, new_hash, now, len(self._credentials.password_history)
+            token_hash, new_hash, now, history_size
         )
         self._login_tracking = self._login_tracking.reset()
         self._record_event(
             PasswordReset(user_id=self._id.value, email=self._email.address)
         )
 
-    def change_password(self, new_hash: HashedPassword) -> None:
+    def change_password(self, new_hash: HashedPassword, *, history_size: int) -> None:
         self._ensure_active()
-        self._credentials = self._credentials.with_new_password(
-            new_hash, len(self._credentials.password_history)
-        )
+        self._credentials = self._credentials.with_new_password(new_hash, history_size)
         self._login_tracking = self._login_tracking.reset()
         self._record_event(
             PasswordChanged(user_id=self._id.value, email=self._email.address)
         )
 
-    async def verify_password(
-        self, plain_password: str, hasher: PasswordHasherPort, now: datetime
-    ) -> bool:
+    def ensure_can_attempt_login(self, now: datetime) -> HashedPassword:
+        """Check preconditions for login and return the stored hash.
+
+        Raises ``AccountNotActiveError`` or ``AccountLockedError`` if the
+        user cannot attempt a login right now.
+        """
         self._ensure_active()
         self._login_tracking.ensure_not_locked(now)
-        return await hasher.verify(plain_password, self._credentials.password_hash)
-
-    async def _check_password_reuse(
-        self,
-        plain_password: str,
-        hasher: PasswordHasherPort,
-        history_size: int,
-    ) -> None:
-        for old_hash in self._credentials.password_history:
-            if await hasher.verify(plain_password, old_hash):
-                raise PasswordReuseError(history_size=history_size)
+        return self._credentials.password_hash
 
     def record_failed_login(self, policy: AccountLockoutPolicy, now: datetime) -> None:
         self._ensure_active()
@@ -380,6 +378,11 @@ class User(AggregateRoot[UserId]):
             )
         )
 
+        if verification_token is not None:
+            self._record_event(
+                VerificationTokenIssued(user_id=self._id.value, email=new_email.address)
+            )
+
     def reissue_verification_token(self, token: EmailVerificationToken) -> None:
         self._ensure_not_deactivated()
 
@@ -389,13 +392,6 @@ class User(AggregateRoot[UserId]):
         self._email_verification = EmailVerification(is_verified=False, token=token)
 
         self._record_event(VerificationTokenReissued(user_id=self._id.value))
-
-    def record_verification_token_issued(self, raw_token: str, email: str) -> None:
-        self._record_event(
-            VerificationTokenIssued(
-                user_id=self._id.value, email=email, raw_token=raw_token
-            )
-        )
 
     def assign_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()

@@ -10,7 +10,6 @@ class SessionEstablished(DomainEvent):
     session_id: str
     user_id: str
     device_id: str
-    email: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,11 +22,9 @@ class RefreshTokenRotated(DomainEvent):
 class RefreshTokenReused(DomainEvent):
     session_id: str
     user_id: str
-    email: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class SessionTerminated(DomainEvent):
     session_id: str
     user_id: str
-    email: str | None = None

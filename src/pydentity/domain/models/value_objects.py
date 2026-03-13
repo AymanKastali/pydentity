@@ -110,6 +110,10 @@ class Permission(ValueObject):
                 reason="must be non-empty and contain ':'",
             )
 
+    @classmethod
+    def from_resource_action(cls, resource: str, action: str) -> Self:
+        return cls(value=f"{resource}:{action}")
+
 
 # --- Auth VOs ---
 
@@ -395,12 +399,12 @@ class LoginTracking(ValueObject):
         ), new_lockout
 
     def after_successful_login(self) -> Self:
-        return type(self)(
-            failed_login_attempts=FailedLoginAttempts(0),
-            lockout_expiry=None,
-        )
+        return self._cleared()
 
     def reset(self) -> Self:
+        return self._cleared()
+
+    def _cleared(self) -> Self:
         return type(self)(
             failed_login_attempts=FailedLoginAttempts(0),
             lockout_expiry=None,
@@ -411,9 +415,16 @@ class LoginTracking(ValueObject):
 class DeviceFingerprint(ValueObject):
     value: str
 
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise EmptyValueError(field_name=self.__class__.__name__)
+
     @classmethod
     def from_raw(cls, raw: str) -> Self:
-        return cls(value=hashlib.sha256(raw.encode()).hexdigest())
+        stripped = raw.strip()
+        if not stripped:
+            raise EmptyValueError(field_name="DeviceFingerprint")
+        return cls(value=hashlib.sha256(stripped.encode()).hexdigest())
 
 
 # --- Policy VOs ---

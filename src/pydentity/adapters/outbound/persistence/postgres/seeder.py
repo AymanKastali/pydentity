@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from pydentity.adapters.config.permissions import PermissionRegistry
-from pydentity.domain.factories.role_factory import RoleFactory
+from pydentity.domain.models.role import Role
 from pydentity.domain.models.value_objects import (
     EmailAddress,
     RoleDescription,
@@ -30,15 +30,13 @@ async def seed_roles(
     *,
     uow_factory: Callable[[], UnitOfWork],
 ) -> None:
-    role_factory = RoleFactory()
-
     async with uow_factory() as uow:
         for name, (description, permissions) in _PREDEFINED_ROLES.items():
             role_name = RoleName(name)
             existing = await uow.roles.find_by_name(role_name)
 
             if existing is None:
-                role = role_factory.create(
+                role = Role.create(
                     name=role_name,
                     description=RoleDescription(description),
                 )

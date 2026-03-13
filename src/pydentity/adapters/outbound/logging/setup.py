@@ -128,10 +128,9 @@ class _ColorHandler(logging.Handler):
 def setup_logging() -> StdlibLoggerAdapter:
     """Bootstrap stdlib logging and return an adapter satisfying ``LoggerPort``."""
     settings = get_app_settings()
-    level = getattr(logging, settings.fastapi.log_level.upper(), logging.INFO)
-    log_format = settings.fastapi.log_format.lower()
+    level = getattr(logging, settings.logging.level.upper(), logging.INFO)
 
-    if log_format == "json":
+    if settings.logging.json_format:
         handler: logging.Handler = _JsonHandler(level)
     else:
         handler = _ColorHandler(level)

@@ -4,14 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from pydentity.domain.exceptions import EmptyValueError, InvalidValueError
-from pydentity.domain.services.permission_collector import collect_permissions
-from pydentity.domain.services.role_name_collector import collect_role_names
+from pydentity.domain.models.role import Role
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from datetime import datetime
 
-    from pydentity.domain.models.role import Role
     from pydentity.domain.models.value_objects import (
         Permission,
         RoleName,
@@ -56,8 +54,8 @@ class AccessTokenClaims:
         roles: Iterable[Role],
     ) -> AccessTokenClaims:
         materialized_roles = tuple(roles)
-        permissions = collect_permissions(materialized_roles)
-        role_names = collect_role_names(materialized_roles)
+        permissions = Role.collect_permissions(materialized_roles)
+        role_names = Role.collect_role_names(materialized_roles)
         return AccessTokenClaims(
             issuer=issuer,
             subject=subject,

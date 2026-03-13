@@ -80,25 +80,6 @@ class SmtpNotification(NotificationPort):
             ),
         )
 
-    async def send_new_device_email(self, *, email: str, device_name: str) -> None:
-        await self._send(
-            to=email,
-            subject="New device logged in",
-            body=(
-                f"A new device ({device_name}) has been used to log in to your account."
-            ),
-        )
-
-    async def send_refresh_token_reuse_alert(self, *, email: str) -> None:
-        await self._send(
-            to=email,
-            subject="Security alert: token reuse detected",
-            body=(
-                "A refresh token reuse was detected on your account. "
-                "All sessions have been revoked. Please log in again."
-            ),
-        )
-
     async def send_password_reset_email(self, *, email: str, raw_token: str) -> None:
         await self._send(
             to=email,

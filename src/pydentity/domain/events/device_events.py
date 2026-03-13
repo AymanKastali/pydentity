@@ -10,7 +10,6 @@ class DeviceRegistered(DomainEvent):
     device_id: str
     user_id: str
     device_name: str
-    email: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +29,6 @@ class DeviceRevoked(DomainEvent):
     device_id: str
     user_id: str
     device_name: str
-    email: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

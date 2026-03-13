@@ -43,7 +43,6 @@ class PasswordChanged(DomainEvent):
 class PasswordResetRequested(DomainEvent):
     user_id: str
     email: str
-    raw_token: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,4 +109,3 @@ class UserActivated(DomainEvent):
 class VerificationTokenIssued(DomainEvent):
     user_id: str
     email: str
-    raw_token: str

@@ -23,16 +23,17 @@ def create_app() -> FastAPI:
 
 def main() -> None:
     """Run the application."""
-    settings = get_app_settings().fastapi
+    app_settings = get_app_settings()
+    fastapi = app_settings.fastapi
     logger.info("[bold green]pydentity[/bold green] is starting")
     uvicorn.run(
         "pydentity.main:create_app",
         factory=True,
-        host=settings.host,
-        port=settings.port,
-        reload=settings.reload,
-        reload_dirs=["src/pydentity"] if settings.reload else [],
-        log_level=settings.log_level,
+        host=fastapi.host,
+        port=fastapi.port,
+        reload=fastapi.reload,
+        reload_dirs=["src/pydentity"] if fastapi.reload else [],
+        log_level=app_settings.logging.level,
     )
 
 

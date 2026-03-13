@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from pydentity.application.dtos.email import ReissueVerificationTokenInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
+    from pydentity.application.ports.notification import NotificationPort
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -27,6 +28,7 @@ class ReissueVerificationToken:
         verification_token_generator: VerificationTokenGeneratorPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        notification: NotificationPort,
         email_verification_policy: EmailVerificationPolicy,
         logger: LoggerPort,
     ) -> None:
@@ -34,6 +36,7 @@ class ReissueVerificationToken:
         self._verification_token_generator = verification_token_generator
         self._clock = clock
         self._event_publisher = event_publisher
+        self._notification = notification
         self._email_verification_policy = email_verification_policy
         self._logger = logger
 
@@ -58,3 +61,7 @@ class ReissueVerificationToken:
 
         events = user.collect_events()
         await self._event_publisher.publish(events)
+
+        await self._notification.send_verification_email(
+            email=user.email.address, raw_token=raw_token
+        )

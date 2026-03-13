@@ -31,8 +31,6 @@ from pydentity.domain.models.value_objects import (
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
 
-    from pydentity.domain.ports.token_hasher import TokenHasherPort
-
 
 class Session(AggregateRoot[SessionId]):
     def __init__(
@@ -68,7 +66,6 @@ class Session(AggregateRoot[SessionId]):
         initial_refresh_token_hash: HashedRefreshToken,
         absolute_lifetime: timedelta,
         created_at: datetime,
-        email: str | None = None,
     ) -> Session:
         if absolute_lifetime.total_seconds() <= 0:
             raise InvalidValueError(
@@ -97,7 +94,6 @@ class Session(AggregateRoot[SessionId]):
                 session_id=session_id.value,
                 user_id=user_id.value,
                 device_id=device_id.value,
-                email=email,
             )
         )
         return session
@@ -177,29 +173,22 @@ class Session(AggregateRoot[SessionId]):
 
     def rotate_refresh_token(
         self,
-        presented_raw_token: str,
-        new_raw_token: str,
-        token_hasher: TokenHasherPort,
+        presented_hash: HashedRefreshToken,
+        new_hash: HashedRefreshToken,
         now: datetime,
-        email: str | None = None,
     ) -> None:
         self._ensure_active(now)
 
-        presented_hash = HashedRefreshToken(
-            value=token_hasher.hash(presented_raw_token)
-        )
         if not self._refresh_token_hash.timing_safe_equals(presented_hash):
             self._status = SessionStatus.REVOKED
             self._record_event(
                 RefreshTokenReused(
                     session_id=self._id.value,
                     user_id=self._user_id.value,
-                    email=email,
                 )
             )
             raise RefreshTokenReuseDetectedError()
 
-        new_hash = HashedRefreshToken(value=token_hasher.hash(new_raw_token))
         self._refresh_token_hash = new_hash
         self._refresh_token_family = self._refresh_token_family.next_generation()
         self._last_refresh = SessionLastRefresh(refreshed_at=now)
@@ -208,7 +197,7 @@ class Session(AggregateRoot[SessionId]):
             RefreshTokenRotated(session_id=self._id.value, user_id=self._user_id.value)
         )
 
-    def revoke(self, *, email: str | None = None) -> None:
+    def revoke(self) -> None:
         if self._status == SessionStatus.REVOKED:
             raise SessionAlreadyRevokedError()
 
@@ -218,7 +207,6 @@ class Session(AggregateRoot[SessionId]):
             SessionTerminated(
                 session_id=self._id.value,
                 user_id=self._user_id.value,
-                email=email,
             )
         )
 

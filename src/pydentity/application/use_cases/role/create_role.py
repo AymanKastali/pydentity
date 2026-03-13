@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from pydentity.application.dtos.role import CreateRoleInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
-    from pydentity.domain.factories.role_factory import RoleFactory
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
@@ -21,12 +20,10 @@ class CreateRole:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
-        role_factory: RoleFactory,
         event_publisher: DomainEventPublisherPort,
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
-        self._role_factory = role_factory
         self._event_publisher = event_publisher
         self._logger = logger
 
@@ -34,7 +31,6 @@ class CreateRole:
         async with self._uow_factory() as uow:
             create_role_service = CreateRoleService(
                 role_repo=uow.roles,
-                role_factory=self._role_factory,
             )
             role = await create_role_service.execute(
                 name=RoleName(value=command.name),

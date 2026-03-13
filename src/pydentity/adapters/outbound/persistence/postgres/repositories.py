@@ -24,7 +24,7 @@ from pydentity.adapters.outbound.persistence.postgres.models import (
     UserModel,
 )
 from pydentity.application.exceptions import PersistenceConsistencyError
-from pydentity.domain.models.enums import DeviceStatus, SessionStatus
+from pydentity.domain.models.enums import SessionStatus
 
 # Ports
 from pydentity.domain.ports.repositories import (
@@ -68,6 +68,13 @@ class PostgresUserRepository(UserRepositoryPort):
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         return model_to_user(model) if model else None
+
+    async def check_email_exists(self, email: EmailAddress) -> bool:
+        stmt = select(
+            select(UserModel).where(col(UserModel.email) == email.address).exists()
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
 
     async def find_by_email(self, email: EmailAddress) -> User | None:
         stmt = (
@@ -138,6 +145,13 @@ class PostgresRoleRepository(RoleRepositoryPort):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_role(model) if model else None
 
+    async def check_name_exists(self, name: RoleName) -> bool:
+        stmt = select(
+            select(RoleModel).where(col(RoleModel.name) == name.value).exists()
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
+
     async def find_by_names(self, names: frozenset[RoleName]) -> list[Role]:
         stmt = select(RoleModel).where(
             col(RoleModel.name).in_([r.value for r in names])
@@ -191,26 +205,31 @@ class PostgresDeviceRepository(DeviceRepositoryPort):
 
         await self._session.flush()
 
-    async def get_by_id(self, device_id: DeviceId) -> Device | None:
+    async def find_by_id(self, device_id: DeviceId) -> Device | None:
         stmt = select(DeviceModel).where(col(DeviceModel.domain_id) == device_id.value)
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_device(model) if model else None
 
-    async def get_all_for_user(self, user_id: UserId) -> list[Device]:
+    async def find_all_for_user(self, user_id: UserId) -> list[Device]:
         stmt = select(DeviceModel).where(
             col(DeviceModel.user_domain_id) == user_id.value
         )
         result = await self._session.execute(stmt)
         return [model_to_device(m) for m in result.scalars().all()]
 
-    async def revoke_all_for_user(self, user_id: UserId) -> None:
-        stmt = select(DeviceModel).where(
-            col(DeviceModel.user_domain_id) == user_id.value
+    async def check_fingerprint_exists(
+        self, user_id: UserId, fingerprint: DeviceFingerprint
+    ) -> bool:
+        stmt = select(
+            select(DeviceModel)
+            .where(
+                col(DeviceModel.user_domain_id) == user_id.value,
+                col(DeviceModel.fingerprint) == fingerprint.value,
+            )
+            .exists()
         )
         result = await self._session.execute(stmt)
-        for m in result.scalars().all():
-            m.status = DeviceStatus.REVOKED.value
-        await self._session.flush()
+        return result.scalar_one()
 
     async def find_by_fingerprint(
         self, user_id: UserId, fingerprint: DeviceFingerprint
@@ -274,7 +293,7 @@ class PostgresSessionRepository(SessionRepositoryPort):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_session(model) if model else None
 
-    async def get_active_by_device(self, device_id: DeviceId) -> Session | None:
+    async def find_active_by_device(self, device_id: DeviceId) -> Session | None:
         stmt = select(SessionModel).where(
             col(SessionModel.device_domain_id) == device_id.value,
             col(SessionModel.status) == SessionStatus.ACTIVE.value,
