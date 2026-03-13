@@ -12,13 +12,12 @@ from pydentity.domain.exceptions import (
     PermissionAlreadyGrantedError,
     PermissionNotGrantedError,
 )
+from pydentity.domain.guards import verify_types
 from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.value_objects import RoleName
+from pydentity.domain.models.value_objects import Permission, RoleDescription, RoleName
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-    from pydentity.domain.models.value_objects import Permission, RoleDescription
 
 
 class Role(AggregateRoot[RoleName]):
@@ -30,6 +29,11 @@ class Role(AggregateRoot[RoleName]):
         permissions: set[Permission],
     ) -> None:
         super().__init__()
+        verify_types(
+            name=(name, RoleName),
+            description=(description, RoleDescription),
+            permissions=(permissions, set),
+        )
         self._id = name
         self._description = description
         self._permissions = set(permissions)
@@ -81,13 +85,24 @@ class Role(AggregateRoot[RoleName]):
     def permissions(self) -> frozenset[Permission]:
         return frozenset(self._permissions)
 
-    # --- Commands ---
+    # --- Helpers ---
 
-    def add_permission(self, permission: Permission) -> None:
+    def _ensure_permission_not_granted(self, permission: Permission) -> None:
         if permission in self._permissions:
             raise PermissionAlreadyGrantedError(
                 permission=permission, role_name=self._id.value
             )
+
+    def _ensure_permission_granted(self, permission: Permission) -> None:
+        if permission not in self._permissions:
+            raise PermissionNotGrantedError(
+                permission=permission, role_name=self._id.value
+            )
+
+    # --- Commands ---
+
+    def add_permission(self, permission: Permission) -> None:
+        self._ensure_permission_not_granted(permission)
 
         self._permissions.add(permission)
 
@@ -99,10 +114,7 @@ class Role(AggregateRoot[RoleName]):
         )
 
     def remove_permission(self, permission: Permission) -> None:
-        if permission not in self._permissions:
-            raise PermissionNotGrantedError(
-                permission=permission, role_name=self._id.value
-            )
+        self._ensure_permission_granted(permission)
 
         self._permissions.discard(permission)
 
@@ -133,12 +145,12 @@ class Role(AggregateRoot[RoleName]):
     def grants(self, permission: Permission) -> bool:
         return permission in self._permissions
 
-    # --- Static helpers ---
+    # --- Class helpers ---
 
-    @staticmethod
-    def collect_permissions(roles: Iterable[Role]) -> frozenset[Permission]:
+    @classmethod
+    def collect_permissions(cls, roles: Iterable[Role]) -> frozenset[Permission]:
         return frozenset(perm for role in roles for perm in role.permissions)
 
-    @staticmethod
-    def collect_role_names(roles: Iterable[Role]) -> frozenset[RoleName]:
+    @classmethod
+    def collect_role_names(cls, roles: Iterable[Role]) -> frozenset[RoleName]:
         return frozenset(role.name for role in roles)

@@ -363,6 +363,21 @@ class InvalidEmailAddressError(DomainError):
 # --- Policy validation exceptions ---
 
 
+class InvalidTypeError(DomainError):
+    """Raised when a value passed to a domain constructor
+    is not of the expected type.
+    """
+
+    def __init__(
+        self,
+        *,
+        field_name: str,
+        expected: str,
+        actual: str,
+    ) -> None:
+        super().__init__(f"{field_name}: expected {expected}, got {actual}")
+
+
 class InvalidPolicyValueError(DomainError):
     """Raised when a policy value object receives a value
     that violates its configuration constraints.

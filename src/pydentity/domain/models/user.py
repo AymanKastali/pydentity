@@ -35,13 +35,16 @@ from pydentity.domain.exceptions import (
     VerificationTokenInvalidError,
     VerificationTokenNotIssuedError,
 )
+from pydentity.domain.guards import verify_types
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import UserStatus
 from pydentity.domain.models.value_objects import (
     Credentials,
+    EmailAddress,
     EmailVerification,
     FailedLoginAttempts,
     LoginTracking,
+    RoleName,
     UserId,
 )
 
@@ -50,14 +53,12 @@ if TYPE_CHECKING:
 
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
-        EmailAddress,
         EmailVerificationToken,
         HashedPassword,
         HashedResetToken,
         HashedVerificationToken,
         LockoutExpiry,
         PasswordResetToken,
-        RoleName,
     )
 
 
@@ -74,6 +75,15 @@ class User(AggregateRoot[UserId]):
         role_names: set[RoleName],
     ) -> None:
         super().__init__()
+        verify_types(
+            user_id=(user_id, UserId),
+            email=(email, EmailAddress),
+            status=(status, UserStatus),
+            email_verification=(email_verification, EmailVerification),
+            credentials=(credentials, Credentials),
+            login_tracking=(login_tracking, LoginTracking),
+            role_names=(role_names, set),
+        )
         self._id = user_id
         self._email = email
         self._status = status
@@ -211,19 +221,50 @@ class User(AggregateRoot[UserId]):
         if self._status == UserStatus.DEACTIVATED:
             raise AccountDeactivatedError()
 
-    # --- Commands ---
+    def _ensure_not_already_active(self) -> None:
+        if self._status == UserStatus.ACTIVE:
+            raise AccountAlreadyActiveError()
 
-    def verify_email(self, token_hash: HashedVerificationToken, now: datetime) -> None:
-        self._ensure_not_deactivated()
+    def _ensure_not_already_deactivated(self) -> None:
+        if self._status == UserStatus.DEACTIVATED:
+            raise AccountAlreadyDeactivatedError()
 
+    def _ensure_email_not_verified(self) -> None:
         if self._email_verification.is_verified:
             raise EmailAlreadyVerifiedError()
+
+    def _ensure_verification_token_issued(self) -> None:
         if self._email_verification.token is None:
             raise VerificationTokenNotIssuedError()
+
+    def _ensure_verification_token_valid(
+        self, token_hash: HashedVerificationToken, now: datetime
+    ) -> None:
+        assert self._email_verification.token is not None
         if self._email_verification.token.is_expired(now):
             raise VerificationTokenExpiredError()
         if not self._email_verification.token.matches(token_hash):
             raise VerificationTokenInvalidError()
+
+    def _ensure_email_changed(self, new_email: EmailAddress) -> None:
+        if new_email == self._email:
+            raise EmailUnchangedError()
+
+    def _ensure_role_not_assigned(self, role_name: RoleName) -> None:
+        if role_name in self._role_names:
+            raise RoleAlreadyAssignedError(role_name=role_name, user_id=self._id)
+
+    def _ensure_role_assigned(self, role_name: RoleName) -> None:
+        if role_name not in self._role_names:
+            raise RoleNotAssignedError(role_name=role_name, user_id=self._id)
+
+    # --- Commands ---
+
+    def verify_email(self, token_hash: HashedVerificationToken, now: datetime) -> None:
+        self._ensure_not_deactivated()
+        self._ensure_email_not_verified()
+        self._ensure_verification_token_issued()
+        self._ensure_verification_token_valid(token_hash, now)
 
         self._email_verification = EmailVerification(is_verified=True, token=None)
 
@@ -334,18 +375,15 @@ class User(AggregateRoot[UserId]):
         )
 
     def reactivate(self) -> None:
-        if self._status == UserStatus.DEACTIVATED:
-            raise AccountDeactivatedError()
-        if self._status == UserStatus.ACTIVE:
-            raise AccountAlreadyActiveError()
+        self._ensure_not_deactivated()
+        self._ensure_not_already_active()
 
         self._status = UserStatus.ACTIVE
 
         self._record_event(UserReactivated(user_id=self._id.value))
 
     def deactivate(self) -> None:
-        if self._status == UserStatus.DEACTIVATED:
-            raise AccountAlreadyDeactivatedError()
+        self._ensure_not_already_deactivated()
 
         self._status = UserStatus.DEACTIVATED
 
@@ -359,9 +397,7 @@ class User(AggregateRoot[UserId]):
         verification_token: EmailVerificationToken | None = None,
     ) -> None:
         self._ensure_active()
-
-        if new_email == self._email:
-            raise EmailUnchangedError()
+        self._ensure_email_changed(new_email)
 
         old_email = self._email
         self._email = new_email
@@ -385,9 +421,7 @@ class User(AggregateRoot[UserId]):
 
     def reissue_verification_token(self, token: EmailVerificationToken) -> None:
         self._ensure_not_deactivated()
-
-        if self._email_verification.is_verified:
-            raise EmailAlreadyVerifiedError()
+        self._ensure_email_not_verified()
 
         self._email_verification = EmailVerification(is_verified=False, token=token)
 
@@ -395,9 +429,7 @@ class User(AggregateRoot[UserId]):
 
     def assign_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()
-
-        if role_name in self._role_names:
-            raise RoleAlreadyAssignedError(role_name=role_name, user_id=self._id)
+        self._ensure_role_not_assigned(role_name)
 
         self._role_names.add(role_name)
 
@@ -410,9 +442,7 @@ class User(AggregateRoot[UserId]):
 
     def revoke_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()
-
-        if role_name not in self._role_names:
-            raise RoleNotAssignedError(role_name=role_name, user_id=self._id)
+        self._ensure_role_assigned(role_name)
 
         self._role_names.discard(role_name)
 

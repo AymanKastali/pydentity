@@ -16,6 +16,7 @@ from pydentity.domain.exceptions.domain import (
     DeviceOwnershipError,
     DeviceRevokedError,
 )
+from pydentity.domain.guards import verify_types
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import DeviceStatus
 from pydentity.domain.models.value_objects import (
@@ -44,6 +45,16 @@ class Device(AggregateRoot[DeviceId]):
         last_active: DeviceLastActive,
     ) -> None:
         super().__init__()
+        verify_types(
+            device_id=(device_id, DeviceId),
+            user_id=(user_id, UserId),
+            name=(name, DeviceName),
+            fingerprint=(fingerprint, DeviceFingerprint),
+            platform=(platform, str),
+            status=(status, DeviceStatus),
+            is_trusted=(is_trusted, bool),
+            last_active=(last_active, DeviceLastActive),
+        )
         self._id = device_id
         self._user_id = user_id
         self._name = name
@@ -155,6 +166,22 @@ class Device(AggregateRoot[DeviceId]):
         if self._status == DeviceStatus.REVOKED:
             raise DeviceRevokedError()
 
+    def _ensure_not_already_trusted(self) -> None:
+        if self._is_trusted:
+            raise DeviceAlreadyTrustedError()
+
+    def _ensure_not_already_untrusted(self) -> None:
+        if not self._is_trusted:
+            raise DeviceAlreadyUntrustedError()
+
+    def _ensure_not_already_revoked(self) -> None:
+        if self._status == DeviceStatus.REVOKED:
+            raise DeviceAlreadyRevokedError()
+
+    def _ensure_owned_by(self, user_id: UserId) -> None:
+        if self._user_id != user_id:
+            raise DeviceOwnershipError()
+
     # ------------------------------------------------------------------
     # Commands
     # ------------------------------------------------------------------
@@ -173,9 +200,7 @@ class Device(AggregateRoot[DeviceId]):
 
     def trust(self) -> None:
         self._ensure_active()
-
-        if self._is_trusted:
-            raise DeviceAlreadyTrustedError()
+        self._ensure_not_already_trusted()
 
         self._is_trusted = True
 
@@ -188,9 +213,7 @@ class Device(AggregateRoot[DeviceId]):
 
     def untrust(self) -> None:
         self._ensure_active()
-
-        if not self._is_trusted:
-            raise DeviceAlreadyUntrustedError()
+        self._ensure_not_already_untrusted()
 
         self._is_trusted = False
 
@@ -202,8 +225,7 @@ class Device(AggregateRoot[DeviceId]):
         )
 
     def revoke(self) -> None:
-        if self._status == DeviceStatus.REVOKED:
-            raise DeviceAlreadyRevokedError()
+        self._ensure_not_already_revoked()
 
         self._status = DeviceStatus.REVOKED
         self._is_trusted = False
@@ -217,7 +239,5 @@ class Device(AggregateRoot[DeviceId]):
         )
 
     def ensure_accessible_by(self, user_id: UserId) -> None:
-        if self._user_id != user_id:
-            raise DeviceOwnershipError()
-        if not self.is_active:
-            raise DeviceRevokedError()
+        self._ensure_owned_by(user_id)
+        self._ensure_active()
