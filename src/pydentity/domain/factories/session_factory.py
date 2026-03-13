@@ -31,7 +31,6 @@ class SessionFactory:
         raw_refresh_token: str,
         absolute_lifetime: timedelta,
         created_at: datetime,
-        email: str | None = None,
     ) -> Session:
         session_id = self._identity_generator.new_session_id()
         initial_hash = HashedRefreshToken(
@@ -44,5 +43,4 @@ class SessionFactory:
             initial_refresh_token_hash=initial_hash,
             absolute_lifetime=absolute_lifetime,
             created_at=created_at,
-            email=email,
         )

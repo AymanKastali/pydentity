@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.token_signer import TokenSignerPort
-    from pydentity.domain.factories.device_factory import DeviceFactory
     from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
@@ -35,7 +34,6 @@ class AuthenticateUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         password_hasher: PasswordHasherPort,
-        device_factory: DeviceFactory,
         session_factory: SessionFactory,
         raw_token_generator: RawTokenGeneratorPort,
         token_signer: TokenSignerPort,
@@ -49,7 +47,6 @@ class AuthenticateUser:
     ) -> None:
         self._uow_factory = uow_factory
         self._password_hasher = password_hasher
-        self._device_factory = device_factory
         self._session_factory = session_factory
         self._raw_token_generator = raw_token_generator
         self._token_signer = token_signer
@@ -68,10 +65,7 @@ class AuthenticateUser:
         self._logger.info("auth attempt", email=email.address)
 
         async with self._uow_factory() as uow:
-            register_device = RegisterDevice(
-                device_repo=uow.devices,
-                device_factory=self._device_factory,
-            )
+            register_device = RegisterDevice(device_repo=uow.devices)
 
             # ------------------------------------------------------------------
             # 1. Authenticate user
@@ -83,8 +77,9 @@ class AuthenticateUser:
                 )
                 raise InvalidCredentialsError()
 
-            password_valid = await user.verify_password(
-                command.password, self._password_hasher, now
+            stored_hash = user.ensure_can_attempt_login(now)
+            password_valid = await self._password_hasher.verify(
+                command.password, stored_hash
             )
 
             if not password_valid:
@@ -102,7 +97,7 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             # 2. Resolve device — reuse existing, register if first time
             # ------------------------------------------------------------------
-            device = await uow.devices.get_by_id(DeviceId(value=command.device_id))
+            device = await uow.devices.find_by_id(DeviceId(value=command.device_id))
 
             if device is None:
                 device = await register_device.execute(
@@ -112,7 +107,6 @@ class AuthenticateUser:
                     raw_fingerprint=command.raw_fingerprint,
                     platform=command.platform,
                     now=now,
-                    email=user.email.address,
                 )
             else:
                 try:
@@ -125,9 +119,9 @@ class AuthenticateUser:
             # ------------------------------------------------------------------
             # 3. Establish session — revokes existing, creates new
             # ------------------------------------------------------------------
-            existing_session = await uow.sessions.get_active_by_device(device.id)
+            existing_session = await uow.sessions.find_active_by_device(device.id)
             if existing_session is not None:
-                existing_session.revoke(email=user.email.address)
+                existing_session.revoke()
 
             raw_refresh = self._raw_token_generator.generate()
             session = self._session_factory.create(
@@ -136,7 +130,6 @@ class AuthenticateUser:
                 raw_refresh_token=raw_refresh,
                 absolute_lifetime=self._token_lifetime_policy.session_absolute_ttl,
                 created_at=now,
-                email=user.email.address,
             )
 
             # ------------------------------------------------------------------

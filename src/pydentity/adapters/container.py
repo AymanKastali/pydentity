@@ -22,7 +22,7 @@ from pydentity.adapters.outbound.events.redis_event_subscriber import (
     RedisEventSubscriber,
 )
 from pydentity.adapters.outbound.log_audit_trail import LogAuditTrail
-from pydentity.adapters.outbound.logging.rich_console_logger import RichConsoleLogger
+from pydentity.adapters.outbound.logging.setup import setup_logging
 from pydentity.adapters.outbound.persistence.postgres.audit_trail import (
     PostgresAuditTrail,
 )
@@ -77,8 +77,6 @@ from pydentity.application.use_cases.role.remove_permission_from_role import (
 from pydentity.application.use_cases.role.revoke_role_from_user import (
     RevokeRoleFromUser,
 )
-from pydentity.domain.factories.device_factory import DeviceFactory
-from pydentity.domain.factories.role_factory import RoleFactory
 from pydentity.domain.factories.session_factory import SessionFactory
 from pydentity.domain.factories.user_factory import UserFactory
 from pydentity.domain.services.change_user_password import ChangeUserPassword
@@ -161,7 +159,7 @@ class Container:
         )
 
         return cls(
-            logger=RichConsoleLogger(level=settings.fastapi.log_level),
+            logger=setup_logging(),
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
             token_signer=HmacSha256JwtSigner(secret=sec.jwt_secret),
@@ -208,6 +206,7 @@ def get_register_user(
         email_verification_policy=c.email_verification_policy,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        notification=c.notification,
         default_role_name=PermissionRegistry.DEFAULT_ROLE_NAME,
         logger=c.logger,
     )
@@ -216,7 +215,6 @@ def get_register_user(
 def get_authenticate_user(
     c: Annotated[Container, Depends(get_container)],
 ) -> AuthenticateUser:
-    device_factory = DeviceFactory()
     session_factory = SessionFactory(
         token_hasher=c.token_hasher,
         identity_generator=c.identity_generator,
@@ -224,7 +222,6 @@ def get_authenticate_user(
     return AuthenticateUser(
         uow_factory=get_uow,
         password_hasher=c.password_hasher,
-        device_factory=device_factory,
         session_factory=session_factory,
         raw_token_generator=c.raw_token_generator,
         token_signer=c.token_signer,
@@ -276,6 +273,7 @@ def get_change_email(
         verification_token_generator=c.verification_token_generator,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        notification=c.notification,
         email_verification_policy=c.email_verification_policy,
         logger=c.logger,
     )
@@ -334,6 +332,7 @@ def get_reissue_verification_token(
         verification_token_generator=c.verification_token_generator,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        notification=c.notification,
         email_verification_policy=c.email_verification_policy,
         logger=c.logger,
     )
@@ -350,6 +349,7 @@ def get_request_password_reset(
         reset_token_generator=c.reset_token_generator,
         clock=c.clock,
         event_publisher=c.event_publisher,
+        notification=c.notification,
         reset_token_ttl=c.reset_token_ttl,
         logger=c.logger,
     )
@@ -393,10 +393,8 @@ def get_change_password(
 def get_create_role(
     c: Annotated[Container, Depends(get_container)],
 ) -> CreateRole:
-    role_factory = RoleFactory()
     return CreateRole(
         uow_factory=get_uow,
-        role_factory=role_factory,
         event_publisher=c.event_publisher,
         logger=c.logger,
     )

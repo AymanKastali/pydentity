@@ -23,15 +23,8 @@ class ChangeUserEmail:
         user: User,
         new_email: EmailAddress,
         verification_token: EmailVerificationToken | None = None,
-        raw_token: str | None = None,
     ) -> None:
-        existing = await self._repo.find_by_email(new_email)
-        if existing is not None:
+        if await self._repo.check_email_exists(new_email):
             raise EmailAlreadyTakenError()
 
         user.change_email(new_email, verification_token)
-
-        if verification_token is not None and raw_token is not None:
-            user.record_verification_token_issued(
-                raw_token=raw_token, email=new_email.address
-            )

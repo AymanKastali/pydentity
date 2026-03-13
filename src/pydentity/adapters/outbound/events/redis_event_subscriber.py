@@ -18,25 +18,17 @@ from pydentity.adapters.outbound.events.serialization import deserialize_event
 from pydentity.application.audit.registry import EXCLUDED_EVENTS, extract_audit_fields
 from pydentity.application.event_handlers.handlers import (
     OnAccountLocked,
-    OnDeviceRegistered,
     OnPasswordChanged,
-    OnPasswordResetRequested,
-    OnRefreshTokenReused,
     OnUserDeactivated,
     OnUserRegistered,
     OnUserSuspended,
-    OnVerificationTokenIssued,
 )
-from pydentity.domain.events.device_events import DeviceRegistered
-from pydentity.domain.events.session_events import RefreshTokenReused
 from pydentity.domain.events.user_events import (
     AccountLocked,
     PasswordChanged,
-    PasswordResetRequested,
     UserDeactivated,
     UserRegistered,
     UserSuspended,
-    VerificationTokenIssued,
 )
 
 if TYPE_CHECKING:
@@ -82,6 +74,25 @@ class RedisEventSubscriber:
             _log.info("unsubscribed from %s", self._channel)
 
     async def _listen(self) -> None:
+        backoff = 1.0
+        max_backoff = 60.0
+
+        while True:
+            try:
+                await self._listen_once()
+                backoff = 1.0
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                _log.exception(
+                    "subscriber connection lost on %s — reconnecting in %.0fs",
+                    self._channel,
+                    backoff,
+                )
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, max_backoff)
+
+    async def _listen_once(self) -> None:
         pubsub = self._redis.pubsub()
         await pubsub.subscribe(self._channel)
 
@@ -143,12 +154,8 @@ class RedisEventSubscriber:
 
         return {
             UserRegistered: [OnUserRegistered(notification=n)],
-            VerificationTokenIssued: [OnVerificationTokenIssued(notification=n)],
             AccountLocked: [OnAccountLocked(notification=n)],
-            PasswordResetRequested: [OnPasswordResetRequested(notification=n)],
             PasswordChanged: [OnPasswordChanged(notification=n)],
             UserSuspended: [OnUserSuspended(notification=n)],
             UserDeactivated: [OnUserDeactivated(notification=n)],
-            RefreshTokenReused: [OnRefreshTokenReused(notification=n)],
-            DeviceRegistered: [OnDeviceRegistered(notification=n)],
         }

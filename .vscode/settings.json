@@ -35,6 +35,7 @@
     "onupdate",
     "pgdata",
     "pydentity",
+    "redoc",
     "selectinload",
     "sessionmaker"
   ]

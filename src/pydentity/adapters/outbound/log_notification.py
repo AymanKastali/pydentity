@@ -30,12 +30,6 @@ class LogNotification(NotificationPort):
     async def send_password_changed_email(self, *, email: str) -> None:
         _log.info("send_password_changed_email to=%s", email)
 
-    async def send_new_device_email(self, *, email: str, device_name: str) -> None:
-        _log.info("send_new_device_email to=%s device=%s", email, device_name)
-
-    async def send_refresh_token_reuse_alert(self, *, email: str) -> None:
-        _log.info("send_refresh_token_reuse_alert to=%s", email)
-
     async def send_password_reset_email(self, *, email: str, raw_token: str) -> None:
         _log.info("send_password_reset_email to=%s token=%s", email, _redact(raw_token))
 

@@ -58,7 +58,7 @@ class Device(AggregateRoot[DeviceId]):
     # ------------------------------------------------------------------
 
     @classmethod
-    def register(
+    def create(
         cls,
         device_id: DeviceId,
         user_id: UserId,
@@ -67,7 +67,6 @@ class Device(AggregateRoot[DeviceId]):
         platform: str,
         now: datetime,
         trusted: bool = False,
-        email: str | None = None,
     ) -> Device:
         device = cls(
             device_id=device_id,
@@ -85,7 +84,6 @@ class Device(AggregateRoot[DeviceId]):
                 device_id=device_id.value,
                 user_id=user_id.value,
                 device_name=name.value,
-                email=email,
             )
         )
         return device
@@ -162,8 +160,7 @@ class Device(AggregateRoot[DeviceId]):
     # ------------------------------------------------------------------
 
     def mark_active(self, now: datetime) -> None:
-        if self._status == DeviceStatus.REVOKED:
-            return
+        self._ensure_active()
 
         self._last_active = self._last_active.bump(now)
 
@@ -204,7 +201,7 @@ class Device(AggregateRoot[DeviceId]):
             )
         )
 
-    def revoke(self, *, email: str | None = None) -> None:
+    def revoke(self) -> None:
         if self._status == DeviceStatus.REVOKED:
             raise DeviceAlreadyRevokedError()
 
@@ -216,7 +213,6 @@ class Device(AggregateRoot[DeviceId]):
                 device_id=self._id.value,
                 user_id=self._user_id.value,
                 device_name=self._name.value,
-                email=email,
             )
         )
 

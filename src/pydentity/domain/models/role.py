@@ -13,10 +13,12 @@ from pydentity.domain.exceptions import (
     PermissionNotGrantedError,
 )
 from pydentity.domain.models.base import AggregateRoot
-from pydentity.domain.models.value_objects import RoleDescription, RoleName
+from pydentity.domain.models.value_objects import RoleName
 
 if TYPE_CHECKING:
-    from pydentity.domain.models.value_objects import Permission
+    from collections.abc import Iterable
+
+    from pydentity.domain.models.value_objects import Permission, RoleDescription
 
 
 class Role(AggregateRoot[RoleName]):
@@ -130,3 +132,13 @@ class Role(AggregateRoot[RoleName]):
 
     def grants(self, permission: Permission) -> bool:
         return permission in self._permissions
+
+    # --- Static helpers ---
+
+    @staticmethod
+    def collect_permissions(roles: Iterable[Role]) -> frozenset[Permission]:
+        return frozenset(perm for role in roles for perm in role.permissions)
+
+    @staticmethod
+    def collect_role_names(roles: Iterable[Role]) -> frozenset[RoleName]:
+        return frozenset(role.name for role in roles)

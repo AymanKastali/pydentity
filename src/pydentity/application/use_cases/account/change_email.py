@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from pydentity.application.dtos.account import ChangeEmailInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
+    from pydentity.application.ports.notification import NotificationPort
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -28,6 +29,7 @@ class ChangeEmail:
         verification_token_generator: VerificationTokenGeneratorPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        notification: NotificationPort,
         email_verification_policy: EmailVerificationPolicy,
         logger: LoggerPort,
     ) -> None:
@@ -35,6 +37,7 @@ class ChangeEmail:
         self._verification_token_generator = verification_token_generator
         self._clock = clock
         self._event_publisher = event_publisher
+        self._notification = notification
         self._email_verification_policy = email_verification_policy
         self._logger = logger
 
@@ -57,7 +60,6 @@ class ChangeEmail:
                 user=user,
                 new_email=new_email,
                 verification_token=verification_token,
-                raw_token=raw_token,
             )
 
             await uow.users.upsert(user)
@@ -67,3 +69,7 @@ class ChangeEmail:
 
         events = user.collect_events()
         await self._event_publisher.publish(events)
+
+        await self._notification.send_verification_email(
+            email=command.new_email, raw_token=raw_token
+        )

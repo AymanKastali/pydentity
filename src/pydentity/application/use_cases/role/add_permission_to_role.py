@@ -33,7 +33,7 @@ class AddPermissionToRole:
                 raise RoleNotFoundError(role_name=command.role_name)
 
             role.add_permission(
-                Permission(value=f"{command.resource}:{command.action}")
+                Permission.from_resource_action(command.resource, command.action)
             )
 
             await uow.roles.upsert(role)

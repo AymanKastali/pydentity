@@ -39,4 +39,6 @@ class ResetUserPassword:
                 )
 
         new_hash = await self._password_hasher.hash(new_password)
-        user.reset_password(new_hash, token_hash, now)
+        user.reset_password(
+            new_hash, token_hash, now, history_size=self._password_policy.history_size
+        )

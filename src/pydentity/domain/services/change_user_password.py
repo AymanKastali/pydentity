@@ -39,4 +39,4 @@ class ChangeUserPassword:
                 )
 
         new_hash = await self._password_hasher.hash(new_password)
-        user.change_password(new_hash)
+        user.change_password(new_hash, history_size=self._password_policy.history_size)

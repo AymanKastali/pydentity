@@ -6,7 +6,7 @@ from pydentity.application.dtos.auth import RefreshAccessTokenOutput
 from pydentity.application.exceptions import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import AccountNotActiveError
-from pydentity.domain.models.value_objects import SessionId
+from pydentity.domain.models.value_objects import HashedRefreshToken, SessionId
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -86,7 +86,7 @@ class RefreshAccessToken:
             # ------------------------------------------------------------------
             # 3. Validate device is still active
             # ------------------------------------------------------------------
-            device = await uow.devices.get_by_id(session.device_id)
+            device = await uow.devices.find_by_id(session.device_id)
             if device is None or not device.is_active:
                 if session.is_active:
                     session.revoke()
@@ -100,12 +100,16 @@ class RefreshAccessToken:
             # 4. Rotate refresh token
             # ------------------------------------------------------------------
             new_raw_refresh = self._raw_token_generator.generate()
+            presented_hash = HashedRefreshToken(
+                value=self._token_hasher.hash(command.refresh_token)
+            )
+            new_hash = HashedRefreshToken(
+                value=self._token_hasher.hash(new_raw_refresh)
+            )
             session.rotate_refresh_token(
-                command.refresh_token,
-                new_raw_refresh,
-                self._token_hasher,
+                presented_hash,
+                new_hash,
                 now,
-                email=user.email.address,
             )
 
             # ------------------------------------------------------------------

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pydentity.application.dtos.auth import RegisterUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
+    from pydentity.application.ports.notification import NotificationPort
     from pydentity.domain.factories.user_factory import UserFactory
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
@@ -32,6 +33,7 @@ class RegisterUser:
         email_verification_policy: EmailVerificationPolicy,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
+        notification: NotificationPort,
         default_role_name: str | None = None,
         logger: LoggerPort | None = None,  # optional: tests don't pass one
     ) -> None:
@@ -41,6 +43,7 @@ class RegisterUser:
         self._email_verification_policy = email_verification_policy
         self._clock = clock
         self._event_publisher = event_publisher
+        self._notification = notification
         self._default_role_name = default_role_name
         self._logger = logger
 
@@ -66,7 +69,6 @@ class RegisterUser:
                     email=email,
                     plain_password=command.password,
                     verification_token=verification_token,
-                    raw_token=raw_token,
                 )
             except EmailAlreadyTakenError:
                 return RegisterUserOutput(email=email.address)
@@ -87,5 +89,10 @@ class RegisterUser:
         events = user.collect_events()
 
         await self._event_publisher.publish(events)
+
+        if raw_token is not None:
+            await self._notification.send_verification_email(
+                email=email.address, raw_token=raw_token
+            )
 
         return RegisterUserOutput(email=email.address)

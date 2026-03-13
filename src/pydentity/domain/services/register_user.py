@@ -30,21 +30,12 @@ class RegisterUser:
         email: EmailAddress,
         plain_password: str,
         verification_token: EmailVerificationToken | None = None,
-        raw_token: str | None = None,
     ) -> User:
-        existing = await self._repo.find_by_email(email)
-        if existing:
+        if await self._repo.check_email_exists(email):
             raise EmailAlreadyTakenError()
 
-        user = await self._factory.create(
+        return await self._factory.create(
             email=email,
             plain_password=plain_password,
             verification_token=verification_token,
         )
-
-        if verification_token is not None and raw_token is not None:
-            user.record_verification_token_issued(
-                raw_token=raw_token, email=email.address
-            )
-
-        return user

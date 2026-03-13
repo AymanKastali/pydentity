@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,7 +13,7 @@ class TrustedHostSettings(BaseSettings):
 class CorsSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PYDENTITY_MIDDLEWARE__CORS__")
 
-    allowed_origins: list[str] = Field(default=["*"])
+    allowed_origins: list[str] = Field(default=["http://localhost:3000"])
     allowed_methods: list[str] = Field(default=["*"])
     allowed_headers: list[str] = Field(
         default=[
@@ -26,6 +26,16 @@ class CorsSettings(BaseSettings):
     )
     allow_credentials: bool = True
     max_age: int = 600
+
+    @model_validator(mode="after")
+    def _reject_wildcard_with_credentials(self) -> CorsSettings:
+        if self.allow_credentials and "*" in self.allowed_origins:
+            msg = (
+                "CORS: allow_credentials=True cannot be combined with "
+                "allowed_origins=['*']. Specify explicit origins instead."
+            )
+            raise ValueError(msg)
+        return self
 
 
 class SecurityHeadersSettings(BaseSettings):
@@ -56,6 +66,8 @@ class RateLimitSettings(BaseSettings):
             "/auth/register",
             "/password/reset-request",
             "/password/reset",
+            "/email/verify",
+            "/email/resend-verification",
         ],
     )
 

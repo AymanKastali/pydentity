@@ -33,22 +33,18 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
-        user_agent = request.headers.get("user-agent", "-")
-        host = request.headers.get("host", "-")
+        record: dict[str, object] = {
+            "method": request.method,
+            "path": path,
+            "status": response.status_code,
+            "duration_ms": duration_ms,
+            "host": request.headers.get("host", "-"),
+            "user_agent": request.headers.get("user-agent", "-"),
+            "res_size": response.headers.get("content-length", "-"),
+        }
         query = str(request.url.query)
-        res_size = response.headers.get("content-length", "-")
-
-        parts = (
-            f"method={request.method}"
-            f" path={path}"
-            f" status={response.status_code}"
-            f" duration_ms={duration_ms:.2f}"
-            f" host={host}"
-            f" user_agent={user_agent}"
-            f" res_size={res_size}"
-        )
         if query:
-            parts += f" query={query}"
+            record["query"] = query
 
-        _log.info(parts)
+        _log.info("request completed", extra={"context": record})
         return response

@@ -33,7 +33,7 @@ class RemovePermissionFromRole:
                 raise RoleNotFoundError(role_name=command.role_name)
 
             role.remove_permission(
-                Permission(value=f"{command.resource}:{command.action}")
+                Permission.from_resource_action(command.resource, command.action)
             )
 
             await uow.roles.upsert(role)

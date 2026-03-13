@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from pydentity.adapters.config.middleware import SecurityHeadersSettings
 
 
+_DOCS_PATHS = frozenset({"/docs", "/redoc", "/openapi.json"})
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: object, settings: SecurityHeadersSettings) -> None:
         super().__init__(app)  # type: ignore[arg-type]
@@ -29,6 +32,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         response = await call_next(request)
-        for name, value in self._headers.items():
-            response.headers[name] = value
+        if request.url.path not in _DOCS_PATHS:
+            for name, value in self._headers.items():
+                response.headers[name] = value
         return response

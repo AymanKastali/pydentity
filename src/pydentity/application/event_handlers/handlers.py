@@ -6,16 +6,12 @@ from pydentity.application.event_handlers.base import EventHandler
 
 if TYPE_CHECKING:
     from pydentity.application.ports.notification import NotificationPort
-    from pydentity.domain.events.device_events import DeviceRegistered
-    from pydentity.domain.events.session_events import RefreshTokenReused
     from pydentity.domain.events.user_events import (
         AccountLocked,
         PasswordChanged,
-        PasswordResetRequested,
         UserDeactivated,
         UserRegistered,
         UserSuspended,
-        VerificationTokenIssued,
     )
 
 
@@ -56,28 +52,6 @@ class OnPasswordChanged(EventHandler["PasswordChanged"]):
         await self._notification.send_password_changed_email(email=event.email)
 
 
-class OnVerificationTokenIssued(EventHandler["VerificationTokenIssued"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: VerificationTokenIssued) -> None:
-        await self._notification.send_verification_email(
-            email=event.email,
-            raw_token=event.raw_token,
-        )
-
-
-class OnPasswordResetRequested(EventHandler["PasswordResetRequested"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: PasswordResetRequested) -> None:
-        await self._notification.send_password_reset_email(
-            email=event.email,
-            raw_token=event.raw_token,
-        )
-
-
 # ---------------------------------------------------------------------------
 # UserSuspended
 # ---------------------------------------------------------------------------
@@ -106,36 +80,4 @@ class OnUserDeactivated(EventHandler["UserDeactivated"]):
     async def handle(self, event: UserDeactivated) -> None:
         await self._notification.send_account_deactivated_email(
             email=event.email,
-        )
-
-
-# ---------------------------------------------------------------------------
-# RefreshTokenReused
-# ---------------------------------------------------------------------------
-
-
-class OnRefreshTokenReused(EventHandler["RefreshTokenReused"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: RefreshTokenReused) -> None:
-        if event.email is None:
-            return
-        await self._notification.send_refresh_token_reuse_alert(email=event.email)
-
-
-# ---------------------------------------------------------------------------
-# DeviceRegistered
-# ---------------------------------------------------------------------------
-
-
-class OnDeviceRegistered(EventHandler["DeviceRegistered"]):
-    def __init__(self, notification: NotificationPort) -> None:
-        self._notification = notification
-
-    async def handle(self, event: DeviceRegistered) -> None:
-        if event.email is None:
-            return
-        await self._notification.send_new_device_email(
-            email=event.email, device_name=event.device_name
         )
