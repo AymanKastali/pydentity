@@ -5,6 +5,7 @@ from pydantic import SecretStr, field_validator  # noqa: TC002
 from pydentity.adapters.config.base import BaseSettings
 from pydentity.domain.models.value_objects import (
     AccountLockoutPolicy,
+    DevicePolicy,
     EmailVerificationPolicy,
     PasswordPolicy,
     TokenLifetimePolicy,
@@ -44,6 +45,8 @@ class SecuritySettings(BaseSettings):
 
     reset_token_ttl_hours: int = 1
 
+    max_devices_per_user: int = 3
+
     @property
     def password_policy(self) -> PasswordPolicy:
         return PasswordPolicy(
@@ -76,6 +79,10 @@ class SecuritySettings(BaseSettings):
             required_on_registration=self.email_verification_required,
             token_ttl=timedelta(hours=self.email_verification_ttl_hours),
         )
+
+    @property
+    def device_policy(self) -> DevicePolicy:
+        return DevicePolicy(max_devices_per_user=self.max_devices_per_user)
 
     @property
     def reset_token_ttl(self) -> timedelta:

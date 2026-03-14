@@ -24,6 +24,10 @@ class RegisterUser:
         self._repo = user_repo
         self._factory = user_factory
 
+    async def _ensure_email_available(self, email: EmailAddress) -> None:
+        if await self._repo.check_email_exists(email):
+            raise EmailAlreadyTakenError()
+
     async def execute(
         self,
         *,
@@ -31,8 +35,7 @@ class RegisterUser:
         plain_password: str,
         verification_token: EmailVerificationToken | None = None,
     ) -> User:
-        if await self._repo.check_email_exists(email):
-            raise EmailAlreadyTakenError()
+        await self._ensure_email_available(email)
 
         return await self._factory.create(
             email=email,

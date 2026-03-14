@@ -27,14 +27,25 @@ class AssignRoleToUser:
         self._logger = logger
 
     async def execute(self, command: AssignRoleToUserInput) -> None:
+        self._logger.debug(
+            "assigning role", role_name=command.role_name, user_id=command.user_id
+        )
+
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "role assignment failed — user not found", user_id=command.user_id
+                )
                 raise UserNotFoundError(user_id=command.user_id)
 
-            role_name = RoleName(value=command.role_name)
+            role_name = RoleName.create(command.role_name)
             role = await uow.roles.find_by_name(role_name)
             if role is None:
+                self._logger.warning(
+                    "role assignment failed — role not found",
+                    role_name=command.role_name,
+                )
                 raise RoleNotFoundError(role_name=command.role_name)
 
             user.assign_role(role.name)

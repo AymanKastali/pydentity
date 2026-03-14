@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydentity.domain.events.device_events import (
     DeviceLastActiveBumped,
+    DeviceMetadataUpdated,
     DeviceRegistered,
     DeviceRevoked,
     DeviceTrusted,
@@ -13,7 +14,6 @@ from pydentity.domain.exceptions.domain import (
     DeviceAlreadyRevokedError,
     DeviceAlreadyTrustedError,
     DeviceAlreadyUntrustedError,
-    DeviceOwnershipError,
     DeviceRevokedError,
 )
 from pydentity.domain.guards import verify_types
@@ -178,10 +178,6 @@ class Device(AggregateRoot[DeviceId]):
         if self._status == DeviceStatus.REVOKED:
             raise DeviceAlreadyRevokedError()
 
-    def _ensure_owned_by(self, user_id: UserId) -> None:
-        if self._user_id != user_id:
-            raise DeviceOwnershipError()
-
     # ------------------------------------------------------------------
     # Commands
     # ------------------------------------------------------------------
@@ -238,6 +234,19 @@ class Device(AggregateRoot[DeviceId]):
             )
         )
 
-    def ensure_accessible_by(self, user_id: UserId) -> None:
-        self._ensure_owned_by(user_id)
+    def update_metadata(self, *, name: DeviceName, platform: str) -> None:
         self._ensure_active()
+
+        changed = self._name != name or self._platform != platform
+        if not changed:
+            return
+
+        self._name = name
+        self._platform = platform
+
+        self._record_event(
+            DeviceMetadataUpdated(
+                device_id=self._id.value,
+                user_id=self._user_id.value,
+            )
+        )

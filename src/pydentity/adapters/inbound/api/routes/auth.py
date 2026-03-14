@@ -42,16 +42,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @dataclass(frozen=True, slots=True)
 class DeviceHeaders:
-    device_id: str
     device_name: str
     raw_fingerprint: str
     platform: str
 
 
 def get_device_headers(
-    device_id: Annotated[
-        str, Header(alias="X-Device-Id", min_length=1, max_length=255)
-    ],
     device_name: Annotated[
         str, Header(alias="X-Device-Name", min_length=1, max_length=255)
     ],
@@ -63,7 +59,6 @@ def get_device_headers(
     ],
 ) -> DeviceHeaders:
     return DeviceHeaders(
-        device_id=device_id,
         device_name=device_name,
         raw_fingerprint=raw_fingerprint,
         platform=platform,
@@ -91,7 +86,6 @@ async def login(
         AuthenticateUserInput(
             email=body.email,
             password=body.password,
-            device_id=device.device_id,
             device_name=device.device_name,
             raw_fingerprint=device.raw_fingerprint,
             platform=device.platform,
@@ -114,10 +108,7 @@ async def refresh(
     use_case: RefreshAccessToken = Depends(get_refresh_access_token),
 ) -> ApiResponse[RefreshResponse]:
     result = await use_case.execute(
-        RefreshAccessTokenInput(
-            refresh_token=body.refresh_token,
-            session_id=body.session_id,
-        )
+        RefreshAccessTokenInput(refresh_token=body.refresh_token)
     )
     return ApiResponse(
         data=RefreshResponse(

@@ -19,9 +19,9 @@ class CorsSettings(BaseSettings):
         default=[
             "Authorization",
             "Content-Type",
-            "X-Device-Id",
             "X-Device-Name",
-            "X-Device-Type",
+            "X-Device-Fingerprint",
+            "X-Device-Platform",
         ],
     )
     allow_credentials: bool = True

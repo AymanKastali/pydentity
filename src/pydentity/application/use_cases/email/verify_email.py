@@ -3,6 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import InvalidTokenError
+from pydentity.domain.exceptions import (
+    VerificationTokenExpiredError,
+    VerificationTokenInvalidError,
+    VerificationTokenNotIssuedError,
+)
 from pydentity.domain.models.value_objects import HashedVerificationToken
 
 if TYPE_CHECKING:
@@ -33,6 +38,8 @@ class VerifyEmail:
         self._logger = logger
 
     async def execute(self, command: VerifyEmailInput) -> None:
+        self._logger.debug("verifying email")
+
         now = self._clock.now()
         token_hash = HashedVerificationToken(
             value=self._token_hasher.hash(command.token)
@@ -41,14 +48,26 @@ class VerifyEmail:
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_verification_token_hash(token_hash)
             if user is None:
+                self._logger.warning("email verification failed — invalid token")
                 raise InvalidTokenError()
 
-            user.verify_email(token_hash, now)
+            try:
+                user.verify_email(token_hash, now)
+            except (
+                VerificationTokenExpiredError,
+                VerificationTokenInvalidError,
+                VerificationTokenNotIssuedError,
+            ):
+                self._logger.warning(
+                    "email verification failed — token expired or invalid",
+                    user_id=user.id.value,
+                )
+                raise InvalidTokenError() from None
 
             await uow.users.upsert(user)
             await uow.commit()
 
-        self._logger.info("email verified")
+        self._logger.info("email verified", user_id=user.id.value)
 
         events = user.collect_events()
         await self._event_publisher.publish(events)

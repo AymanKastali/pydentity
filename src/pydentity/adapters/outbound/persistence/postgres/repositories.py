@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         DeviceFingerprint,
         DeviceId,
         EmailAddress,
+        HashedRefreshToken,
         HashedVerificationToken,
         RoleName,
         SessionId,
@@ -289,6 +290,16 @@ class PostgresSessionRepository(SessionRepositoryPort):
     async def find_by_id(self, session_id: SessionId) -> Session | None:
         stmt = select(SessionModel).where(
             col(SessionModel.domain_id) == session_id.value
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return model_to_session(model) if model else None
+
+    async def find_by_refresh_token_hash(
+        self, token_hash: HashedRefreshToken
+    ) -> Session | None:
+        stmt = select(SessionModel).where(
+            col(SessionModel.refresh_token_hash) == token_hash.value,
+            col(SessionModel.status) == SessionStatus.ACTIVE.value,
         )
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         return model_to_session(model) if model else None

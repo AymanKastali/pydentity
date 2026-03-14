@@ -5,8 +5,12 @@ from typing import TYPE_CHECKING
 from pydentity.application.dtos.auth import AuthenticateUserOutput
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import InvalidCredentialsError
-from pydentity.domain.exceptions.domain import DeviceOwnershipError, DeviceRevokedError
-from pydentity.domain.models.value_objects import DeviceId, DeviceName, EmailAddress
+from pydentity.domain.exceptions.domain import DeviceLimitExceededError
+from pydentity.domain.models.value_objects import (
+    DeviceFingerprint,
+    DeviceName,
+    EmailAddress,
+)
 from pydentity.domain.services.register_device import RegisterDevice
 
 if TYPE_CHECKING:
@@ -19,6 +23,7 @@ if TYPE_CHECKING:
     from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
+        DevicePolicy,
         TokenLifetimePolicy,
     )
     from pydentity.domain.ports.clock import ClockPort
@@ -42,6 +47,7 @@ class AuthenticateUser:
         event_publisher: DomainEventPublisherPort,
         lockout_policy: AccountLockoutPolicy,
         token_lifetime_policy: TokenLifetimePolicy,
+        device_policy: DevicePolicy,
         token_issuer: str,
         logger: LoggerPort,
     ) -> None:
@@ -55,6 +61,7 @@ class AuthenticateUser:
         self._event_publisher = event_publisher
         self._lockout_policy = lockout_policy
         self._token_lifetime_policy = token_lifetime_policy
+        self._device_policy = device_policy
         self._token_issuer = token_issuer
         self._logger = logger
 
@@ -65,8 +72,6 @@ class AuthenticateUser:
         self._logger.info("auth attempt", email=email.address)
 
         async with self._uow_factory() as uow:
-            register_device = RegisterDevice(device_repo=uow.devices)
-
             # ------------------------------------------------------------------
             # 1. Authenticate user
             # ------------------------------------------------------------------
@@ -95,26 +100,43 @@ class AuthenticateUser:
             user.record_successful_login(now)
 
             # ------------------------------------------------------------------
-            # 2. Resolve device — reuse existing, register if first time
+            # 2. Resolve device by fingerprint (user-scoped)
             # ------------------------------------------------------------------
-            device = await uow.devices.find_by_id(DeviceId(value=command.device_id))
+            register_device = RegisterDevice(
+                device_repo=uow.devices,
+                device_policy=self._device_policy,
+                identity_generator=self._identity_generator,
+            )
+            fingerprint = DeviceFingerprint.from_raw(command.raw_fingerprint)
+            device_name = DeviceName.create(command.device_name)
+            device = await uow.devices.find_by_fingerprint(user.id, fingerprint)
 
-            if device is None:
-                device = await register_device.execute(
-                    device_id=DeviceId(value=command.device_id),
-                    user_id=user.id,
-                    name=DeviceName(value=command.device_name),
-                    raw_fingerprint=command.raw_fingerprint,
-                    platform=command.platform,
-                    now=now,
-                )
+            if device is not None:
+                if not device.is_active:
+                    self._logger.warning(
+                        "login on revoked device",
+                        user_id=user.id.value,
+                        fingerprint=fingerprint.value,
+                    )
+                    raise InvalidCredentialsError()
+                device.update_metadata(name=device_name, platform=command.platform)
+                device.mark_active(now)
             else:
                 try:
-                    device.ensure_accessible_by(user.id)
-                except (DeviceOwnershipError, DeviceRevokedError) as e:
+                    device = await register_device.execute(
+                        user_id=user.id,
+                        name=device_name,
+                        fingerprint=fingerprint,
+                        platform=command.platform,
+                        now=now,
+                    )
+                except DeviceLimitExceededError as e:
+                    self._logger.warning(
+                        "device limit exceeded",
+                        user_id=user.id.value,
+                        email=email.address,
+                    )
                     raise InvalidCredentialsError() from e
-
-                device.mark_active(now)
 
             # ------------------------------------------------------------------
             # 3. Establish session — revokes existing, creates new

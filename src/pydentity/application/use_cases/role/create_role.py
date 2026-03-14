@@ -28,13 +28,15 @@ class CreateRole:
         self._logger = logger
 
     async def execute(self, command: CreateRoleInput) -> CreateRoleOutput:
+        self._logger.debug("creating role", role_name=command.name)
+
         async with self._uow_factory() as uow:
             create_role_service = CreateRoleService(
                 role_repo=uow.roles,
             )
             role = await create_role_service.execute(
-                name=RoleName(value=command.name),
-                description=RoleDescription(value=command.description),
+                name=RoleName.create(command.name),
+                description=RoleDescription.create(command.description),
             )
 
             await uow.roles.upsert(role)

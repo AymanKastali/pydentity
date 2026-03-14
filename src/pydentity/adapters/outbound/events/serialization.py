@@ -15,6 +15,7 @@ from datetime import datetime
 from pydentity.domain.events.base import DomainEvent  # noqa: TC001
 from pydentity.domain.events.device_events import (
     DeviceLastActiveBumped,
+    DeviceMetadataUpdated,
     DeviceRegistered,
     DeviceRevoked,
     DeviceTrusted,
@@ -77,6 +78,7 @@ _EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
     "DeviceUntrusted": DeviceUntrusted,
     "DeviceRevoked": DeviceRevoked,
     "DeviceLastActiveBumped": DeviceLastActiveBumped,
+    "DeviceMetadataUpdated": DeviceMetadataUpdated,
     # Session events
     "SessionEstablished": SessionEstablished,
     "RefreshTokenRotated": RefreshTokenRotated,

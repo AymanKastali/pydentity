@@ -258,6 +258,12 @@ class User(AggregateRoot[UserId]):
         if role_name not in self._role_names:
             raise RoleNotAssignedError(role_name=role_name, user_id=self._id)
 
+    def _ensure_reason_not_empty(self, reason: str) -> str:
+        stripped = reason.strip()
+        if not stripped:
+            raise EmptyValueError(field_name="reason")
+        return stripped
+
     # --- Commands ---
 
     def verify_email(self, token_hash: HashedVerificationToken, now: datetime) -> None:
@@ -351,7 +357,6 @@ class User(AggregateRoot[UserId]):
 
     def record_successful_login(self, now: datetime) -> None:
         self._ensure_active()
-        self._login_tracking.ensure_not_locked(now)
 
         self._login_tracking = self._login_tracking.after_successful_login()
 
@@ -359,10 +364,7 @@ class User(AggregateRoot[UserId]):
 
     def suspend(self, reason: str) -> None:
         self._ensure_active()
-
-        stripped_reason = reason.strip()
-        if not stripped_reason:
-            raise EmptyValueError(field_name="reason")
+        stripped_reason = self._ensure_reason_not_empty(reason)
 
         self._status = UserStatus.SUSPENDED
 

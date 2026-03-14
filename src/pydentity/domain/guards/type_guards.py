@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import types
-from typing import Any, Union, get_args, get_origin
+from typing import Any, get_args, get_origin
 
 from pydentity.domain.exceptions import InvalidTypeError
 
@@ -28,10 +28,6 @@ def _check(value: Any, expected: type | types.UnionType) -> bool:
         return any(_check(value, arg) for arg in get_args(expected))
 
     origin = get_origin(expected)
-
-    # typing.Union (fallback)
-    if origin is Union:
-        return any(_check(value, arg) for arg in get_args(expected))
 
     # set[X], frozenset[X], list[X]
     if origin in (set, frozenset, list):

@@ -2,42 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
-from pydentity.domain.models.value_objects import UserId
+from pydentity.application.use_cases.account._base import SingleUserCommand
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from pydentity.application.dtos.account import ReactivateUserInput
-    from pydentity.application.ports.event_publisher import DomainEventPublisherPort
-    from pydentity.application.ports.logger import LoggerPort
-    from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
-class ReactivateUser:
-    def __init__(
-        self,
-        *,
-        uow_factory: Callable[[], UnitOfWork],
-        event_publisher: DomainEventPublisherPort,
-        logger: LoggerPort,
-    ) -> None:
-        self._uow_factory = uow_factory
-        self._event_publisher = event_publisher
-        self._logger = logger
-
+class ReactivateUser(SingleUserCommand):
     async def execute(self, command: ReactivateUserInput) -> None:
-        async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
-            if user is None:
-                raise UserNotFoundError(user_id=command.user_id)
-
-            user.reactivate()
-
-            await uow.users.upsert(user)
-            await uow.commit()
-
-        self._logger.info("user reactivated", user_id=command.user_id)
-
-        events = user.collect_events()
-        await self._event_publisher.publish(events)
+        await self._execute_on_user(
+            user_id=command.user_id,
+            action=lambda user: user.reactivate(),
+            log_message="user reactivated",
+        )

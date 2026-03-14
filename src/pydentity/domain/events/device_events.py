@@ -35,3 +35,9 @@ class DeviceRevoked(DomainEvent):
 class DeviceLastActiveBumped(DomainEvent):
     device_id: str
     user_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceMetadataUpdated(DomainEvent):
+    device_id: str
+    user_id: str

@@ -27,9 +27,14 @@ class LogoutUser:
         self._logger = logger
 
     async def execute(self, command: LogoutUserInput) -> None:
+        self._logger.debug("logging out", session_id=command.session_id)
+
         async with self._uow_factory() as uow:
             session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
             if session is None:
+                self._logger.warning(
+                    "logout failed — session not found", session_id=command.session_id
+                )
                 raise InvalidTokenError()
 
             if session.is_active:

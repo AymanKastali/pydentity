@@ -75,7 +75,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         raise
 
     rate_limit_redis: Redis | None = None
-    settings = get_app_settings()
     if settings.middleware.rate_limit.enabled:
         try:
             rate_limit_redis = Redis.from_url(
