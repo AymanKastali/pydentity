@@ -35,8 +35,8 @@ class CreateRole:
                 role_repo=uow.roles,
             )
             role = await create_role_service.execute(
-                name=RoleName(value=command.name),
-                description=RoleDescription(value=command.description),
+                name=RoleName.create(command.name),
+                description=RoleDescription.create(command.description),
             )
 
             await uow.roles.upsert(role)

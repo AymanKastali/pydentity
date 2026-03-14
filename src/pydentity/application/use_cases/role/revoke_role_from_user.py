@@ -39,7 +39,7 @@ class RevokeRoleFromUser:
                 )
                 raise UserNotFoundError(user_id=command.user_id)
 
-            user.revoke_role(RoleName(value=command.role_name))
+            user.revoke_role(RoleName.create(command.role_name))
 
             await uow.users.upsert(user)
             await uow.commit()

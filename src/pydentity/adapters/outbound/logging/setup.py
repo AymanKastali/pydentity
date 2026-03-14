@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
+
+from rich.console import Console
+from rich.pretty import pretty_repr
+from rich.traceback import Traceback
 
 from pydentity import __app_name__, __version__
 from pydentity.adapters.config.app import get_app_settings
@@ -25,8 +31,6 @@ class _RequestContextFilter(logging.Filter):
 
 def _build_log_entry(record: logging.LogRecord) -> dict[str, object]:
     """Build the canonical JSON log structure from a LogRecord."""
-    from datetime import UTC, datetime
-
     context: dict[str, object] = getattr(record, "context", {})
     entry: dict[str, object] = {
         "logger": __app_name__,
@@ -54,8 +58,6 @@ class _JsonHandler(logging.Handler):
         try:
             entry = _build_log_entry(record)
             line = json.dumps(entry, default=str)
-            import sys
-
             sys.stderr.write(line + "\n")
             sys.stderr.flush()
         except Exception:
@@ -76,14 +78,10 @@ class _ColorHandler(logging.Handler):
 
     def __init__(self, level: int = logging.NOTSET) -> None:
         super().__init__(level)
-        from rich.console import Console
-
         self._console = Console(stderr=True, force_terminal=True)
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            from datetime import datetime
-
             ts = datetime.fromtimestamp(record.created).strftime("%X")
             lvl = record.levelname
             style = _LEVEL_STYLES.get(lvl, "")
@@ -106,8 +104,6 @@ class _ColorHandler(logging.Handler):
 
             context: dict[str, object] = getattr(record, "context", {})
             if context:
-                from rich.pretty import pretty_repr
-
                 parts.append(pretty_repr(context, expand_all=True))
 
             parts.append(f"[dim]{source}[/]")
@@ -117,8 +113,6 @@ class _ColorHandler(logging.Handler):
             )
 
             if record.exc_info and record.exc_info[1] is not None:
-                from rich.traceback import Traceback
-
                 tb = Traceback.from_exception(*record.exc_info, show_locals=True)
                 self._console.print(tb)
         except Exception:

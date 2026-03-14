@@ -39,7 +39,7 @@ class AssignRoleToUser:
                 )
                 raise UserNotFoundError(user_id=command.user_id)
 
-            role_name = RoleName(value=command.role_name)
+            role_name = RoleName.create(command.role_name)
             role = await uow.roles.find_by_name(role_name)
             if role is None:
                 self._logger.warning(

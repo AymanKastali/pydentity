@@ -108,7 +108,7 @@ class AuthenticateUser:
                 identity_generator=self._identity_generator,
             )
             fingerprint = DeviceFingerprint.from_raw(command.raw_fingerprint)
-            device_name = DeviceName(value=command.device_name)
+            device_name = DeviceName.create(command.device_name)
             device = await uow.devices.find_by_fingerprint(user.id, fingerprint)
 
             if device is not None:
@@ -126,7 +126,7 @@ class AuthenticateUser:
                     device = await register_device.execute(
                         user_id=user.id,
                         name=device_name,
-                        raw_fingerprint=command.raw_fingerprint,
+                        fingerprint=fingerprint,
                         platform=command.platform,
                         now=now,
                     )

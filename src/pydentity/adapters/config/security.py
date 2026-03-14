@@ -45,7 +45,7 @@ class SecuritySettings(BaseSettings):
 
     reset_token_ttl_hours: int = 1
 
-    max_devices_per_user: int = 1
+    max_devices_per_user: int = 3
 
     @property
     def password_policy(self) -> PasswordPolicy:

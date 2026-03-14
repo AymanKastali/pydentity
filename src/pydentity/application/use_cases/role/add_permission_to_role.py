@@ -35,7 +35,7 @@ class AddPermissionToRole:
         )
 
         async with self._uow_factory() as uow:
-            role = await uow.roles.find_by_name(RoleName(value=command.role_name))
+            role = await uow.roles.find_by_name(RoleName.create(command.role_name))
             if role is None:
                 self._logger.warning(
                     "permission add failed — role not found",

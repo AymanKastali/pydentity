@@ -79,11 +79,7 @@ class Session(AggregateRoot[SessionId]):
         absolute_lifetime: timedelta,
         created_at: datetime,
     ) -> Session:
-        if absolute_lifetime.total_seconds() <= 0:
-            raise InvalidValueError(
-                field_name="absolute_lifetime",
-                reason="must be positive",
-            )
+        cls._ensure_positive_lifetime(absolute_lifetime)
 
         session = cls(
             session_id=session_id,
@@ -184,6 +180,14 @@ class Session(AggregateRoot[SessionId]):
     def _ensure_not_already_revoked(self) -> None:
         if self._status == SessionStatus.REVOKED:
             raise SessionAlreadyRevokedError()
+
+    @classmethod
+    def _ensure_positive_lifetime(cls, absolute_lifetime: timedelta) -> None:
+        if absolute_lifetime.total_seconds() <= 0:
+            raise InvalidValueError(
+                field_name="absolute_lifetime",
+                reason="must be positive",
+            )
 
     # --- Commands ---
 

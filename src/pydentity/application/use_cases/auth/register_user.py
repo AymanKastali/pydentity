@@ -34,8 +34,8 @@ class RegisterUser:
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
         notification: NotificationPort,
-        default_role_name: str | None = None,
         logger: LoggerPort,
+        default_role_name: str | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._user_factory = user_factory
@@ -73,6 +73,8 @@ class RegisterUser:
                     verification_token=verification_token,
                 )
             except EmailAlreadyTakenError:
+                # Intentional: identical output prevents email
+                # enumeration (client can't tell success from conflict).
                 self._logger.debug(
                     "registration skipped — email already taken", email=email.address
                 )
@@ -80,7 +82,7 @@ class RegisterUser:
 
             if self._default_role_name is not None:
                 default_role = await uow.roles.find_by_name(
-                    RoleName(self._default_role_name)
+                    RoleName.create(self._default_role_name)
                 )
                 if default_role is not None:
                     user.assign_role(default_role.name)

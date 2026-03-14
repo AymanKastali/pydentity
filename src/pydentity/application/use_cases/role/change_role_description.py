@@ -30,7 +30,7 @@ class ChangeRoleDescription:
         self._logger.debug("changing role description", role_name=command.role_name)
 
         async with self._uow_factory() as uow:
-            role = await uow.roles.find_by_name(RoleName(value=command.role_name))
+            role = await uow.roles.find_by_name(RoleName.create(command.role_name))
             if role is None:
                 self._logger.warning(
                     "role description change failed — role not found",
@@ -38,7 +38,7 @@ class ChangeRoleDescription:
                 )
                 raise RoleNotFoundError(role_name=command.role_name)
 
-            role.change_description(RoleDescription(value=command.new_description))
+            role.change_description(RoleDescription.create(command.new_description))
 
             await uow.roles.upsert(role)
             await uow.commit()
