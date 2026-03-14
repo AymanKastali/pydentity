@@ -42,19 +42,26 @@ class ChangeEmail:
         self._logger = logger
 
     async def execute(self, command: ChangeEmailInput) -> None:
+        self._logger.debug(
+            "changing email", user_id=command.user_id, new_email=command.new_email
+        )
+
         new_email = EmailAddress.from_string(command.new_email)
         now = self._clock.now()
-
-        raw_token, verification_token = self._verification_token_generator.generate(
-            self._email_verification_policy.token_ttl, now
-        )
 
         async with self._uow_factory() as uow:
             change_user_email = ChangeUserEmail(user_repo=uow.users)
 
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "email change failed — user not found", user_id=command.user_id
+                )
                 raise UserNotFoundError(user_id=command.user_id)
+
+            raw_token, verification_token = self._verification_token_generator.generate(
+                self._email_verification_policy.token_ttl, now
+            )
 
             await change_user_email.execute(
                 user=user,

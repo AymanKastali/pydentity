@@ -27,9 +27,20 @@ class AddPermissionToRole:
         self._logger = logger
 
     async def execute(self, command: AddPermissionToRoleInput) -> None:
+        self._logger.debug(
+            "adding permission to role",
+            role_name=command.role_name,
+            resource=command.resource,
+            action=command.action,
+        )
+
         async with self._uow_factory() as uow:
             role = await uow.roles.find_by_name(RoleName(value=command.role_name))
             if role is None:
+                self._logger.warning(
+                    "permission add failed — role not found",
+                    role_name=command.role_name,
+                )
                 raise RoleNotFoundError(role_name=command.role_name)
 
             role.add_permission(

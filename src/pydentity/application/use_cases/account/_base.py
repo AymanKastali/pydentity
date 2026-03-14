@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import InvalidTokenError
-from pydentity.domain.models.value_objects import SessionId
+from pydentity.application.exceptions import UserNotFoundError
+from pydentity.domain.models.value_objects import UserId
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pydentity.application.dtos.auth import LogoutUserInput
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
+    from pydentity.domain.models.user import User
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
 
-class LogoutUser:
+class SingleUserCommand:
     def __init__(
         self,
         *,
@@ -26,24 +26,28 @@ class LogoutUser:
         self._event_publisher = event_publisher
         self._logger = logger
 
-    async def execute(self, command: LogoutUserInput) -> None:
-        self._logger.debug("logging out", session_id=command.session_id)
+    async def _execute_on_user(
+        self,
+        user_id: str,
+        action: Callable[[User], None],
+        log_message: str,
+    ) -> None:
+        self._logger.debug("executing user command", user_id=user_id)
 
         async with self._uow_factory() as uow:
-            session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
-            if session is None:
+            user = await uow.users.find_by_id(UserId(value=user_id))
+            if user is None:
                 self._logger.warning(
-                    "logout failed — session not found", session_id=command.session_id
+                    "user command failed — user not found", user_id=user_id
                 )
-                raise InvalidTokenError()
+                raise UserNotFoundError(user_id=user_id)
 
-            if session.is_active:
-                session.revoke()
+            action(user)
 
-            await uow.sessions.upsert(session)
+            await uow.users.upsert(user)
             await uow.commit()
 
-        self._logger.info("session revoked", session_id=command.session_id)
+        self._logger.info(log_message, user_id=user_id)
 
-        events = session.collect_events()
+        events = user.collect_events()
         await self._event_publisher.publish(events)

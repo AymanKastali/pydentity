@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import InvalidTokenError, UserNotFoundError
+from pydentity.domain.exceptions import (
+    ResetTokenExpiredError,
+    ResetTokenInvalidError,
+    ResetTokenNotIssuedError,
+)
 from pydentity.domain.models.value_objects import HashedResetToken, UserId
 
 if TYPE_CHECKING:
@@ -36,21 +41,36 @@ class ResetPassword:
         self._logger = logger
 
     async def execute(self, command: ResetPasswordInput) -> None:
+        self._logger.debug("resetting password", user_id=command.user_id)
+
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "password reset failed — user not found", user_id=command.user_id
+                )
                 raise UserNotFoundError(user_id=command.user_id)
 
             token_hash = HashedResetToken(value=self._token_hasher.hash(command.token))
 
-            await self._reset_user_password.execute(
-                user=user,
-                token_hash=token_hash,
-                new_password=command.new_password,
-                now=now,
-            )
+            try:
+                await self._reset_user_password.execute(
+                    user=user,
+                    token_hash=token_hash,
+                    new_password=command.new_password,
+                    now=now,
+                )
+            except (
+                ResetTokenExpiredError,
+                ResetTokenInvalidError,
+                ResetTokenNotIssuedError,
+            ):
+                self._logger.warning(
+                    "password reset failed — invalid token", user_id=command.user_id
+                )
+                raise InvalidTokenError() from None
 
             await uow.users.upsert(user)
             await uow.commit()

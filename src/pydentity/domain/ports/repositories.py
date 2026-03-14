@@ -12,6 +12,7 @@ if TYPE_CHECKING:
         DeviceFingerprint,
         DeviceId,
         EmailAddress,
+        HashedRefreshToken,
         HashedVerificationToken,
         RoleName,
         SessionId,
@@ -41,6 +42,11 @@ class UserRepositoryPort(ABC):
 class SessionRepositoryPort(ABC):
     @abstractmethod
     async def find_by_id(self, session_id: SessionId) -> Session | None: ...
+
+    @abstractmethod
+    async def find_by_refresh_token_hash(
+        self, token_hash: HashedRefreshToken
+    ) -> Session | None: ...
 
     @abstractmethod
     async def find_active_by_device(self, device_id: DeviceId) -> Session | None: ...

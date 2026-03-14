@@ -38,12 +38,15 @@ class RequestPasswordReset:
         self._logger = logger
 
     async def execute(self, command: RequestPasswordResetInput) -> None:
+        self._logger.debug("requesting password reset", email=command.email)
+
         email = EmailAddress.from_string(command.email)
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_email(email)
             if user is None:
+                self._logger.debug("password reset requested for unknown email")
                 return
 
             raw_token, reset_token = self._reset_token_generator.generate(
@@ -55,7 +58,7 @@ class RequestPasswordReset:
             await uow.users.upsert(user)
             await uow.commit()
 
-        self._logger.info("password reset requested")
+        self._logger.info("password reset requested", user_id=user.id.value)
 
         events = user.collect_events()
         await self._event_publisher.publish(events)

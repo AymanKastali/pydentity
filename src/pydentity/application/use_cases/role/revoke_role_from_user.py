@@ -27,9 +27,16 @@ class RevokeRoleFromUser:
         self._logger = logger
 
     async def execute(self, command: RevokeRoleFromUserInput) -> None:
+        self._logger.debug(
+            "revoking role", role_name=command.role_name, user_id=command.user_id
+        )
+
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "role revocation failed — user not found", user_id=command.user_id
+                )
                 raise UserNotFoundError(user_id=command.user_id)
 
             user.revoke_role(RoleName(value=command.role_name))

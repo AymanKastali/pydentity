@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Never
 
 from pydentity.application.dtos.auth import RefreshAccessTokenOutput
 from pydentity.application.exceptions import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import AccountNotActiveError
-from pydentity.domain.models.value_objects import HashedRefreshToken, SessionId
+from pydentity.domain.models.value_objects import HashedRefreshToken
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.token_signer import TokenSignerPort
+    from pydentity.domain.models.session import Session
     from pydentity.domain.models.value_objects import TokenLifetimePolicy
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
@@ -49,17 +50,37 @@ class RefreshAccessToken:
         self._token_issuer = token_issuer
         self._logger = logger
 
+    async def _revoke_session_and_raise(
+        self,
+        session: Session,
+        uow: UnitOfWork,
+        error: Exception,
+    ) -> Never:
+        if session.is_active:
+            session.revoke()
+        await uow.sessions.upsert(session)
+        await uow.commit()
+        events = session.collect_events()
+        await self._event_publisher.publish(events)
+        raise error
+
     async def execute(
         self, command: RefreshAccessTokenInput
     ) -> RefreshAccessTokenOutput:
+        self._logger.debug("refreshing access token")
+
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
             # ------------------------------------------------------------------
-            # 1. Load session
+            # 1. Hash presented token and look up session
             # ------------------------------------------------------------------
-            session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
+            presented_hash = HashedRefreshToken(
+                value=self._token_hasher.hash(command.refresh_token)
+            )
+            session = await uow.sessions.find_by_refresh_token_hash(presented_hash)
             if session is None:
+                self._logger.warning("token refresh failed — session not found")
                 raise InvalidTokenError()
 
             # ------------------------------------------------------------------
@@ -67,42 +88,40 @@ class RefreshAccessToken:
             # ------------------------------------------------------------------
             user = await uow.users.find_by_id(session.user_id)
             if user is None:
-                if session.is_active:
-                    session.revoke()
-                await uow.sessions.upsert(session)
-                await uow.commit()
-                events = session.collect_events()
-                await self._event_publisher.publish(events)
-                raise AccountNotActiveError(status=None)
+                self._logger.warning(
+                    "token refresh failed — account not active",
+                    user_id=session.user_id.value,
+                    status=None,
+                )
+                await self._revoke_session_and_raise(
+                    session, uow, AccountNotActiveError(status=None)
+                )
             if not user.is_active:
-                if session.is_active:
-                    session.revoke()
-                await uow.sessions.upsert(session)
-                await uow.commit()
-                events = session.collect_events()
-                await self._event_publisher.publish(events)
-                raise AccountNotActiveError(status=user.status)
+                self._logger.warning(
+                    "token refresh failed — account not active",
+                    user_id=user.id.value,
+                    status=user.status.value,
+                )
+                await self._revoke_session_and_raise(
+                    session, uow, AccountNotActiveError(status=user.status)
+                )
 
             # ------------------------------------------------------------------
             # 3. Validate device is still active
             # ------------------------------------------------------------------
             device = await uow.devices.find_by_id(session.device_id)
             if device is None or not device.is_active:
-                if session.is_active:
-                    session.revoke()
-                await uow.sessions.upsert(session)
-                await uow.commit()
-                events = session.collect_events()
-                await self._event_publisher.publish(events)
-                raise InvalidTokenError()
+                self._logger.warning(
+                    "token refresh failed — device not active",
+                    session_id=session.id.value,
+                    device_id=session.device_id.value,
+                )
+                await self._revoke_session_and_raise(session, uow, InvalidTokenError())
 
             # ------------------------------------------------------------------
             # 4. Rotate refresh token
             # ------------------------------------------------------------------
             new_raw_refresh = self._raw_token_generator.generate()
-            presented_hash = HashedRefreshToken(
-                value=self._token_hasher.hash(command.refresh_token)
-            )
             new_hash = HashedRefreshToken(
                 value=self._token_hasher.hash(new_raw_refresh)
             )
@@ -142,7 +161,7 @@ class RefreshAccessToken:
         events = session.collect_events() + device.collect_events()
         await self._event_publisher.publish(events)
 
-        self._logger.debug("token refreshed", session_id=command.session_id)
+        self._logger.debug("token refreshed", session_id=session.id.value)
 
         return RefreshAccessTokenOutput(
             access_token=access_token,

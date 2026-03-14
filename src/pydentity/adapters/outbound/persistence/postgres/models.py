@@ -126,6 +126,9 @@ class RoleModel(SQLModel, table=True):
 
 class SessionModel(SQLModel, table=True):
     __tablename__: ClassVar[str] = "sessions"
+    __table_args__: ClassVar[tuple[Index, ...]] = (
+        Index("ix_sessions_refresh_token_hash", "refresh_token_hash"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
@@ -165,8 +168,9 @@ class SessionModel(SQLModel, table=True):
 
 class DeviceModel(SQLModel, table=True):
     __tablename__: ClassVar[str] = "devices"
-    __table_args__: ClassVar[tuple[UniqueConstraint, ...]] = (
+    __table_args__: ClassVar[tuple[UniqueConstraint, Index]] = (
         UniqueConstraint("user_fk", "fingerprint", name="uq_devices_user_fingerprint"),
+        Index("ix_devices_domain_id", "domain_id", unique=True),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -180,7 +184,7 @@ class DeviceModel(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    domain_id: str = Field(unique=True, nullable=False)
+    domain_id: str = Field(nullable=False)
     user_fk: int = Field(foreign_key="users.id", nullable=False)
     user_domain_id: str = Field(nullable=False)
     name: str = Field(nullable=False)

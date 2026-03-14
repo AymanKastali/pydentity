@@ -41,11 +41,17 @@ class ReissueVerificationToken:
         self._logger = logger
 
     async def execute(self, command: ReissueVerificationTokenInput) -> None:
+        self._logger.debug("reissuing verification token", user_id=command.user_id)
+
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "verification token reissue failed — user not found",
+                    user_id=command.user_id,
+                )
                 raise UserNotFoundError(user_id=command.user_id)
 
             raw_token, verification_token = self._verification_token_generator.generate(

@@ -92,6 +92,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.token_verifier import TokenVerifierPort
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
+        DevicePolicy,
         EmailVerificationPolicy,
         PasswordPolicy,
         TokenLifetimePolicy,
@@ -127,6 +128,7 @@ class Container:
     email_verification_policy: EmailVerificationPolicy
     lockout_policy: AccountLockoutPolicy
     token_lifetime_policy: TokenLifetimePolicy
+    device_policy: DevicePolicy
     token_issuer: str
     reset_token_ttl: timedelta
 
@@ -177,6 +179,7 @@ class Container:
             email_verification_policy=sec.email_verification_policy,
             lockout_policy=sec.lockout_policy,
             token_lifetime_policy=sec.token_lifetime_policy,
+            device_policy=sec.device_policy,
             token_issuer=sec.token_issuer,
             reset_token_ttl=sec.reset_token_ttl,
         )
@@ -230,6 +233,7 @@ def get_authenticate_user(
         event_publisher=c.event_publisher,
         lockout_policy=c.lockout_policy,
         token_lifetime_policy=c.token_lifetime_policy,
+        device_policy=c.device_policy,
         token_issuer=c.token_issuer,
         logger=c.logger,
     )

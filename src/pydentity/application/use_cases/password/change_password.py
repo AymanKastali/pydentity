@@ -30,9 +30,14 @@ class ChangePassword:
         self._logger = logger
 
     async def execute(self, command: ChangePasswordInput) -> None:
+        self._logger.debug("changing password", user_id=command.user_id)
+
         async with self._uow_factory() as uow:
             user = await uow.users.find_by_id(UserId(value=command.user_id))
             if user is None:
+                self._logger.warning(
+                    "password change failed — user not found", user_id=command.user_id
+                )
                 raise UserNotFoundError(user_id=command.user_id)
 
             await self._change_user_password.execute(

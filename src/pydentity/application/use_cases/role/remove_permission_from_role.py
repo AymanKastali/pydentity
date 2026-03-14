@@ -27,9 +27,20 @@ class RemovePermissionFromRole:
         self._logger = logger
 
     async def execute(self, command: RemovePermissionFromRoleInput) -> None:
+        self._logger.debug(
+            "removing permission from role",
+            role_name=command.role_name,
+            resource=command.resource,
+            action=command.action,
+        )
+
         async with self._uow_factory() as uow:
             role = await uow.roles.find_by_name(RoleName(value=command.role_name))
             if role is None:
+                self._logger.warning(
+                    "permission remove failed — role not found",
+                    role_name=command.role_name,
+                )
                 raise RoleNotFoundError(role_name=command.role_name)
 
             role.remove_permission(

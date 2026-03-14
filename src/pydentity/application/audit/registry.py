@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from pydentity.domain.events.device_events import (
     DeviceLastActiveBumped,
+    DeviceMetadataUpdated,
     DeviceRegistered,
     DeviceRevoked,
     DeviceTrusted,
@@ -88,6 +89,7 @@ CATEGORY_MAP: dict[type[DomainEvent], str] = {
     DeviceRevoked: AuditCategory.ACCESS,
     DeviceTrusted: AuditCategory.ACCESS,
     DeviceUntrusted: AuditCategory.ACCESS,
+    DeviceMetadataUpdated: AuditCategory.DATA_CHANGE,
     # DATA_CHANGE
     UserEmailChanged: AuditCategory.DATA_CHANGE,
     EmailVerified: AuditCategory.DATA_CHANGE,
@@ -122,6 +124,7 @@ TARGET_MAP: dict[type[DomainEvent], tuple[str, str]] = {
     DeviceRevoked: ("Device", "device_id"),
     DeviceTrusted: ("Device", "device_id"),
     DeviceUntrusted: ("Device", "device_id"),
+    DeviceMetadataUpdated: ("Device", "device_id"),
     # Role events
     RoleCreated: ("Role", "role_name"),
     RoleDescriptionChanged: ("Role", "role_name"),

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pydentity.domain.models.value_objects import SessionId, UserId
+    from pydentity.domain.models.value_objects import DeviceId, SessionId, UserId
 
 
 class IdentityGeneratorPort(ABC):
@@ -13,6 +13,9 @@ class IdentityGeneratorPort(ABC):
 
     @abstractmethod
     def new_session_id(self) -> SessionId: ...
+
+    @abstractmethod
+    def new_device_id(self) -> DeviceId: ...
 
     @abstractmethod
     def new_token_id(self) -> str: ...

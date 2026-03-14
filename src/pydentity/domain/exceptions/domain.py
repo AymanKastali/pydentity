@@ -443,6 +443,15 @@ class DeviceAlreadyRegisteredError(DomainError):
         super().__init__("A device with this fingerprint is already registered.")
 
 
+class DeviceLimitExceededError(DomainError):
+    """Raised when a user attempts to register more devices
+    than allowed by the device policy.
+    """
+
+    def __init__(self, *, max_devices: int) -> None:
+        super().__init__(f"Device limit exceeded (max {max_devices})")
+
+
 class EmailAlreadyTakenError(DomainError):
     """Raised when a user attempts to register with an email already in use."""
 

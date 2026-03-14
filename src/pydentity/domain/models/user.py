@@ -351,7 +351,6 @@ class User(AggregateRoot[UserId]):
 
     def record_successful_login(self, now: datetime) -> None:
         self._ensure_active()
-        self._login_tracking.ensure_not_locked(now)
 
         self._login_tracking = self._login_tracking.after_successful_login()
 

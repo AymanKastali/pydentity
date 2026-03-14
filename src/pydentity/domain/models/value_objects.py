@@ -514,3 +514,14 @@ class EmailVerificationPolicy(ValueObject):
             raise InvalidPolicyValueError(
                 field_name="token_ttl", reason="must be positive"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class DevicePolicy(ValueObject):
+    max_devices_per_user: int
+
+    def __post_init__(self) -> None:
+        if self.max_devices_per_user < 1:
+            raise InvalidPolicyValueError(
+                field_name="max_devices_per_user", reason="must be at least 1"
+            )

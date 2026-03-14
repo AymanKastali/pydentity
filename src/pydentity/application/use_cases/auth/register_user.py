@@ -35,7 +35,7 @@ class RegisterUser:
         event_publisher: DomainEventPublisherPort,
         notification: NotificationPort,
         default_role_name: str | None = None,
-        logger: LoggerPort | None = None,  # optional: tests don't pass one
+        logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
         self._user_factory = user_factory
@@ -48,6 +48,8 @@ class RegisterUser:
         self._logger = logger
 
     async def execute(self, command: RegisterUserInput) -> RegisterUserOutput:
+        self._logger.debug("registering user", email=command.email)
+
         email = EmailAddress.from_string(command.email)
         now = self._clock.now()
 
@@ -71,6 +73,9 @@ class RegisterUser:
                     verification_token=verification_token,
                 )
             except EmailAlreadyTakenError:
+                self._logger.debug(
+                    "registration skipped — email already taken", email=email.address
+                )
                 return RegisterUserOutput(email=email.address)
 
             if self._default_role_name is not None:
@@ -83,8 +88,7 @@ class RegisterUser:
             await uow.users.upsert(user)
             await uow.commit()
 
-        if self._logger is not None:
-            self._logger.info("user registered", email=email.address)
+        self._logger.info("user registered", email=email.address)
 
         events = user.collect_events()
 
