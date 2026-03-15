@@ -11,14 +11,11 @@ from sqlalchemy.exc import IntegrityError
 from pydentity.adapters.inbound.api.schemas.response import ErrorDetail, ErrorResponse
 from pydentity.application.exceptions.app import (
     ApplicationError,
-    DeviceNotFoundError,
     EmailAlreadyRegisteredError,
     InsufficientPermissionsError,
     InvalidTokenError,
     PersistenceConsistencyError,
-    RoleNotFoundError,
-    SessionNotFoundError,
-    UserNotFoundError,
+    ResourceNotFoundError,
 )
 from pydentity.domain.exceptions.domain import (
     AccountAlreadyActiveError,
@@ -150,10 +147,7 @@ _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
 }
 
 _APP_STATUS_MAP: dict[type[ApplicationError], int] = {
-    UserNotFoundError: status.HTTP_404_NOT_FOUND,
-    RoleNotFoundError: status.HTTP_404_NOT_FOUND,
-    SessionNotFoundError: status.HTTP_404_NOT_FOUND,
-    DeviceNotFoundError: status.HTTP_404_NOT_FOUND,
+    ResourceNotFoundError: status.HTTP_404_NOT_FOUND,
     EmailAlreadyRegisteredError: status.HTTP_409_CONFLICT,
     InvalidTokenError: status.HTTP_401_UNAUTHORIZED,
     InsufficientPermissionsError: status.HTTP_403_FORBIDDEN,
@@ -161,10 +155,7 @@ _APP_STATUS_MAP: dict[type[ApplicationError], int] = {
 }
 
 _APP_CODE_MAP: dict[type[ApplicationError], str] = {
-    UserNotFoundError: "USER_NOT_FOUND",
-    RoleNotFoundError: "ROLE_NOT_FOUND",
-    SessionNotFoundError: "SESSION_NOT_FOUND",
-    DeviceNotFoundError: "DEVICE_NOT_FOUND",
+    ResourceNotFoundError: "RESOURCE_NOT_FOUND",
     EmailAlreadyRegisteredError: "EMAIL_ALREADY_REGISTERED",
     InvalidTokenError: "INVALID_TOKEN",
     InsufficientPermissionsError: "INSUFFICIENT_PERMISSIONS",

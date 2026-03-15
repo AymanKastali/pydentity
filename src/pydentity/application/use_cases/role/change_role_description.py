@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import RoleNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import RoleDescription, RoleName
 
 if TYPE_CHECKING:
@@ -36,7 +36,9 @@ class ChangeRoleDescription:
                     "role description change failed — role not found",
                     role_name=command.role_name,
                 )
-                raise RoleNotFoundError(role_name=command.role_name)
+                raise ResourceNotFoundError(
+                    resource="Role", identifier=command.role_name
+                )
 
             role.change_description(RoleDescription.create(command.new_description))
 

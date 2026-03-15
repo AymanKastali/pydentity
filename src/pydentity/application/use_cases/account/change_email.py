@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
 from pydentity.domain.services.change_user_email import ChangeUserEmail
 
@@ -68,7 +68,7 @@ class ChangeEmail:
                 self._logger.warning(
                     "email change failed — user not found", user_id=command.user_id
                 )
-                raise UserNotFoundError(user_id=command.user_id)
+                raise ResourceNotFoundError(resource="User", identifier=command.user_id)
 
             await change_user_email.execute(
                 user=user,

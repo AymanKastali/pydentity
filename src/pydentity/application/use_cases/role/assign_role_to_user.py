@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import RoleNotFoundError, UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import RoleName, UserId
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ class AssignRoleToUser:
                 self._logger.warning(
                     "role assignment failed — user not found", user_id=command.user_id
                 )
-                raise UserNotFoundError(user_id=command.user_id)
+                raise ResourceNotFoundError(resource="User", identifier=command.user_id)
 
             role_name = RoleName.create(command.role_name)
             role = await uow.roles.find_by_name(role_name)
@@ -46,7 +46,9 @@ class AssignRoleToUser:
                     "role assignment failed — role not found",
                     role_name=command.role_name,
                 )
-                raise RoleNotFoundError(role_name=command.role_name)
+                raise ResourceNotFoundError(
+                    resource="Role", identifier=command.role_name
+                )
 
             user.assign_role(role.name)
 

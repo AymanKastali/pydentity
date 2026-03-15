@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import RoleNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import Permission, RoleName
 
 if TYPE_CHECKING:
@@ -41,7 +41,9 @@ class RemovePermissionFromRole:
                     "permission remove failed — role not found",
                     role_name=command.role_name,
                 )
-                raise RoleNotFoundError(role_name=command.role_name)
+                raise ResourceNotFoundError(
+                    resource="Role", identifier=command.role_name
+                )
 
             role.remove_permission(
                 Permission.from_resource_action(command.resource, command.action)

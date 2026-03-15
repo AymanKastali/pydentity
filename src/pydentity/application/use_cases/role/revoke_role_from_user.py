@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import RoleName, UserId
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ class RevokeRoleFromUser:
                 self._logger.warning(
                     "role revocation failed — user not found", user_id=command.user_id
                 )
-                raise UserNotFoundError(user_id=command.user_id)
+                raise ResourceNotFoundError(resource="User", identifier=command.user_id)
 
             user.revoke_role(RoleName.create(command.role_name))
 

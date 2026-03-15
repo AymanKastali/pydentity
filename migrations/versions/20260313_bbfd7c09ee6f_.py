@@ -6,17 +6,19 @@ Create Date: 2026-03-13 06:46:41.971288
 
 """
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-import sqlmodel
 from alembic import op
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.
 revision: str = "bbfd7c09ee6f"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -67,8 +69,8 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
         sa.Column("permissions", sa.ARRAY(sa.String()), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
@@ -79,9 +81,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("status", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("domain_id", sa.String(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
         sa.Column("email_verification_is_verified", sa.Boolean(), nullable=False),
         sa.Column("email_verification_token_hash", sa.LargeBinary(), nullable=True),
         sa.Column(
@@ -115,13 +117,13 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("domain_id", sa.String(), nullable=False),
         sa.Column("user_fk", sa.Integer(), nullable=False),
-        sa.Column("user_domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("fingerprint", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("platform", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("status", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("user_domain_id", sa.String(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("fingerprint", sa.String(), nullable=False),
+        sa.Column("platform", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
         sa.Column("is_trusted", sa.Boolean(), nullable=False),
         sa.Column("last_active", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
@@ -155,21 +157,19 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("domain_id", sa.String(), nullable=False),
         sa.Column("user_fk", sa.Integer(), nullable=False),
         sa.Column("device_fk", sa.Integer(), nullable=False),
-        sa.Column("user_domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column(
-            "device_domain_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
+        sa.Column("user_domain_id", sa.String(), nullable=False),
+        sa.Column("device_domain_id", sa.String(), nullable=False),
         sa.Column("refresh_token_hash", sa.LargeBinary(), nullable=False),
         sa.Column(
             "refresh_token_family_id",
-            sqlmodel.sql.sqltypes.AutoString(),
+            sa.String(),
             nullable=False,
         ),
         sa.Column("refresh_token_family_generation", sa.Integer(), nullable=False),
-        sa.Column("status", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
         sa.Column("session_created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("last_refresh", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expiry", sa.DateTime(timezone=True), nullable=False),

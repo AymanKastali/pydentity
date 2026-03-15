@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class SingleUserCommand:
                 self._logger.warning(
                     "user command failed — user not found", user_id=user_id
                 )
-                raise UserNotFoundError(user_id=user_id)
+                raise ResourceNotFoundError(resource="User", identifier=user_id)
 
             action(user)
 

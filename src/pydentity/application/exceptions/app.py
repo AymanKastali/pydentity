@@ -5,14 +5,11 @@ class ApplicationError(Exception):
     """Base class for all application-layer errors."""
 
 
-class UserNotFoundError(ApplicationError):
-    def __init__(self, *, user_id: str) -> None:
-        super().__init__(f"User not found: {user_id!r}")
-
-
-class RoleNotFoundError(ApplicationError):
-    def __init__(self, *, role_name: str) -> None:
-        super().__init__(f"Role not found: {role_name!r}")
+class ResourceNotFoundError(ApplicationError):
+    def __init__(self, *, resource: str, identifier: str) -> None:
+        self.resource = resource
+        self.identifier = identifier
+        super().__init__(f"{resource} not found: {identifier!r}")
 
 
 class EmailAlreadyRegisteredError(ApplicationError):
@@ -33,13 +30,3 @@ class InsufficientPermissionsError(ApplicationError):
 class PersistenceConsistencyError(ApplicationError):
     def __init__(self, *, detail: str) -> None:
         super().__init__(f"Data consistency violation: {detail}")
-
-
-class SessionNotFoundError(ApplicationError):
-    def __init__(self, *, session_id: str) -> None:
-        super().__init__(f"Session not found: {session_id!r}")
-
-
-class DeviceNotFoundError(ApplicationError):
-    def __init__(self, *, device_id: str) -> None:
-        super().__init__(f"Device not found: {device_id!r}")
