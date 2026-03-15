@@ -11,18 +11,16 @@ from sqlalchemy.exc import IntegrityError
 from pydentity.adapters.inbound.api.schemas.response import ErrorDetail, ErrorResponse
 from pydentity.application.exceptions.app import (
     ApplicationError,
-    DeviceNotFoundError,
     EmailAlreadyRegisteredError,
     InsufficientPermissionsError,
     InvalidTokenError,
     PersistenceConsistencyError,
-    RoleNotFoundError,
-    SessionNotFoundError,
-    UserNotFoundError,
+    ResourceNotFoundError,
 )
 from pydentity.domain.exceptions.domain import (
     AccountAlreadyActiveError,
     AccountAlreadyDeactivatedError,
+    AccountAlreadySuspendedError,
     AccountDeactivatedError,
     AccountLockedError,
     AccountNotActiveError,
@@ -78,6 +76,7 @@ _DOMAIN_STATUS_MAP: dict[type[DomainError], int] = {
     DeviceOwnershipError: status.HTTP_403_FORBIDDEN,
     AccountAlreadyActiveError: status.HTTP_409_CONFLICT,
     AccountAlreadyDeactivatedError: status.HTTP_409_CONFLICT,
+    AccountAlreadySuspendedError: status.HTTP_409_CONFLICT,
     EmailAlreadyTakenError: status.HTTP_409_CONFLICT,
     EmailAlreadyVerifiedError: status.HTTP_409_CONFLICT,
     RoleAlreadyAssignedError: status.HTTP_409_CONFLICT,
@@ -118,6 +117,7 @@ _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
     DeviceOwnershipError: "DEVICE_OWNERSHIP_VIOLATION",
     AccountAlreadyActiveError: "ACCOUNT_ALREADY_ACTIVE",
     AccountAlreadyDeactivatedError: "ACCOUNT_ALREADY_DEACTIVATED",
+    AccountAlreadySuspendedError: "ACCOUNT_ALREADY_SUSPENDED",
     EmailAlreadyTakenError: "EMAIL_ALREADY_TAKEN",
     EmailAlreadyVerifiedError: "EMAIL_ALREADY_VERIFIED",
     RoleAlreadyAssignedError: "ROLE_ALREADY_ASSIGNED",
@@ -147,10 +147,7 @@ _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
 }
 
 _APP_STATUS_MAP: dict[type[ApplicationError], int] = {
-    UserNotFoundError: status.HTTP_404_NOT_FOUND,
-    RoleNotFoundError: status.HTTP_404_NOT_FOUND,
-    SessionNotFoundError: status.HTTP_404_NOT_FOUND,
-    DeviceNotFoundError: status.HTTP_404_NOT_FOUND,
+    ResourceNotFoundError: status.HTTP_404_NOT_FOUND,
     EmailAlreadyRegisteredError: status.HTTP_409_CONFLICT,
     InvalidTokenError: status.HTTP_401_UNAUTHORIZED,
     InsufficientPermissionsError: status.HTTP_403_FORBIDDEN,
@@ -158,10 +155,7 @@ _APP_STATUS_MAP: dict[type[ApplicationError], int] = {
 }
 
 _APP_CODE_MAP: dict[type[ApplicationError], str] = {
-    UserNotFoundError: "USER_NOT_FOUND",
-    RoleNotFoundError: "ROLE_NOT_FOUND",
-    SessionNotFoundError: "SESSION_NOT_FOUND",
-    DeviceNotFoundError: "DEVICE_NOT_FOUND",
+    ResourceNotFoundError: "RESOURCE_NOT_FOUND",
     EmailAlreadyRegisteredError: "EMAIL_ALREADY_REGISTERED",
     InvalidTokenError: "INVALID_TOKEN",
     InsufficientPermissionsError: "INSUFFICIENT_PERMISSIONS",
@@ -215,7 +209,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def integrity_error_handler(
         request: Request, exc: IntegrityError
     ) -> JSONResponse:
-        _log.warning("integrity error: %s", exc.orig)
+        _log.error("integrity error: %s", exc.orig)
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_error_response(

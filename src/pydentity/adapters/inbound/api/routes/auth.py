@@ -21,6 +21,7 @@ from pydentity.adapters.inbound.api.schemas.auth import (
     RegisterResponse,
 )
 from pydentity.adapters.inbound.api.schemas.response import ApiResponse
+from pydentity.adapters.inbound.api.user_agent_parser import parse_user_agent
 from pydentity.application.dtos.auth import (
     AuthenticateUserInput,
     LogoutUserInput,
@@ -48,20 +49,16 @@ class DeviceHeaders:
 
 
 def get_device_headers(
-    device_name: Annotated[
-        str, Header(alias="X-Device-Name", min_length=1, max_length=255)
-    ],
     raw_fingerprint: Annotated[
         str, Header(alias="X-Device-Fingerprint", min_length=1, max_length=255)
     ],
-    platform: Annotated[
-        str, Header(alias="X-Device-Platform", min_length=1, max_length=255)
-    ],
+    user_agent: Annotated[str | None, Header(include_in_schema=False)] = None,
 ) -> DeviceHeaders:
+    parsed = parse_user_agent(user_agent)
     return DeviceHeaders(
-        device_name=device_name,
+        device_name=parsed.device_name,
         raw_fingerprint=raw_fingerprint,
-        platform=platform,
+        platform=parsed.platform,
     )
 
 

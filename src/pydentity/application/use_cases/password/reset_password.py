@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import InvalidTokenError, UserNotFoundError
+from pydentity.application.exceptions import InvalidTokenError
 from pydentity.domain.exceptions import (
     ResetTokenExpiredError,
     ResetTokenInvalidError,
     ResetTokenNotIssuedError,
 )
-from pydentity.domain.models.value_objects import HashedResetToken, UserId
+from pydentity.domain.models.value_objects import HashedResetToken
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -41,19 +41,16 @@ class ResetPassword:
         self._logger = logger
 
     async def execute(self, command: ResetPasswordInput) -> None:
-        self._logger.debug("resetting password", user_id=command.user_id)
-
+        token_hash = HashedResetToken(value=self._token_hasher.hash(command.token))
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
+            user = await uow.users.find_by_reset_token_hash(token_hash)
             if user is None:
-                self._logger.warning(
-                    "password reset failed — user not found", user_id=command.user_id
-                )
-                raise UserNotFoundError(user_id=command.user_id)
+                self._logger.warning("password reset failed — invalid token")
+                raise InvalidTokenError()
 
-            token_hash = HashedResetToken(value=self._token_hasher.hash(command.token))
+            self._logger.debug("resetting password", user_id=user.id.value)
 
             try:
                 await self._reset_user_password.execute(
@@ -68,15 +65,22 @@ class ResetPassword:
                 ResetTokenNotIssuedError,
             ):
                 self._logger.warning(
-                    "password reset failed — invalid token", user_id=command.user_id
+                    "password reset failed — invalid token", user_id=user.id.value
                 )
                 raise InvalidTokenError() from None
 
             await uow.users.upsert(user)
+
+            active_sessions = await uow.sessions.find_active_by_user_id(user.id)
+            for session in active_sessions:
+                session.revoke()
+                await uow.sessions.upsert(session)
+
             await uow.commit()
 
-        self._logger.info("password reset", user_id=command.user_id)
+        self._logger.info("password reset", user_id=user.id.value)
 
         events = user.collect_events()
-
+        for session in active_sessions:
+            events.extend(session.collect_events())
         await self._event_publisher.publish(events)

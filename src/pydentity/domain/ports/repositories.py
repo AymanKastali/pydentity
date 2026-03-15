@@ -13,6 +13,7 @@ if TYPE_CHECKING:
         DeviceId,
         EmailAddress,
         HashedRefreshToken,
+        HashedResetToken,
         HashedVerificationToken,
         RoleName,
         SessionId,
@@ -30,6 +31,11 @@ class UserRepositoryPort(ABC):
     @abstractmethod
     async def find_by_verification_token_hash(
         self, token_hash: HashedVerificationToken
+    ) -> User | None: ...
+
+    @abstractmethod
+    async def find_by_reset_token_hash(
+        self, token_hash: HashedResetToken
     ) -> User | None: ...
 
     @abstractmethod

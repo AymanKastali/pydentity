@@ -10,12 +10,11 @@ from pydentity.domain.events.session_events import (
 )
 from pydentity.domain.exceptions import (
     InvalidValueError,
-    RefreshTokenReuseDetectedError,
     SessionExpiredError,
     SessionRevokedError,
 )
 from pydentity.domain.exceptions.domain import SessionAlreadyRevokedError
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.value_objects import (
@@ -48,7 +47,7 @@ class Session(AggregateRoot[SessionId]):
         expiry: SessionExpiry,
     ) -> None:
         super().__init__()
-        verify_types(
+        verify_params(
             session_id=(session_id, SessionId),
             user_id=(user_id, UserId),
             device_id=(device_id, DeviceId),
@@ -191,28 +190,26 @@ class Session(AggregateRoot[SessionId]):
 
     # --- Commands ---
 
-    def rotate_refresh_token(
-        self,
-        presented_hash: HashedRefreshToken,
-        new_hash: HashedRefreshToken,
-        now: datetime,
-    ) -> None:
+    def flag_token_reuse(self, now: datetime) -> None:
+        """Revoke session due to detected refresh token reuse."""
         self._ensure_active(now)
-
-        if not self._refresh_token_hash.timing_safe_equals(presented_hash):
-            self._status = SessionStatus.REVOKED
-            self._record_event(
-                RefreshTokenReused(
-                    session_id=self._id.value,
-                    user_id=self._user_id.value,
-                )
+        self._status = SessionStatus.REVOKED
+        self._record_event(
+            RefreshTokenReused(
+                session_id=self._id.value,
+                user_id=self._user_id.value,
             )
-            raise RefreshTokenReuseDetectedError()
+        )
 
+    def rotate_refresh_token(self, new_hash: HashedRefreshToken, now: datetime) -> None:
+        """Rotate to a new refresh token.
+
+        Caller must verify the presented token first.
+        """
+        self._ensure_active(now)
         self._refresh_token_hash = new_hash
         self._refresh_token_family = self._refresh_token_family.next_generation()
         self._last_refresh = SessionLastRefresh(refreshed_at=now)
-
         self._record_event(
             RefreshTokenRotated(session_id=self._id.value, user_id=self._user_id.value)
         )

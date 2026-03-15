@@ -26,16 +26,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     ) -> None:
         super().__init__(app)  # type: ignore[arg-type]
         self._store = store
+        self._trust_proxy = settings.trust_proxy
         self._auth_paths = set(settings.auth_paths)
         self._auth_limit = settings.auth_limit
         self._auth_window = settings.auth_window_seconds
         self._general_limit = settings.general_limit
         self._general_window = settings.general_window_seconds
 
+    def _get_client_ip(self, request: Request) -> str:
+        if self._trust_proxy:
+            forwarded = request.headers.get("x-forwarded-for", "")
+            if forwarded:
+                return forwarded.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = self._get_client_ip(request)
         path = request.url.path
 
         if path in self._auth_paths:

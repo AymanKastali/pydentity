@@ -39,4 +39,4 @@ class LogAuditTrail(AuditTrailPort):
             extra["target_entity_id"] = target_entity_id
         if metadata:
             extra["metadata"] = metadata
-        _log.info(f"audit action={action}", extra={"context": extra})
+        _log.info("audit action=%s", action, extra={"context": extra})

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
 
 if TYPE_CHECKING:
@@ -52,7 +52,7 @@ class ReissueVerificationToken:
                     "verification token reissue failed — user not found",
                     user_id=command.user_id,
                 )
-                raise UserNotFoundError(user_id=command.user_id)
+                raise ResourceNotFoundError(resource="User", identifier=command.user_id)
 
             raw_token, verification_token = self._verification_token_generator.generate(
                 self._email_verification_policy.token_ttl, now

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.domain.models.value_objects import EmailAddress
-
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import timedelta
@@ -12,6 +10,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.notification import NotificationPort
+    from pydentity.domain.factories.email_address_factory import EmailAddressFactory
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.reset_token_generator import ResetTokenGeneratorPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -22,6 +21,7 @@ class RequestPasswordReset:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
+        email_address_factory: EmailAddressFactory,
         reset_token_generator: ResetTokenGeneratorPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
@@ -30,6 +30,7 @@ class RequestPasswordReset:
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
+        self._email_address_factory = email_address_factory
         self._reset_token_generator = reset_token_generator
         self._clock = clock
         self._event_publisher = event_publisher
@@ -40,7 +41,7 @@ class RequestPasswordReset:
     async def execute(self, command: RequestPasswordResetInput) -> None:
         self._logger.debug("requesting password reset", email=command.email)
 
-        email = EmailAddress.from_string(command.email)
+        email = self._email_address_factory.create(command.email)
         now = self._clock.now()
 
         async with self._uow_factory() as uow:

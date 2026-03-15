@@ -16,7 +16,7 @@ from pydentity.domain.exceptions.domain import (
     DeviceAlreadyUntrustedError,
     DeviceRevokedError,
 )
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import DeviceStatus
 from pydentity.domain.models.value_objects import (
@@ -45,7 +45,7 @@ class Device(AggregateRoot[DeviceId]):
         last_active: DeviceLastActive,
     ) -> None:
         super().__init__()
-        verify_types(
+        verify_params(
             device_id=(device_id, DeviceId),
             user_id=(user_id, UserId),
             name=(name, DeviceName),

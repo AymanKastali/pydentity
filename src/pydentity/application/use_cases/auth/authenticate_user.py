@@ -6,11 +6,7 @@ from pydentity.application.dtos.auth import AuthenticateUserOutput
 from pydentity.application.models.access_token_claims import AccessTokenClaims
 from pydentity.domain.exceptions import InvalidCredentialsError
 from pydentity.domain.exceptions.domain import DeviceLimitExceededError
-from pydentity.domain.models.value_objects import (
-    DeviceFingerprint,
-    DeviceName,
-    EmailAddress,
-)
+from pydentity.domain.models.value_objects import DeviceName
 from pydentity.domain.services.register_device import RegisterDevice
 
 if TYPE_CHECKING:
@@ -20,6 +16,10 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.token_signer import TokenSignerPort
+    from pydentity.domain.factories.device_fingerprint_factory import (
+        DeviceFingerprintFactory,
+    )
+    from pydentity.domain.factories.email_address_factory import EmailAddressFactory
     from pydentity.domain.factories.session_factory import SessionFactory
     from pydentity.domain.models.value_objects import (
         AccountLockoutPolicy,
@@ -38,6 +38,8 @@ class AuthenticateUser:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
+        email_address_factory: EmailAddressFactory,
+        device_fingerprint_factory: DeviceFingerprintFactory,
         password_hasher: PasswordHasherPort,
         session_factory: SessionFactory,
         raw_token_generator: RawTokenGeneratorPort,
@@ -52,6 +54,8 @@ class AuthenticateUser:
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
+        self._email_address_factory = email_address_factory
+        self._device_fingerprint_factory = device_fingerprint_factory
         self._password_hasher = password_hasher
         self._session_factory = session_factory
         self._raw_token_generator = raw_token_generator
@@ -66,7 +70,7 @@ class AuthenticateUser:
         self._logger = logger
 
     async def execute(self, command: AuthenticateUserInput) -> AuthenticateUserOutput:
-        email = EmailAddress.from_string(command.email)
+        email = self._email_address_factory.create(command.email)
         now = self._clock.now()
 
         self._logger.info("auth attempt", email=email.address)
@@ -107,7 +111,9 @@ class AuthenticateUser:
                 device_policy=self._device_policy,
                 identity_generator=self._identity_generator,
             )
-            fingerprint = DeviceFingerprint.from_raw(command.raw_fingerprint)
+            fingerprint = self._device_fingerprint_factory.create(
+                command.raw_fingerprint
+            )
             device_name = DeviceName.create(command.device_name)
             device = await uow.devices.find_by_fingerprint(user.id, fingerprint)
 

@@ -132,7 +132,7 @@ def model_to_user(model: UserModel) -> User:
 
     return User._reconstitute(
         user_id=UserId(model.domain_id),
-        email=EmailAddress.from_string(model.email),
+        email=EmailAddress(*model.email.split("@", 1)),
         status=UserStatus(model.status),
         email_verification=email_verification,
         credentials=credentials,

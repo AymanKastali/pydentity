@@ -5,7 +5,10 @@ from typing import TYPE_CHECKING, Never
 from pydentity.application.dtos.auth import RefreshAccessTokenOutput
 from pydentity.application.exceptions import InvalidTokenError
 from pydentity.application.models.access_token_claims import AccessTokenClaims
-from pydentity.domain.exceptions import AccountNotActiveError
+from pydentity.domain.exceptions import (
+    AccountNotActiveError,
+    RefreshTokenReuseDetectedError,
+)
 from pydentity.domain.models.value_objects import HashedRefreshToken
 
 if TYPE_CHECKING:
@@ -20,6 +23,7 @@ if TYPE_CHECKING:
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.identity_generation import IdentityGeneratorPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
+    from pydentity.domain.ports.timing_safe_comparator import TimingSafeComparatorPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
 
@@ -30,6 +34,7 @@ class RefreshAccessToken:
         *,
         uow_factory: Callable[[], UnitOfWork],
         token_hasher: TokenHasherPort,
+        comparator: TimingSafeComparatorPort,
         raw_token_generator: RawTokenGeneratorPort,
         token_signer: TokenSignerPort,
         identity_generator: IdentityGeneratorPort,
@@ -41,6 +46,7 @@ class RefreshAccessToken:
     ) -> None:
         self._uow_factory = uow_factory
         self._token_hasher = token_hasher
+        self._comparator = comparator
         self._raw_token_generator = raw_token_generator
         self._token_signer = token_signer
         self._identity_generator = identity_generator
@@ -125,11 +131,18 @@ class RefreshAccessToken:
             new_hash = HashedRefreshToken(
                 value=self._token_hasher.hash(new_raw_refresh)
             )
-            session.rotate_refresh_token(
-                presented_hash,
-                new_hash,
-                now,
-            )
+
+            if not self._comparator.equals(
+                session.refresh_token_hash.value, presented_hash.value
+            ):
+                session.flag_token_reuse(now)
+                await uow.sessions.upsert(session)
+                await uow.commit()
+                events = session.collect_events()
+                await self._event_publisher.publish(events)
+                raise RefreshTokenReuseDetectedError()
+
+            session.rotate_refresh_token(new_hash, now)
 
             # ------------------------------------------------------------------
             # 5. Bump device last_active

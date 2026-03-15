@@ -114,6 +114,15 @@ class AccountAlreadyDeactivatedError(DomainError):
         super().__init__("Account is already deactivated")
 
 
+class AccountAlreadySuspendedError(DomainError):
+    """Raised when suspension is attempted on an account
+    that is already suspended.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Account is already suspended")
+
+
 class EmailUnchangedError(DomainError):
     """Raised when a change-email operation is attempted
     with the same email address already on file.

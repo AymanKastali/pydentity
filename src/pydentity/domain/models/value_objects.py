@@ -1,24 +1,16 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
-import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Self
 
 from pydentity.domain.exceptions import (
     AccountLockedError,
-    EmptyValueError,
-    InvalidEmailAddressError,
     InvalidPolicyValueError,
     InvalidValueError,
     PasswordPolicyViolationError,
-    ResetTokenExpiredError,
-    ResetTokenInvalidError,
-    ResetTokenNotIssuedError,
 )
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import ValueObject
 
 # --- Identity VOs ---
@@ -29,9 +21,7 @@ class UserId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,9 +29,7 @@ class SessionId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,9 +37,7 @@ class DeviceId(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
 
 # --- Naming VOs ---
@@ -62,9 +48,7 @@ class RoleName(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
     @classmethod
     def create(cls, raw: str) -> Self:
@@ -76,9 +60,7 @@ class RoleDescription(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
     @classmethod
     def create(cls, raw: str) -> Self:
@@ -90,9 +72,7 @@ class DeviceName(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, str))
 
     @classmethod
     def create(cls, raw: str) -> Self:
@@ -104,7 +84,7 @@ class DeviceLastActive(ValueObject):
     last_active_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(last_active_at=(self.last_active_at, datetime))
+        verify_params(last_active_at=(self.last_active_at, datetime))
 
     def bump(self, now: datetime) -> Self:
         return type(self)(last_active_at=now)
@@ -118,7 +98,7 @@ class Permission(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
+        verify_params(value=(self.value, str))
         if not self.value or ":" not in self.value:
             raise InvalidValueError(
                 field_name="Permission",
@@ -132,14 +112,6 @@ class Permission(ValueObject):
 
 # --- Auth VOs ---
 
-_EMAIL_LOCAL_RE = re.compile(
-    r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$"
-)
-_EMAIL_DOMAIN_RE = re.compile(
-    r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
-    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
-)
-
 
 @dataclass(frozen=True, slots=True)
 class EmailAddress(ValueObject):
@@ -147,32 +119,7 @@ class EmailAddress(ValueObject):
     domain: str
 
     def __post_init__(self) -> None:
-        verify_types(local_part=(self.local_part, str), domain=(self.domain, str))
-        self._ensure_valid_local_part(self.local_part)
-        self._ensure_valid_domain(self.domain)
-
-    @classmethod
-    def _ensure_valid_local_part(cls, local_part: str) -> None:
-        if not local_part:
-            raise InvalidEmailAddressError(detail=f"invalid local part: {local_part!r}")
-        if len(local_part) > 64:
-            raise InvalidEmailAddressError(detail="local part exceeds 64 characters")
-        if not _EMAIL_LOCAL_RE.match(local_part):
-            raise InvalidEmailAddressError(detail=f"invalid local part: {local_part!r}")
-
-    @classmethod
-    def _ensure_valid_domain(cls, domain: str) -> None:
-        if not domain:
-            raise InvalidEmailAddressError(detail=f"invalid domain: {domain!r}")
-        if len(domain) > 255:
-            raise InvalidEmailAddressError(detail="domain exceeds 255 characters")
-        if not _EMAIL_DOMAIN_RE.match(domain):
-            raise InvalidEmailAddressError(detail=f"invalid domain: {domain!r}")
-
-    @classmethod
-    def from_string(cls, address: str) -> Self:
-        local_part, _, domain = address.partition("@")
-        return cls(local_part=local_part, domain=domain)
+        verify_params(local_part=(self.local_part, str), domain=(self.domain, str))
 
     @property
     def address(self) -> str:
@@ -187,9 +134,7 @@ class HashedPassword(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, bytes))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
+        verify_params(value=(self.value, bytes))
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,12 +142,7 @@ class HashedVerificationToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, bytes))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-
-    def timing_safe_equals(self, other: HashedVerificationToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
+        verify_params(value=(self.value, bytes))
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,12 +150,7 @@ class HashedResetToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, bytes))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-
-    def timing_safe_equals(self, other: HashedResetToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
+        verify_params(value=(self.value, bytes))
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,12 +158,7 @@ class HashedRefreshToken(ValueObject):
     value: bytes
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, bytes))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-
-    def timing_safe_equals(self, other: HashedRefreshToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
+        verify_params(value=(self.value, bytes))
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,7 +166,7 @@ class FailedLoginAttempts(ValueObject):
     value: int
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, int))
+        verify_params(value=(self.value, int))
         if self.value < 0:
             raise InvalidValueError(
                 field_name=self.__class__.__name__,
@@ -255,7 +185,7 @@ class LockoutExpiry(ValueObject):
     locked_until: datetime
 
     def __post_init__(self) -> None:
-        verify_types(locked_until=(self.locked_until, datetime))
+        verify_params(locked_until=(self.locked_until, datetime))
 
     def is_active(self, now: datetime) -> bool:
         return now < self.locked_until
@@ -266,7 +196,7 @@ class SessionCreatedAt(ValueObject):
     created_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(created_at=(self.created_at, datetime))
+        verify_params(created_at=(self.created_at, datetime))
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,7 +204,7 @@ class SessionLastRefresh(ValueObject):
     refreshed_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(refreshed_at=(self.refreshed_at, datetime))
+        verify_params(refreshed_at=(self.refreshed_at, datetime))
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,7 +212,7 @@ class SessionExpiry(ValueObject):
     expires_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(expires_at=(self.expires_at, datetime))
+        verify_params(expires_at=(self.expires_at, datetime))
 
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
@@ -294,14 +224,10 @@ class RefreshTokenFamily(ValueObject):
     generation: int
 
     def __post_init__(self) -> None:
-        verify_types(family_id=(self.family_id, str), generation=(self.generation, int))
-        self._ensure_valid_family_id(self.family_id)
+        verify_params(
+            family_id=(self.family_id, str), generation=(self.generation, int)
+        )
         self._ensure_valid_generation(self.generation)
-
-    @classmethod
-    def _ensure_valid_family_id(cls, family_id: str) -> None:
-        if not family_id:
-            raise EmptyValueError(field_name=f"{cls.__name__}.family_id")
 
     @classmethod
     def _ensure_valid_generation(cls, generation: int) -> None:
@@ -324,13 +250,10 @@ class EmailVerificationToken(ValueObject):
     expires_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(token_hash=(self.token_hash, HashedVerificationToken))
+        verify_params(token_hash=(self.token_hash, HashedVerificationToken))
 
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
-
-    def matches(self, candidate: HashedVerificationToken) -> bool:
-        return self.token_hash.timing_safe_equals(candidate)
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,13 +262,10 @@ class PasswordResetToken(ValueObject):
     expires_at: datetime
 
     def __post_init__(self) -> None:
-        verify_types(token_hash=(self.token_hash, HashedResetToken))
+        verify_params(token_hash=(self.token_hash, HashedResetToken))
 
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
-
-    def matches(self, candidate: HashedResetToken) -> bool:
-        return self.token_hash.timing_safe_equals(candidate)
 
 
 # --- Composite VOs ---
@@ -357,7 +277,7 @@ class EmailVerification(ValueObject):
     token: EmailVerificationToken | None
 
     def __post_init__(self) -> None:
-        verify_types(token=(self.token, EmailVerificationToken | None))
+        verify_params(token=(self.token, EmailVerificationToken | None))
         self._ensure_consistent_state()
 
     def _ensure_consistent_state(self) -> None:
@@ -380,7 +300,7 @@ class Credentials(ValueObject):
     password_history: tuple[HashedPassword, ...]
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             password_hash=(self.password_hash, HashedPassword),
             password_reset_token=(self.password_reset_token, PasswordResetToken | None),
             password_history=(self.password_history, tuple[HashedPassword, ...]),
@@ -409,38 +329,13 @@ class Credentials(ValueObject):
             password_history=self.password_history,
         )
 
-    def with_password_reset(
-        self,
-        token_hash: HashedResetToken,
-        new_hash: HashedPassword,
-        now: datetime,
-        history_size: int,
-    ) -> Self:
-        token = self._ensure_reset_token_issued()
-        self._ensure_reset_token_valid(token, token_hash, now)
-
+    def with_password_reset(self, new_hash: HashedPassword, history_size: int) -> Self:
         updated = self.with_new_password(new_hash, history_size)
         return type(self)(
             password_hash=updated.password_hash,
             password_reset_token=None,
             password_history=updated.password_history,
         )
-
-    def _ensure_reset_token_issued(self) -> PasswordResetToken:
-        if self.password_reset_token is None:
-            raise ResetTokenNotIssuedError()
-        return self.password_reset_token
-
-    def _ensure_reset_token_valid(
-        self,
-        token: PasswordResetToken,
-        token_hash: HashedResetToken,
-        now: datetime,
-    ) -> None:
-        if token.is_expired(now):
-            raise ResetTokenExpiredError()
-        if not token.matches(token_hash):
-            raise ResetTokenInvalidError()
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,7 +344,7 @@ class LoginTracking(ValueObject):
     lockout_expiry: LockoutExpiry | None
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             failed_login_attempts=(self.failed_login_attempts, FailedLoginAttempts),
             lockout_expiry=(self.lockout_expiry, LockoutExpiry | None),
         )
@@ -501,16 +396,7 @@ class DeviceFingerprint(ValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        verify_types(value=(self.value, str))
-        if not self.value:
-            raise EmptyValueError(field_name=self.__class__.__name__)
-
-    @classmethod
-    def from_raw(cls, raw: str) -> Self:
-        stripped = raw.strip()
-        if not stripped:
-            raise EmptyValueError(field_name="DeviceFingerprint")
-        return cls(value=hashlib.sha256(stripped.encode()).hexdigest())
+        verify_params(value=(self.value, str))
 
 
 # --- Policy VOs ---
@@ -526,7 +412,7 @@ class PasswordPolicy(ValueObject):
     history_size: int
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             min_length=(self.min_length, int),
             require_uppercase=(self.require_uppercase, bool),
             require_lowercase=(self.require_lowercase, bool),
@@ -575,7 +461,7 @@ class AccountLockoutPolicy(ValueObject):
     lockout_duration: timedelta
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             max_attempts=(self.max_attempts, int),
             lockout_duration=(self.lockout_duration, timedelta),
         )
@@ -604,7 +490,7 @@ class TokenLifetimePolicy(ValueObject):
     session_absolute_ttl: timedelta
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             access_token_ttl=(self.access_token_ttl, timedelta),
             refresh_token_ttl=(self.refresh_token_ttl, timedelta),
             session_absolute_ttl=(self.session_absolute_ttl, timedelta),
@@ -624,11 +510,13 @@ class TokenLifetimePolicy(ValueObject):
 @dataclass(frozen=True, slots=True)
 class EmailVerificationPolicy(ValueObject):
     required_on_registration: bool
+    required_on_email_change: bool
     token_ttl: timedelta
 
     def __post_init__(self) -> None:
-        verify_types(
+        verify_params(
             required_on_registration=(self.required_on_registration, bool),
+            required_on_email_change=(self.required_on_email_change, bool),
             token_ttl=(self.token_ttl, timedelta),
         )
         if self.token_ttl.total_seconds() <= 0:
@@ -642,7 +530,7 @@ class DevicePolicy(ValueObject):
     max_devices_per_user: int
 
     def __post_init__(self) -> None:
-        verify_types(max_devices_per_user=(self.max_devices_per_user, int))
+        verify_params(max_devices_per_user=(self.max_devices_per_user, int))
         if self.max_devices_per_user < 1:
             raise InvalidPolicyValueError(
                 field_name="max_devices_per_user", reason="must be at least 1"

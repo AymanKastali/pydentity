@@ -12,7 +12,7 @@ from pydentity.domain.exceptions import (
     PermissionAlreadyGrantedError,
     PermissionNotGrantedError,
 )
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.value_objects import Permission, RoleDescription, RoleName
 
@@ -29,7 +29,7 @@ class Role(AggregateRoot[RoleName]):
         permissions: set[Permission],
     ) -> None:
         super().__init__()
-        verify_types(
+        verify_params(
             name=(name, RoleName),
             description=(description, RoleDescription),
             permissions=(permissions, set),

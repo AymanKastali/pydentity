@@ -56,6 +56,7 @@ class RateLimitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PYDENTITY_MIDDLEWARE__RATE_LIMIT__")
 
     enabled: bool = True
+    trust_proxy: bool = False
     general_limit: int = 100
     general_window_seconds: int = 60
     auth_limit: int = 10

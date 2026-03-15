@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydentity.domain.exceptions import EmptyValueError, InvalidValueError
 from pydentity.domain.models.role import Role
 
 if TYPE_CHECKING:
@@ -31,15 +30,12 @@ class AccessTokenClaims:
     roles: frozenset[RoleName]
 
     def __post_init__(self) -> None:
-        if not self.issuer:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.issuer")
-        if not self.token_id:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.token_id")
+        if not isinstance(self.issuer, str) or not self.issuer.strip():
+            raise ValueError("AccessTokenClaims.issuer must be a non-empty string")
+        if not isinstance(self.token_id, str) or not self.token_id.strip():
+            raise ValueError("AccessTokenClaims.token_id must be a non-empty string")
         if self.expires_at <= self.issued_at:
-            raise InvalidValueError(
-                field_name=f"{self.__class__.__name__}.expires_at",
-                reason="must be after issued_at",
-            )
+            raise ValueError("AccessTokenClaims.expires_at must be after issued_at")
 
     @classmethod
     def create(

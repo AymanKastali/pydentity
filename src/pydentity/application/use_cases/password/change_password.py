@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydentity.application.exceptions import UserNotFoundError
+from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ class ChangePassword:
                 self._logger.warning(
                     "password change failed — user not found", user_id=command.user_id
                 )
-                raise UserNotFoundError(user_id=command.user_id)
+                raise ResourceNotFoundError(resource="User", identifier=command.user_id)
 
             await self._change_user_password.execute(
                 user=user,
@@ -47,9 +47,19 @@ class ChangePassword:
             )
 
             await uow.users.upsert(user)
+
+            active_sessions = await uow.sessions.find_active_by_user_id(
+                UserId(value=command.user_id)
+            )
+            for session in active_sessions:
+                session.revoke()
+                await uow.sessions.upsert(session)
+
             await uow.commit()
 
         self._logger.info("password changed", user_id=command.user_id)
 
         events = user.collect_events()
+        for session in active_sessions:
+            events.extend(session.collect_events())
         await self._event_publisher.publish(events)
