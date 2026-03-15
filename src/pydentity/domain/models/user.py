@@ -28,12 +28,11 @@ from pydentity.domain.exceptions import (
     AccountNotActiveError,
     EmailAlreadyVerifiedError,
     EmailUnchangedError,
-    EmptyValueError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
     VerificationTokenNotIssuedError,
 )
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import UserStatus
 from pydentity.domain.models.value_objects import (
@@ -71,7 +70,7 @@ class User(AggregateRoot[UserId]):
         role_names: set[RoleName],
     ) -> None:
         super().__init__()
-        verify_types(
+        verify_params(
             user_id=(user_id, UserId),
             email=(email, EmailAddress),
             status=(status, UserStatus),
@@ -245,12 +244,6 @@ class User(AggregateRoot[UserId]):
         if role_name not in self._role_names:
             raise RoleNotAssignedError(role_name=role_name, user_id=self._id)
 
-    def _ensure_reason_not_empty(self, reason: str) -> str:
-        stripped = reason.strip()
-        if not stripped:
-            raise EmptyValueError(field_name="reason")
-        return stripped
-
     # --- Commands ---
 
     def verify_email(self) -> None:
@@ -348,7 +341,7 @@ class User(AggregateRoot[UserId]):
 
     def suspend(self, reason: str) -> None:
         self._ensure_active()
-        stripped_reason = self._ensure_reason_not_empty(reason)
+        verify_params(reason=(reason, str))
 
         self._status = UserStatus.SUSPENDED
 
@@ -356,7 +349,7 @@ class User(AggregateRoot[UserId]):
             UserSuspended(
                 user_id=self._id.value,
                 email=self._email.address,
-                reason=stripped_reason,
+                reason=reason.strip(),
             )
         )
 

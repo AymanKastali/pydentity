@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydentity.domain.exceptions import EmptyValueError, InvalidValueError
+from pydentity.domain.exceptions import InvalidValueError
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.role import Role
 
 if TYPE_CHECKING:
@@ -31,10 +32,7 @@ class AccessTokenClaims:
     roles: frozenset[RoleName]
 
     def __post_init__(self) -> None:
-        if not self.issuer:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.issuer")
-        if not self.token_id:
-            raise EmptyValueError(field_name=f"{self.__class__.__name__}.token_id")
+        verify_params(issuer=(self.issuer, str), token_id=(self.token_id, str))
         if self.expires_at <= self.issued_at:
             raise InvalidValueError(
                 field_name=f"{self.__class__.__name__}.expires_at",

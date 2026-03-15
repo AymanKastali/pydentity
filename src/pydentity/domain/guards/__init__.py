@@ -1,5 +1,5 @@
-from pydentity.domain.guards.type_guards import verify_types
+from pydentity.domain.guards.param_guards import verify_params
 
 __all__ = [
-    "verify_types",
+    "verify_params",
 ]

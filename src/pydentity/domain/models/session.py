@@ -14,7 +14,7 @@ from pydentity.domain.exceptions import (
     SessionRevokedError,
 )
 from pydentity.domain.exceptions.domain import SessionAlreadyRevokedError
-from pydentity.domain.guards import verify_types
+from pydentity.domain.guards import verify_params
 from pydentity.domain.models.base import AggregateRoot
 from pydentity.domain.models.enums import SessionStatus
 from pydentity.domain.models.value_objects import (
@@ -47,7 +47,7 @@ class Session(AggregateRoot[SessionId]):
         expiry: SessionExpiry,
     ) -> None:
         super().__init__()
-        verify_types(
+        verify_params(
             session_id=(session_id, SessionId),
             user_id=(user_id, UserId),
             device_id=(device_id, DeviceId),
