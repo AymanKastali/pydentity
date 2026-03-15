@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network dev infra docker-up docker-down docker-build docker-logs docker-ps
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network dev infra docker-up docker-down docker-build docker-logs docker-ps release release-patch release-minor release-major
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -88,6 +88,20 @@ docker-logs: ## Tail logs for all services
 
 docker-ps: ## Show running service status
 	$(COMPOSE) ps
+
+release: ## Tag and push a release (use: make release V=1.0.0)
+	@test -n "$(V)" || (echo "Usage: make release V=1.0.0" && exit 1)
+	git tag -a "v$(V)" -m "Release v$(V)"
+	git push origin "v$(V)"
+
+release-patch: ## Bump patch version and release (use: make release-patch V=1.0.1)
+	@$(MAKE) release V=$(V)
+
+release-minor: ## Bump minor version and release (use: make release-minor V=1.1.0)
+	@$(MAKE) release V=$(V)
+
+release-major: ## Bump major version and release (use: make release-major V=2.0.0)
+	@$(MAKE) release V=$(V)
 
 diagrams: ## Render PlantUML diagrams to PNG
 	plantuml -tpng docs/diagrams/*.puml
