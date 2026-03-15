@@ -47,9 +47,19 @@ class ChangePassword:
             )
 
             await uow.users.upsert(user)
+
+            active_sessions = await uow.sessions.find_active_by_user_id(
+                UserId(value=command.user_id)
+            )
+            for session in active_sessions:
+                session.revoke()
+                await uow.sessions.upsert(session)
+
             await uow.commit()
 
         self._logger.info("password changed", user_id=command.user_id)
 
         events = user.collect_events()
+        for session in active_sessions:
+            events.extend(session.collect_events())
         await self._event_publisher.publish(events)

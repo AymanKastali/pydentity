@@ -510,11 +510,13 @@ class TokenLifetimePolicy(ValueObject):
 @dataclass(frozen=True, slots=True)
 class EmailVerificationPolicy(ValueObject):
     required_on_registration: bool
+    required_on_email_change: bool
     token_ttl: timedelta
 
     def __post_init__(self) -> None:
         verify_params(
             required_on_registration=(self.required_on_registration, bool),
+            required_on_email_change=(self.required_on_email_change, bool),
             token_ttl=(self.token_ttl, timedelta),
         )
         if self.token_ttl.total_seconds() <= 0:

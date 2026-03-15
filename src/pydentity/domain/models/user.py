@@ -24,6 +24,7 @@ from pydentity.domain.events.user_events import (
 from pydentity.domain.exceptions import (
     AccountAlreadyActiveError,
     AccountAlreadyDeactivatedError,
+    AccountAlreadySuspendedError,
     AccountDeactivatedError,
     AccountNotActiveError,
     EmailAlreadyVerifiedError,
@@ -340,6 +341,8 @@ class User(AggregateRoot[UserId]):
         self._record_event(LoginSucceeded(user_id=self._id.value))
 
     def suspend(self, reason: str) -> None:
+        if self._status == UserStatus.SUSPENDED:
+            raise AccountAlreadySuspendedError()
         self._ensure_active()
         verify_params(reason=(reason, str))
 
@@ -394,6 +397,7 @@ class User(AggregateRoot[UserId]):
         )
 
         if verification_token is not None:
+            self._status = UserStatus.PENDING_VERIFICATION
             self._record_event(
                 VerificationTokenIssued(user_id=self._id.value, email=new_email.address)
             )

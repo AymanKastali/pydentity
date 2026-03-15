@@ -1,6 +1,7 @@
 from pydentity.domain.exceptions.domain import (
     AccountAlreadyActiveError,
     AccountAlreadyDeactivatedError,
+    AccountAlreadySuspendedError,
     AccountDeactivatedError,
     AccountLockedError,
     AccountNotActiveError,
@@ -43,6 +44,7 @@ from pydentity.domain.exceptions.domain import (
 __all__ = [
     "AccountAlreadyActiveError",
     "AccountAlreadyDeactivatedError",
+    "AccountAlreadySuspendedError",
     "AccountDeactivatedError",
     "AccountLockedError",
     "AccountNotActiveError",

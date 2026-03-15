@@ -40,7 +40,8 @@ class SecuritySettings(BaseSettings):
     refresh_token_ttl_seconds: int = 604800
     session_absolute_ttl_seconds: int = 2592000
 
-    email_verification_required: bool = True
+    email_verification_on_register_required: bool = True
+    email_verification_on_change_required: bool = True
     email_verification_ttl_hours: int = 24
 
     reset_token_ttl_hours: int = 1
@@ -76,7 +77,8 @@ class SecuritySettings(BaseSettings):
     @property
     def email_verification_policy(self) -> EmailVerificationPolicy:
         return EmailVerificationPolicy(
-            required_on_registration=self.email_verification_required,
+            required_on_registration=self.email_verification_on_register_required,
+            required_on_email_change=self.email_verification_on_change_required,
             token_ttl=timedelta(hours=self.email_verification_ttl_hours),
         )
 

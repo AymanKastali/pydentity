@@ -47,7 +47,6 @@ async def reset_password(
 ) -> None:
     await use_case.execute(
         ResetPasswordInput(
-            user_id=body.user_id,
             token=body.token,
             new_password=body.new_password,
         )

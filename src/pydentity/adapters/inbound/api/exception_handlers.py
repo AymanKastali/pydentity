@@ -23,6 +23,7 @@ from pydentity.application.exceptions.app import (
 from pydentity.domain.exceptions.domain import (
     AccountAlreadyActiveError,
     AccountAlreadyDeactivatedError,
+    AccountAlreadySuspendedError,
     AccountDeactivatedError,
     AccountLockedError,
     AccountNotActiveError,
@@ -78,6 +79,7 @@ _DOMAIN_STATUS_MAP: dict[type[DomainError], int] = {
     DeviceOwnershipError: status.HTTP_403_FORBIDDEN,
     AccountAlreadyActiveError: status.HTTP_409_CONFLICT,
     AccountAlreadyDeactivatedError: status.HTTP_409_CONFLICT,
+    AccountAlreadySuspendedError: status.HTTP_409_CONFLICT,
     EmailAlreadyTakenError: status.HTTP_409_CONFLICT,
     EmailAlreadyVerifiedError: status.HTTP_409_CONFLICT,
     RoleAlreadyAssignedError: status.HTTP_409_CONFLICT,
@@ -118,6 +120,7 @@ _DOMAIN_CODE_MAP: dict[type[DomainError], str] = {
     DeviceOwnershipError: "DEVICE_OWNERSHIP_VIOLATION",
     AccountAlreadyActiveError: "ACCOUNT_ALREADY_ACTIVE",
     AccountAlreadyDeactivatedError: "ACCOUNT_ALREADY_DEACTIVATED",
+    AccountAlreadySuspendedError: "ACCOUNT_ALREADY_SUSPENDED",
     EmailAlreadyTakenError: "EMAIL_ALREADY_TAKEN",
     EmailAlreadyVerifiedError: "EMAIL_ALREADY_VERIFIED",
     RoleAlreadyAssignedError: "ROLE_ALREADY_ASSIGNED",
@@ -215,7 +218,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def integrity_error_handler(
         request: Request, exc: IntegrityError
     ) -> JSONResponse:
-        _log.warning("integrity error: %s", exc.orig)
+        _log.error("integrity error: %s", exc.orig)
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_error_response(

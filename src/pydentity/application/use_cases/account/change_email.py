@@ -52,6 +52,14 @@ class ChangeEmail:
         new_email = self._email_address_factory.create(command.new_email)
         now = self._clock.now()
 
+        raw_token: str | None = None
+        verification_token = None
+
+        if self._email_verification_policy.required_on_email_change:
+            raw_token, verification_token = self._verification_token_generator.generate(
+                self._email_verification_policy.token_ttl, now
+            )
+
         async with self._uow_factory() as uow:
             change_user_email = ChangeUserEmail(user_repo=uow.users)
 
@@ -61,10 +69,6 @@ class ChangeEmail:
                     "email change failed — user not found", user_id=command.user_id
                 )
                 raise UserNotFoundError(user_id=command.user_id)
-
-            raw_token, verification_token = self._verification_token_generator.generate(
-                self._email_verification_policy.token_ttl, now
-            )
 
             await change_user_email.execute(
                 user=user,
@@ -80,6 +84,7 @@ class ChangeEmail:
         events = user.collect_events()
         await self._event_publisher.publish(events)
 
-        await self._notification.send_verification_email(
-            email=command.new_email, raw_token=raw_token
-        )
+        if raw_token is not None:
+            await self._notification.send_verification_email(
+                email=command.new_email, raw_token=raw_token
+            )

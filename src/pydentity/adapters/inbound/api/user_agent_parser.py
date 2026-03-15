@@ -22,7 +22,13 @@ def parse_user_agent(raw: str | None) -> ParsedUserAgent:
             platform=_FALLBACK_PLATFORM,
         )
 
-    result = parse(raw)
+    try:
+        result = parse(raw)
+    except Exception:
+        return ParsedUserAgent(
+            device_name=_FALLBACK_DEVICE_NAME,
+            platform=_FALLBACK_PLATFORM,
+        )
 
     platform = (
         result.os.family if result.os and result.os.family else _FALLBACK_PLATFORM

@@ -10,7 +10,6 @@ class RequestPasswordResetInput:
 
 @dataclass(frozen=True, slots=True)
 class ResetPasswordInput:
-    user_id: str
     token: str
     new_password: str
 
