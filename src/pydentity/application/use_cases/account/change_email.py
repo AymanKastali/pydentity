@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydentity.application.exceptions import UserNotFoundError
-from pydentity.domain.models.value_objects import EmailAddress, UserId
+from pydentity.domain.models.value_objects import UserId
 from pydentity.domain.services.change_user_email import ChangeUserEmail
 
 if TYPE_CHECKING:
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.notification import NotificationPort
+    from pydentity.domain.factories.email_address_factory import EmailAddressFactory
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
     from pydentity.domain.ports.unit_of_work import UnitOfWork
@@ -26,6 +27,7 @@ class ChangeEmail:
         self,
         *,
         uow_factory: Callable[[], UnitOfWork],
+        email_address_factory: EmailAddressFactory,
         verification_token_generator: VerificationTokenGeneratorPort,
         clock: ClockPort,
         event_publisher: DomainEventPublisherPort,
@@ -34,6 +36,7 @@ class ChangeEmail:
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
+        self._email_address_factory = email_address_factory
         self._verification_token_generator = verification_token_generator
         self._clock = clock
         self._event_publisher = event_publisher
@@ -46,7 +49,7 @@ class ChangeEmail:
             "changing email", user_id=command.user_id, new_email=command.new_email
         )
 
-        new_email = EmailAddress.from_string(command.new_email)
+        new_email = self._email_address_factory.create(command.new_email)
         now = self._clock.now()
 
         async with self._uow_factory() as uow:

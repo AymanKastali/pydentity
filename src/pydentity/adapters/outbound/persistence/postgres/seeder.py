@@ -86,7 +86,7 @@ async def seed_super_admin(
             return
 
         existing = await uow.users.find_by_email(
-            EmailAddress.from_string(super_admin_settings.email)
+            EmailAddress(*super_admin_settings.email.split("@", 1))
         )
         if existing is not None and super_admin_role.name in existing.role_names:
             logger.info("Super admin already exists — skipping")
@@ -94,7 +94,7 @@ async def seed_super_admin(
 
         from pydentity.domain.models.user import User
 
-        email = EmailAddress.from_string(super_admin_settings.email)
+        email = EmailAddress(*super_admin_settings.email.split("@", 1))
         password_hash = await password_hasher.hash(
             super_admin_settings.password.get_secret_value()
         )

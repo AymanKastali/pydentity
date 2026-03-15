@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydentity.application.dtos.auth import RegisterUserOutput
 from pydentity.domain.exceptions.domain import EmailAlreadyTakenError
-from pydentity.domain.models.value_objects import EmailAddress, RoleName
+from pydentity.domain.models.value_objects import RoleName
 from pydentity.domain.services.register_user import RegisterUser as RegisterUserService
 
 if TYPE_CHECKING:
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.notification import NotificationPort
+    from pydentity.domain.factories.email_address_factory import EmailAddressFactory
     from pydentity.domain.factories.user_factory import UserFactory
     from pydentity.domain.models.value_objects import EmailVerificationPolicy
     from pydentity.domain.ports.clock import ClockPort
@@ -29,6 +30,7 @@ class RegisterUser:
         *,
         uow_factory: Callable[[], UnitOfWork],
         user_factory: UserFactory,
+        email_address_factory: EmailAddressFactory,
         verification_token_generator: VerificationTokenGeneratorPort,
         email_verification_policy: EmailVerificationPolicy,
         clock: ClockPort,
@@ -39,6 +41,7 @@ class RegisterUser:
     ) -> None:
         self._uow_factory = uow_factory
         self._user_factory = user_factory
+        self._email_address_factory = email_address_factory
         self._verification_token_generator = verification_token_generator
         self._email_verification_policy = email_verification_policy
         self._clock = clock
@@ -50,7 +53,7 @@ class RegisterUser:
     async def execute(self, command: RegisterUserInput) -> RegisterUserOutput:
         self._logger.debug("registering user", email=command.email)
 
-        email = EmailAddress.from_string(command.email)
+        email = self._email_address_factory.create(command.email)
         now = self._clock.now()
 
         raw_token: str | None = None

@@ -31,6 +31,10 @@ from pydentity.adapters.outbound.persistence.postgres.container import (
     get_uow,
 )
 from pydentity.adapters.outbound.security.clock import UtcClock
+from pydentity.adapters.outbound.security.email_validator import RegexEmailValidator
+from pydentity.adapters.outbound.security.fingerprint_hasher import (
+    Sha256FingerprintHasher,
+)
 from pydentity.adapters.outbound.security.identity_generator import (
     UlidIdentityGenerator,
 )
@@ -39,6 +43,9 @@ from pydentity.adapters.outbound.security.jwt_token_verifier import (
     HmacSha256JwtVerifier,
 )
 from pydentity.adapters.outbound.security.password_hasher import ScryptPasswordHasher
+from pydentity.adapters.outbound.security.timing_safe_comparator import (
+    HmacTimingSafeComparator,
+)
 from pydentity.adapters.outbound.security.token_generators import (
     HashedResetTokenGenerator,
     HashedVerificationTokenGenerator,
@@ -77,6 +84,10 @@ from pydentity.application.use_cases.role.remove_permission_from_role import (
 from pydentity.application.use_cases.role.revoke_role_from_user import (
     RevokeRoleFromUser,
 )
+from pydentity.domain.factories.device_fingerprint_factory import (
+    DeviceFingerprintFactory,
+)
+from pydentity.domain.factories.email_address_factory import EmailAddressFactory
 from pydentity.domain.factories.session_factory import SessionFactory
 from pydentity.domain.factories.user_factory import UserFactory
 from pydentity.domain.services.change_user_password import ChangeUserPassword
@@ -102,6 +113,7 @@ if TYPE_CHECKING:
     from pydentity.domain.ports.password_hasher import PasswordHasherPort
     from pydentity.domain.ports.raw_token_generator import RawTokenGeneratorPort
     from pydentity.domain.ports.reset_token_generator import ResetTokenGeneratorPort
+    from pydentity.domain.ports.timing_safe_comparator import TimingSafeComparatorPort
     from pydentity.domain.ports.token_hasher import TokenHasherPort
     from pydentity.domain.ports.verification_token_generator import (
         VerificationTokenGeneratorPort,
@@ -120,6 +132,9 @@ class Container:
     raw_token_generator: RawTokenGeneratorPort
     verification_token_generator: VerificationTokenGeneratorPort
     reset_token_generator: ResetTokenGeneratorPort
+    comparator: TimingSafeComparatorPort
+    device_fingerprint_factory: DeviceFingerprintFactory
+    email_address_factory: EmailAddressFactory
     event_publisher: DomainEventPublisherPort
     event_subscriber: RedisEventSubscriber
     redis: Redis
@@ -149,6 +164,14 @@ class Container:
             delegates=[log_audit_trail, postgres_audit_trail],
         )
 
+        comparator = HmacTimingSafeComparator()
+        fingerprint_hasher = Sha256FingerprintHasher()
+        device_fingerprint_factory = DeviceFingerprintFactory(
+            fingerprint_hasher=fingerprint_hasher,
+        )
+        email_validator = RegexEmailValidator()
+        email_address_factory = EmailAddressFactory(email_validator=email_validator)
+
         event_publisher = RedisEventPublisher(
             redis=redis_client,
             channel=redis_settings.event_channel,
@@ -171,6 +194,9 @@ class Container:
             raw_token_generator=SecretsRawTokenGenerator(),
             verification_token_generator=HashedVerificationTokenGenerator(),
             reset_token_generator=HashedResetTokenGenerator(),
+            comparator=comparator,
+            device_fingerprint_factory=device_fingerprint_factory,
+            email_address_factory=email_address_factory,
             event_publisher=event_publisher,
             event_subscriber=event_subscriber,
             redis=redis_client,
@@ -205,6 +231,7 @@ def get_register_user(
     return RegisterUser(
         uow_factory=get_uow,
         user_factory=user_factory,
+        email_address_factory=c.email_address_factory,
         verification_token_generator=c.verification_token_generator,
         email_verification_policy=c.email_verification_policy,
         clock=c.clock,
@@ -224,6 +251,8 @@ def get_authenticate_user(
     )
     return AuthenticateUser(
         uow_factory=get_uow,
+        email_address_factory=c.email_address_factory,
+        device_fingerprint_factory=c.device_fingerprint_factory,
         password_hasher=c.password_hasher,
         session_factory=session_factory,
         raw_token_generator=c.raw_token_generator,
@@ -245,6 +274,7 @@ def get_refresh_access_token(
     return RefreshAccessToken(
         uow_factory=get_uow,
         token_hasher=c.token_hasher,
+        comparator=c.comparator,
         raw_token_generator=c.raw_token_generator,
         token_signer=c.token_signer,
         identity_generator=c.identity_generator,
@@ -274,6 +304,7 @@ def get_change_email(
 ) -> ChangeEmail:
     return ChangeEmail(
         uow_factory=get_uow,
+        email_address_factory=c.email_address_factory,
         verification_token_generator=c.verification_token_generator,
         clock=c.clock,
         event_publisher=c.event_publisher,
@@ -322,6 +353,7 @@ def get_verify_email(
     return VerifyEmail(
         uow_factory=get_uow,
         token_hasher=c.token_hasher,
+        comparator=c.comparator,
         clock=c.clock,
         event_publisher=c.event_publisher,
         logger=c.logger,
@@ -350,6 +382,7 @@ def get_request_password_reset(
 ) -> RequestPasswordReset:
     return RequestPasswordReset(
         uow_factory=get_uow,
+        email_address_factory=c.email_address_factory,
         reset_token_generator=c.reset_token_generator,
         clock=c.clock,
         event_publisher=c.event_publisher,
@@ -365,6 +398,7 @@ def get_reset_password(
     reset_user_password = ResetUserPassword(
         password_hasher=c.password_hasher,
         password_policy=c.password_policy,
+        comparator=c.comparator,
     )
     return ResetPassword(
         uow_factory=get_uow,

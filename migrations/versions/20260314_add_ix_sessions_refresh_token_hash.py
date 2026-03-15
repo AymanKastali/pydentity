@@ -5,6 +5,7 @@ Revises: 431ac8167e43
 Create Date: 2026-03-14 18:00:00.000000
 
 """
+
 from typing import TYPE_CHECKING
 
 from alembic import op

@@ -31,8 +31,6 @@ from pydentity.domain.exceptions import (
     EmptyValueError,
     RoleAlreadyAssignedError,
     RoleNotAssignedError,
-    VerificationTokenExpiredError,
-    VerificationTokenInvalidError,
     VerificationTokenNotIssuedError,
 )
 from pydentity.domain.guards import verify_types
@@ -55,8 +53,6 @@ if TYPE_CHECKING:
         AccountLockoutPolicy,
         EmailVerificationToken,
         HashedPassword,
-        HashedResetToken,
-        HashedVerificationToken,
         LockoutExpiry,
         PasswordResetToken,
     )
@@ -237,15 +233,6 @@ class User(AggregateRoot[UserId]):
         if self._email_verification.token is None:
             raise VerificationTokenNotIssuedError()
 
-    def _ensure_verification_token_valid(
-        self, token_hash: HashedVerificationToken, now: datetime
-    ) -> None:
-        assert self._email_verification.token is not None
-        if self._email_verification.token.is_expired(now):
-            raise VerificationTokenExpiredError()
-        if not self._email_verification.token.matches(token_hash):
-            raise VerificationTokenInvalidError()
-
     def _ensure_email_changed(self, new_email: EmailAddress) -> None:
         if new_email == self._email:
             raise EmailUnchangedError()
@@ -266,11 +253,10 @@ class User(AggregateRoot[UserId]):
 
     # --- Commands ---
 
-    def verify_email(self, token_hash: HashedVerificationToken, now: datetime) -> None:
+    def verify_email(self) -> None:
         self._ensure_not_deactivated()
         self._ensure_email_not_verified()
         self._ensure_verification_token_issued()
-        self._ensure_verification_token_valid(token_hash, now)
 
         self._email_verification = EmailVerification(is_verified=True, token=None)
 
@@ -297,14 +283,12 @@ class User(AggregateRoot[UserId]):
     def reset_password(
         self,
         new_hash: HashedPassword,
-        token_hash: HashedResetToken,
-        now: datetime,
         *,
         history_size: int,
     ) -> None:
         self._ensure_active()
         self._credentials = self._credentials.with_password_reset(
-            token_hash, new_hash, now, history_size
+            new_hash, history_size
         )
         self._login_tracking = self._login_tracking.reset()
         self._record_event(

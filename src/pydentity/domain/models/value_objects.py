@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
-import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Self
@@ -10,13 +7,9 @@ from typing import Self
 from pydentity.domain.exceptions import (
     AccountLockedError,
     EmptyValueError,
-    InvalidEmailAddressError,
     InvalidPolicyValueError,
     InvalidValueError,
     PasswordPolicyViolationError,
-    ResetTokenExpiredError,
-    ResetTokenInvalidError,
-    ResetTokenNotIssuedError,
 )
 from pydentity.domain.guards import verify_types
 from pydentity.domain.models.base import ValueObject
@@ -132,14 +125,6 @@ class Permission(ValueObject):
 
 # --- Auth VOs ---
 
-_EMAIL_LOCAL_RE = re.compile(
-    r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$"
-)
-_EMAIL_DOMAIN_RE = re.compile(
-    r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
-    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
-)
-
 
 @dataclass(frozen=True, slots=True)
 class EmailAddress(ValueObject):
@@ -148,31 +133,10 @@ class EmailAddress(ValueObject):
 
     def __post_init__(self) -> None:
         verify_types(local_part=(self.local_part, str), domain=(self.domain, str))
-        self._ensure_valid_local_part(self.local_part)
-        self._ensure_valid_domain(self.domain)
-
-    @classmethod
-    def _ensure_valid_local_part(cls, local_part: str) -> None:
-        if not local_part:
-            raise InvalidEmailAddressError(detail=f"invalid local part: {local_part!r}")
-        if len(local_part) > 64:
-            raise InvalidEmailAddressError(detail="local part exceeds 64 characters")
-        if not _EMAIL_LOCAL_RE.match(local_part):
-            raise InvalidEmailAddressError(detail=f"invalid local part: {local_part!r}")
-
-    @classmethod
-    def _ensure_valid_domain(cls, domain: str) -> None:
-        if not domain:
-            raise InvalidEmailAddressError(detail=f"invalid domain: {domain!r}")
-        if len(domain) > 255:
-            raise InvalidEmailAddressError(detail="domain exceeds 255 characters")
-        if not _EMAIL_DOMAIN_RE.match(domain):
-            raise InvalidEmailAddressError(detail=f"invalid domain: {domain!r}")
-
-    @classmethod
-    def from_string(cls, address: str) -> Self:
-        local_part, _, domain = address.partition("@")
-        return cls(local_part=local_part, domain=domain)
+        if not self.local_part:
+            raise EmptyValueError(field_name="EmailAddress.local_part")
+        if not self.domain:
+            raise EmptyValueError(field_name="EmailAddress.domain")
 
     @property
     def address(self) -> str:
@@ -201,9 +165,6 @@ class HashedVerificationToken(ValueObject):
         if not self.value:
             raise EmptyValueError(field_name=self.__class__.__name__)
 
-    def timing_safe_equals(self, other: HashedVerificationToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
-
 
 @dataclass(frozen=True, slots=True)
 class HashedResetToken(ValueObject):
@@ -214,9 +175,6 @@ class HashedResetToken(ValueObject):
         if not self.value:
             raise EmptyValueError(field_name=self.__class__.__name__)
 
-    def timing_safe_equals(self, other: HashedResetToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
-
 
 @dataclass(frozen=True, slots=True)
 class HashedRefreshToken(ValueObject):
@@ -226,9 +184,6 @@ class HashedRefreshToken(ValueObject):
         verify_types(value=(self.value, bytes))
         if not self.value:
             raise EmptyValueError(field_name=self.__class__.__name__)
-
-    def timing_safe_equals(self, other: HashedRefreshToken) -> bool:
-        return hmac.compare_digest(self.value, other.value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -329,9 +284,6 @@ class EmailVerificationToken(ValueObject):
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
 
-    def matches(self, candidate: HashedVerificationToken) -> bool:
-        return self.token_hash.timing_safe_equals(candidate)
-
 
 @dataclass(frozen=True, slots=True)
 class PasswordResetToken(ValueObject):
@@ -343,9 +295,6 @@ class PasswordResetToken(ValueObject):
 
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
-
-    def matches(self, candidate: HashedResetToken) -> bool:
-        return self.token_hash.timing_safe_equals(candidate)
 
 
 # --- Composite VOs ---
@@ -409,38 +358,13 @@ class Credentials(ValueObject):
             password_history=self.password_history,
         )
 
-    def with_password_reset(
-        self,
-        token_hash: HashedResetToken,
-        new_hash: HashedPassword,
-        now: datetime,
-        history_size: int,
-    ) -> Self:
-        token = self._ensure_reset_token_issued()
-        self._ensure_reset_token_valid(token, token_hash, now)
-
+    def with_password_reset(self, new_hash: HashedPassword, history_size: int) -> Self:
         updated = self.with_new_password(new_hash, history_size)
         return type(self)(
             password_hash=updated.password_hash,
             password_reset_token=None,
             password_history=updated.password_history,
         )
-
-    def _ensure_reset_token_issued(self) -> PasswordResetToken:
-        if self.password_reset_token is None:
-            raise ResetTokenNotIssuedError()
-        return self.password_reset_token
-
-    def _ensure_reset_token_valid(
-        self,
-        token: PasswordResetToken,
-        token_hash: HashedResetToken,
-        now: datetime,
-    ) -> None:
-        if token.is_expired(now):
-            raise ResetTokenExpiredError()
-        if not token.matches(token_hash):
-            raise ResetTokenInvalidError()
 
 
 @dataclass(frozen=True, slots=True)
@@ -504,13 +428,6 @@ class DeviceFingerprint(ValueObject):
         verify_types(value=(self.value, str))
         if not self.value:
             raise EmptyValueError(field_name=self.__class__.__name__)
-
-    @classmethod
-    def from_raw(cls, raw: str) -> Self:
-        stripped = raw.strip()
-        if not stripped:
-            raise EmptyValueError(field_name="DeviceFingerprint")
-        return cls(value=hashlib.sha256(stripped.encode()).hexdigest())
 
 
 # --- Policy VOs ---
