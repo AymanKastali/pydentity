@@ -30,6 +30,9 @@ coverage.xml
 .env
 .env.local
 
+# RSA signing keys
+keys/
+
 # IDE
 .idea/
 *.swp

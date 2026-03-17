@@ -19,7 +19,7 @@ dependencies = [
     "python-ulid>=3.0.0",
     "uvicorn[standard]>=0.34.0",
     "pydantic>=2.12.5",
-    "pyjwt>=2.11.0",
+    "pyjwt[crypto]>=2.11.0",
     "ua-parser>=1.0.0",
 ]
 

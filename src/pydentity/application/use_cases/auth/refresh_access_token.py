@@ -42,6 +42,7 @@ class RefreshAccessToken:
         event_publisher: DomainEventPublisherPort,
         token_lifetime_policy: TokenLifetimePolicy,
         token_issuer: str,
+        token_audiences: frozenset[str],
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
@@ -54,6 +55,7 @@ class RefreshAccessToken:
         self._event_publisher = event_publisher
         self._token_lifetime_policy = token_lifetime_policy
         self._token_issuer = token_issuer
+        self._token_audiences = token_audiences
         self._logger = logger
 
     async def _revoke_session_and_raise(
@@ -161,6 +163,7 @@ class RefreshAccessToken:
                 token_lifetime_policy=self._token_lifetime_policy,
                 token_id=self._identity_generator.new_token_id(),
                 roles=roles,
+                audiences=self._token_audiences,
             )
             access_token = await self._token_signer.sign(claims)
 

@@ -51,6 +51,7 @@ class AuthenticateUser:
         token_lifetime_policy: TokenLifetimePolicy,
         device_policy: DevicePolicy,
         token_issuer: str,
+        token_audiences: frozenset[str],
         logger: LoggerPort,
     ) -> None:
         self._uow_factory = uow_factory
@@ -67,6 +68,7 @@ class AuthenticateUser:
         self._token_lifetime_policy = token_lifetime_policy
         self._device_policy = device_policy
         self._token_issuer = token_issuer
+        self._token_audiences = token_audiences
         self._logger = logger
 
     async def execute(self, command: AuthenticateUserInput) -> AuthenticateUserOutput:
@@ -172,6 +174,7 @@ class AuthenticateUser:
                 token_lifetime_policy=self._token_lifetime_policy,
                 token_id=self._identity_generator.new_token_id(),
                 roles=roles,
+                audiences=self._token_audiences,
             )
             access_token = await self._token_signer.sign(claims)
 

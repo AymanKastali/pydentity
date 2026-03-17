@@ -1,30 +1,20 @@
 {
   "name": "pydentity",
-  "image": "mcr.microsoft.com/devcontainers/python:3.14",
-  "remoteUser": "vscode",
-  "updateRemoteUserUID": true,
-  "initializeCommand": "docker network create pydentity 2>/dev/null || true",
-  "runArgs": [
-    "--add-host=host.docker.internal:host-gateway",
-    "--network=pydentity",
-    "-p",
-    "8000:8000"
-  ],
-  "forwardPorts": [
-    8000
-  ],
-  "mounts": [
-    "source=pydentity-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
-  ],
-  "containerEnv": {
-    "UV_LINK_MODE": "copy"
-  },
+  "dockerComposeFile": ["docker-compose.yml", "../docker/docker-compose.yml"],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/pydentity",
+  "remoteUser": "root",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "moby": false
     }
   },
-  "postCreateCommand": "sudo chown -R vscode:vscode .venv && make setup",
+  "forwardPorts": [8000, 8025],
+  "portsAttributes": {
+    "8000": { "label": "pydentity API" },
+    "8025": { "label": "MailHog UI" }
+  },
+  "postCreateCommand": "make setup",
   "customizations": {
     "vscode": {
       "settings": {

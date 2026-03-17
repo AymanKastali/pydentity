@@ -37,6 +37,7 @@
     "pydentity",
     "redoc",
     "selectinload",
-    "sessionmaker"
+    "sessionmaker",
+    "STARTTLS"
   ]
 }

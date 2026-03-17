@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup ensure-network dev infra docker-up docker-down docker-build docker-logs docker-ps release release-patch release-minor release-major
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean dev diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup infra docker-up docker-down docker-build docker-logs docker-ps release release-patch release-minor release-major generate-keys
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -60,34 +60,32 @@ migrate-history: ## Show migration history
 migrate-current: ## Show current migration revision
 	uv run alembic current
 
-COMPOSE := docker compose -f docker/docker-compose.yml
+dev: ## Start the app (infra assumed running via devcontainer or make infra)
+	uv run python -m pydentity
+
+COMPOSE      := docker compose -f docker/docker-compose.yml
+COMPOSE_PROD := $(COMPOSE) -f docker/docker-compose.prod.yml
 
 env-setup: ## Create .env from .env.example if it does not exist
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example — fill in required secrets before starting.")
 
-ensure-network: ## Create the shared pydentity Docker network if it does not exist
-	@docker network create pydentity 2>/dev/null || true
-
-infra: env-setup ensure-network ## Start infrastructure only (postgres, redis, mailhog)
-	$(COMPOSE) up -d postgres redis mailhog
-
-dev: infra ## Start infra + run app locally with hot-reload
-	uv run python -m pydentity
-
-docker-up: env-setup ensure-network ## Start all services (detached)
+infra: env-setup ## Start infrastructure only (postgres, redis, mailhog)
 	$(COMPOSE) up -d
 
-docker-build: env-setup ensure-network ## Build and start all services
-	$(COMPOSE) up --build -d
+docker-up: env-setup ## Start app + infrastructure (detached)
+	$(COMPOSE_PROD) up -d
+
+docker-build: env-setup ## Build and start app + infrastructure
+	$(COMPOSE_PROD) up --build -d
 
 docker-down: ## Stop and remove containers
-	$(COMPOSE) down
+	$(COMPOSE_PROD) down
 
 docker-logs: ## Tail logs for all services
-	$(COMPOSE) logs -f
+	$(COMPOSE_PROD) logs -f
 
 docker-ps: ## Show running service status
-	$(COMPOSE) ps
+	$(COMPOSE_PROD) ps
 
 release: ## Tag and push a release (use: make release V=1.0.0)
 	@test -n "$(V)" || (echo "Usage: make release V=1.0.0" && exit 1)
@@ -102,6 +100,11 @@ release-minor: ## Bump minor version and release (use: make release-minor V=1.1.
 
 release-major: ## Bump major version and release (use: make release-major V=2.0.0)
 	@$(MAKE) release V=$(V)
+
+generate-keys: ## Generate a new RSA 2048-bit signing key in keys/
+	@mkdir -p keys
+	openssl genrsa -out keys/$$(date +%Y-%m-%d).pem 2048
+	chmod 600 keys/*.pem
 
 diagrams: ## Render PlantUML diagrams to PNG
 	plantuml -tpng docs/diagrams/*.puml

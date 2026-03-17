@@ -1,4 +1,4 @@
-"""HS256 JWT verifier backed by PyJWT."""
+"""RS256 JWT verifier backed by PyJWT."""
 
 from __future__ import annotations
 
@@ -18,20 +18,37 @@ from pydentity.domain.models.value_objects import (
 )
 
 if TYPE_CHECKING:
-    from pydantic import SecretStr
+    from pydentity.application.ports.jwk_key_store import JWKKeyStorePort
 
 
-class HmacSha256JwtVerifier(TokenVerifierPort):
-    def __init__(self, *, secret: SecretStr) -> None:
-        self._secret = secret.get_secret_value()
+class RS256JWTVerifier(TokenVerifierPort):
+    def __init__(
+        self, *, key_store: JWKKeyStorePort, expected_audiences: frozenset[str]
+    ) -> None:
+        self._key_store = key_store
+        self._expected_audiences = expected_audiences
 
     async def verify(self, token: str) -> AccessTokenClaims:
         try:
+            header = jwt.get_unverified_header(token)
+        except jwt.PyJWTError:
+            raise InvalidTokenError from None
+
+        kid = header.get("kid")
+        if not isinstance(kid, str):
+            raise InvalidTokenError
+
+        public_key = self._key_store.get_public_key(kid)
+        if public_key is None:
+            raise InvalidTokenError
+
+        try:
             payload: dict[str, object] = jwt.decode(
                 token,
-                self._secret,
-                algorithms=["HS256"],
-                options={"require": ["iss", "sub", "sid", "iat", "exp", "jti"]},
+                public_key.public_key,
+                algorithms=["RS256"],
+                audience=sorted(self._expected_audiences),
+                options={"require": ["iss", "sub", "sid", "iat", "exp", "jti", "aud"]},
             )
         except jwt.PyJWTError:
             raise InvalidTokenError from None
@@ -49,6 +66,12 @@ class HmacSha256JwtVerifier(TokenVerifierPort):
         if not isinstance(iat, int | float) or not isinstance(exp, int | float):
             raise InvalidTokenError
 
+        raw_audiences = payload.get("aud", [])
+        if isinstance(raw_audiences, str):
+            raw_audiences = [raw_audiences]
+        if not isinstance(raw_audiences, list):
+            raise InvalidTokenError
+
         return AccessTokenClaims(
             issuer=str(payload["iss"]),
             subject=UserId(value=str(payload["sub"])),
@@ -58,4 +81,5 @@ class HmacSha256JwtVerifier(TokenVerifierPort):
             token_id=str(payload["jti"]),
             permissions=frozenset(Permission(value=p) for p in raw_permissions),
             roles=frozenset(RoleName(value=r) for r in raw_roles),
+            audiences=frozenset(str(a) for a in raw_audiences),
         )

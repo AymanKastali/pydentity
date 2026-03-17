@@ -1,27 +1,4 @@
 services:
-  app:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    env_file:
-      - ../.env
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailhog:
-        condition: service_started
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    networks: [pydentity]
-
   postgres:
     image: postgres:16-alpine
     environment:
@@ -37,7 +14,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks: [pydentity]
 
   redis:
     image: redis:7-alpine
@@ -50,19 +26,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks: [pydentity]
 
   mailhog:
     image: mailhog/mailhog
     ports:
       - "1025:1025"
       - "8025:8025"
-    networks: [pydentity]
 
 volumes:
   pgdata:
   redis_data:
-
-networks:
-  pydentity:
-    external: true
