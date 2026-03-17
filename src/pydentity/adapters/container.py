@@ -38,10 +38,9 @@ from pydentity.adapters.outbound.security.fingerprint_hasher import (
 from pydentity.adapters.outbound.security.identity_generator import (
     UlidIdentityGenerator,
 )
-from pydentity.adapters.outbound.security.jwt_token_signer import HmacSha256JwtSigner
-from pydentity.adapters.outbound.security.jwt_token_verifier import (
-    HmacSha256JwtVerifier,
-)
+from pydentity.adapters.outbound.security.jwk_key_store import FileSystemJWKKeyStore
+from pydentity.adapters.outbound.security.jwt_token_signer import RS256JWTSigner
+from pydentity.adapters.outbound.security.jwt_token_verifier import RS256JWTVerifier
 from pydentity.adapters.outbound.security.password_hasher import ScryptPasswordHasher
 from pydentity.adapters.outbound.security.timing_safe_comparator import (
     HmacTimingSafeComparator,
@@ -97,6 +96,7 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from pydentity.application.ports.event_publisher import DomainEventPublisherPort
+    from pydentity.application.ports.jwk_key_store import JWKKeyStorePort
     from pydentity.application.ports.logger import LoggerPort
     from pydentity.application.ports.notification import NotificationPort
     from pydentity.application.ports.token_signer import TokenSignerPort
@@ -127,6 +127,7 @@ class Container:
     token_hasher: TokenHasherPort
     token_signer: TokenSignerPort
     token_verifier: TokenVerifierPort
+    key_store: JWKKeyStorePort
     identity_generator: IdentityGeneratorPort
     clock: ClockPort
     raw_token_generator: RawTokenGeneratorPort
@@ -145,6 +146,7 @@ class Container:
     token_lifetime_policy: TokenLifetimePolicy
     device_policy: DevicePolicy
     token_issuer: str
+    token_audiences: frozenset[str]
     reset_token_ttl: timedelta
 
     @classmethod
@@ -183,12 +185,18 @@ class Container:
             audit_trail=audit_trail,
         )
 
+        key_store = FileSystemJWKKeyStore(directory=sec.jwt_key_directory)
+
         return cls(
             logger=setup_logging(),
             password_hasher=ScryptPasswordHasher(),
             token_hasher=Sha256TokenHasher(),
-            token_signer=HmacSha256JwtSigner(secret=sec.jwt_secret),
-            token_verifier=HmacSha256JwtVerifier(secret=sec.jwt_secret),
+            token_signer=RS256JWTSigner(key_store=key_store),
+            token_verifier=RS256JWTVerifier(
+                key_store=key_store,
+                expected_audiences=frozenset(sec.token_audiences),
+            ),
+            key_store=key_store,
             identity_generator=UlidIdentityGenerator(),
             clock=UtcClock(),
             raw_token_generator=SecretsRawTokenGenerator(),
@@ -207,6 +215,7 @@ class Container:
             token_lifetime_policy=sec.token_lifetime_policy,
             device_policy=sec.device_policy,
             token_issuer=sec.token_issuer,
+            token_audiences=frozenset(sec.token_audiences),
             reset_token_ttl=sec.reset_token_ttl,
         )
 
@@ -264,6 +273,7 @@ def get_authenticate_user(
         token_lifetime_policy=c.token_lifetime_policy,
         device_policy=c.device_policy,
         token_issuer=c.token_issuer,
+        token_audiences=c.token_audiences,
         logger=c.logger,
     )
 
@@ -282,6 +292,7 @@ def get_refresh_access_token(
         event_publisher=c.event_publisher,
         token_lifetime_policy=c.token_lifetime_policy,
         token_issuer=c.token_issuer,
+        token_audiences=c.token_audiences,
         logger=c.logger,
     )
 

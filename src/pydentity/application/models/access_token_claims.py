@@ -28,6 +28,7 @@ class AccessTokenClaims:
     token_id: str
     permissions: frozenset[Permission]
     roles: frozenset[RoleName]
+    audiences: frozenset[str]
 
     def __post_init__(self) -> None:
         if not isinstance(self.issuer, str) or not self.issuer.strip():
@@ -36,6 +37,8 @@ class AccessTokenClaims:
             raise ValueError("AccessTokenClaims.token_id must be a non-empty string")
         if self.expires_at <= self.issued_at:
             raise ValueError("AccessTokenClaims.expires_at must be after issued_at")
+        if not self.audiences:
+            raise ValueError("AccessTokenClaims.audiences must be non-empty")
 
     @classmethod
     def create(
@@ -48,6 +51,7 @@ class AccessTokenClaims:
         token_lifetime_policy: TokenLifetimePolicy,
         token_id: str,
         roles: Iterable[Role],
+        audiences: frozenset[str],
     ) -> AccessTokenClaims:
         materialized_roles = tuple(roles)
         permissions = Role.collect_permissions(materialized_roles)
@@ -61,4 +65,5 @@ class AccessTokenClaims:
             token_id=token_id,
             permissions=permissions,
             roles=role_names,
+            audiences=audiences,
         )

@@ -30,6 +30,7 @@ from pydentity.adapters.inbound.api.routes import (
     email,
     password,
     roles,
+    well_known,
 )
 from pydentity.adapters.outbound.persistence.postgres.container import get_uow
 from pydentity.adapters.outbound.persistence.postgres.migrator import run_migrations
@@ -149,6 +150,7 @@ def create_app() -> FastAPI:
     app.include_router(email.router)
     app.include_router(password.router)
     app.include_router(roles.router)
+    app.include_router(well_known.router)
 
     return app
 

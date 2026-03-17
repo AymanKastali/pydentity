@@ -1,0 +1,19 @@
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/python:3.14
+    environment:
+      UV_LINK_MODE: copy
+    volumes:
+      - ..:/workspaces/pydentity:cached
+      - venv:/workspaces/pydentity/.venv
+    command: sleep infinity
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+volumes:
+  venv:

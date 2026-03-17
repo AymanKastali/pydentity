@@ -1,6 +1,5 @@
 from datetime import timedelta
-
-from pydantic import SecretStr, field_validator  # noqa: TC002
+from pathlib import Path  # noqa: TC003
 
 from pydentity.adapters.config.base import BaseSettings
 from pydentity.domain.models.value_objects import (
@@ -13,18 +12,9 @@ from pydentity.domain.models.value_objects import (
 
 
 class SecuritySettings(BaseSettings):
-    jwt_secret: SecretStr
+    jwt_key_directory: Path
     token_issuer: str = "pydentity"
-
-    @field_validator("jwt_secret")
-    @classmethod
-    def jwt_secret_min_length(cls, v: SecretStr) -> SecretStr:
-        if len(v.get_secret_value()) < 32:
-            msg = (
-                "JWT secret must be at least 32 bytes for HS256 (RFC 7518 Section 3.2)"
-            )
-            raise ValueError(msg)
-        return v
+    token_audiences: list[str] = ["pydentity"]
 
     password_min_length: int = 8
     password_require_uppercase: bool = True

@@ -20,8 +20,4 @@ COPY src/ src/
 # Install the project
 RUN uv sync --frozen --no-dev
 
-# Run as non-root user
-RUN useradd --create-home appuser
-USER appuser
-
 CMD ["uv", "run", "--no-sync", "python", "-m", "pydentity"]
