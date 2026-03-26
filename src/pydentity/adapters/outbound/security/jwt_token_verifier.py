@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import jwt
 
@@ -74,8 +75,8 @@ class RS256JWTVerifier(TokenVerifierPort):
 
         return AccessTokenClaims(
             issuer=str(payload["iss"]),
-            subject=UserId(value=str(payload["sub"])),
-            session_id=SessionId(value=str(payload["sid"])),
+            subject=UserId(value=UUID(str(payload["sub"]))),
+            session_id=SessionId(value=UUID(str(payload["sid"]))),
             issued_at=datetime.fromtimestamp(int(iat), tz=UTC),
             expires_at=datetime.fromtimestamp(int(exp), tz=UTC),
             token_id=str(payload["jti"]),

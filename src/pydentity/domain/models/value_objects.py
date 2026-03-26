@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Self
+from uuid import UUID
 
 from pydentity.domain.exceptions import (
     AccountLockedError,
@@ -18,26 +19,26 @@ from pydentity.domain.models.base import ValueObject
 
 @dataclass(frozen=True, slots=True)
 class UserId(ValueObject):
-    value: str
+    value: UUID
 
     def __post_init__(self) -> None:
-        verify_params(value=(self.value, str))
+        verify_params(value=(self.value, UUID))
 
 
 @dataclass(frozen=True, slots=True)
 class SessionId(ValueObject):
-    value: str
+    value: UUID
 
     def __post_init__(self) -> None:
-        verify_params(value=(self.value, str))
+        verify_params(value=(self.value, UUID))
 
 
 @dataclass(frozen=True, slots=True)
 class DeviceId(ValueObject):
-    value: str
+    value: UUID
 
     def __post_init__(self) -> None:
-        verify_params(value=(self.value, str))
+        verify_params(value=(self.value, UUID))
 
 
 # --- Naming VOs ---

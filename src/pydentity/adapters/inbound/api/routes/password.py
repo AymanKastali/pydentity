@@ -61,7 +61,7 @@ async def change_password(
 ) -> None:
     await use_case.execute(
         ChangePasswordInput(
-            user_id=claims.subject.value,
+            user_id=str(claims.subject.value),
             current_password=body.current_password,
             new_password=body.new_password,
         )

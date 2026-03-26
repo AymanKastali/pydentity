@@ -72,14 +72,14 @@ class VerifyEmail:
             ):
                 self._logger.warning(
                     "email verification failed — token expired or invalid",
-                    user_id=user.id.value,
+                    user_id=str(user.id.value),
                 )
                 raise InvalidTokenError() from None
 
             await uow.users.upsert(user)
             await uow.commit()
 
-        self._logger.info("email verified", user_id=user.id.value)
+        self._logger.info("email verified", user_id=str(user.id.value))
 
         events = user.collect_events()
         await self._event_publisher.publish(events)

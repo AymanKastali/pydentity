@@ -92,8 +92,8 @@ class Device(AggregateRoot[DeviceId]):
 
         device._record_event(
             DeviceRegistered(
-                device_id=device_id.value,
-                user_id=user_id.value,
+                device_id=str(device_id.value),
+                user_id=str(user_id.value),
                 device_name=name.value,
             )
         )
@@ -189,8 +189,8 @@ class Device(AggregateRoot[DeviceId]):
 
         self._record_event(
             DeviceLastActiveBumped(
-                device_id=self._id.value,
-                user_id=self._user_id.value,
+                device_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )
 
@@ -202,8 +202,8 @@ class Device(AggregateRoot[DeviceId]):
 
         self._record_event(
             DeviceTrusted(
-                device_id=self._id.value,
-                user_id=self._user_id.value,
+                device_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )
 
@@ -215,8 +215,8 @@ class Device(AggregateRoot[DeviceId]):
 
         self._record_event(
             DeviceUntrusted(
-                device_id=self._id.value,
-                user_id=self._user_id.value,
+                device_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )
 
@@ -228,8 +228,8 @@ class Device(AggregateRoot[DeviceId]):
 
         self._record_event(
             DeviceRevoked(
-                device_id=self._id.value,
-                user_id=self._user_id.value,
+                device_id=str(self._id.value),
+                user_id=str(self._user_id.value),
                 device_name=self._name.value,
             )
         )
@@ -246,7 +246,7 @@ class Device(AggregateRoot[DeviceId]):
 
         self._record_event(
             DeviceMetadataUpdated(
-                device_id=self._id.value,
-                user_id=self._user_id.value,
+                device_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )

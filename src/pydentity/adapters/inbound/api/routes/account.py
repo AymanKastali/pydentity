@@ -45,7 +45,7 @@ async def change_email(
     use_case: ChangeEmail = Depends(get_change_email),
 ) -> None:
     await use_case.execute(
-        ChangeEmailInput(user_id=claims.subject.value, new_email=body.new_email)
+        ChangeEmailInput(user_id=str(claims.subject.value), new_email=body.new_email)
     )
 
 

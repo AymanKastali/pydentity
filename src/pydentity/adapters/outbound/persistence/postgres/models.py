@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
 from typing import ClassVar
+from uuid import UUID  # noqa: TC003 — SQLModel evaluates annotations at runtime
 
 from sqlalchemy import BigInteger, DateTime, Index
 from sqlalchemy import String as SaString
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import (
     ARRAY,
     JSON,
@@ -53,7 +55,9 @@ class UserModel(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    domain_id: str = Field(unique=True, nullable=False)
+    domain_id: UUID = Field(
+        sa_column=Column(PG_UUID(as_uuid=True), unique=True, nullable=False)
+    )
     email: str = Field(unique=True, nullable=False)
     status: str = Field(nullable=False)
 
@@ -141,11 +145,17 @@ class SessionModel(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    domain_id: str = Field(unique=True, nullable=False)
+    domain_id: UUID = Field(
+        sa_column=Column(PG_UUID(as_uuid=True), unique=True, nullable=False)
+    )
     user_fk: int = Field(foreign_key="users.id", nullable=False)
     device_fk: int = Field(foreign_key="devices.id", nullable=False)
-    user_domain_id: str = Field(nullable=False)
-    device_domain_id: str = Field(nullable=False)
+    user_domain_id: UUID = Field(
+        sa_column=Column(PG_UUID(as_uuid=True), nullable=False)
+    )
+    device_domain_id: UUID = Field(
+        sa_column=Column(PG_UUID(as_uuid=True), nullable=False)
+    )
     refresh_token_hash: bytes = Field(sa_type=LargeBinary, nullable=False)
     refresh_token_family_id: str = Field(nullable=False)
     refresh_token_family_generation: int = Field(nullable=False)
@@ -184,9 +194,11 @@ class DeviceModel(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    domain_id: str = Field(nullable=False)
+    domain_id: UUID = Field(sa_column=Column(PG_UUID(as_uuid=True), nullable=False))
     user_fk: int = Field(foreign_key="users.id", nullable=False)
-    user_domain_id: str = Field(nullable=False)
+    user_domain_id: UUID = Field(
+        sa_column=Column(PG_UUID(as_uuid=True), nullable=False)
+    )
     name: str = Field(nullable=False)
     fingerprint: str = Field(nullable=False)
     platform: str = Field(nullable=False)

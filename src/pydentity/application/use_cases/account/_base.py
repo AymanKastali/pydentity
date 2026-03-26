@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
@@ -35,7 +36,7 @@ class SingleUserCommand:
         self._logger.debug("executing user command", user_id=user_id)
 
         async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=user_id))
+            user = await uow.users.find_by_id(UserId(value=UUID(user_id)))
             if user is None:
                 self._logger.warning(
                     "user command failed — user not found", user_id=user_id

@@ -36,14 +36,14 @@ from pydentity.adapters.outbound.security.fingerprint_hasher import (
     Sha256FingerprintHasher,
 )
 from pydentity.adapters.outbound.security.identity_generator import (
-    UlidIdentityGenerator,
+    UUIDIdentityGenerator,
 )
 from pydentity.adapters.outbound.security.jwk_key_store import FileSystemJWKKeyStore
 from pydentity.adapters.outbound.security.jwt_token_signer import RS256JWTSigner
 from pydentity.adapters.outbound.security.jwt_token_verifier import RS256JWTVerifier
 from pydentity.adapters.outbound.security.password_hasher import ScryptPasswordHasher
 from pydentity.adapters.outbound.security.timing_safe_comparator import (
-    HmacTimingSafeComparator,
+    HMACTimingSafeComparator,
 )
 from pydentity.adapters.outbound.security.token_generators import (
     HashedResetTokenGenerator,
@@ -166,7 +166,7 @@ class Container:
             delegates=[log_audit_trail, postgres_audit_trail],
         )
 
-        comparator = HmacTimingSafeComparator()
+        comparator = HMACTimingSafeComparator()
         fingerprint_hasher = Sha256FingerprintHasher()
         device_fingerprint_factory = DeviceFingerprintFactory(
             fingerprint_hasher=fingerprint_hasher,
@@ -197,7 +197,7 @@ class Container:
                 expected_audiences=frozenset(sec.token_audiences),
             ),
             key_store=key_store,
-            identity_generator=UlidIdentityGenerator(),
+            identity_generator=UUIDIdentityGenerator(),
             clock=UtcClock(),
             raw_token_generator=SecretsRawTokenGenerator(),
             verification_token_generator=HashedVerificationTokenGenerator(),

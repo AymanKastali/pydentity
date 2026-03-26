@@ -251,7 +251,7 @@ class RoleAlreadyAssignedError(DomainError):
         if role_name is not None and user_id is not None:
             message = (
                 f"Role {role_name.value!r} is already assigned"
-                f" to user {user_id.value!r}"
+                f" to user {str(user_id.value)!r}"
             )
         else:
             message = "Role is already assigned to this user"
@@ -271,7 +271,8 @@ class RoleNotAssignedError(DomainError):
     ) -> None:
         if role_name is not None and user_id is not None:
             message = (
-                f"Role {role_name.value!r} is not assigned to user {user_id.value!r}"
+                f"Role {role_name.value!r} is not assigned"
+                f" to user {str(user_id.value)!r}"
             )
         else:
             message = "Role is not assigned to this user"

@@ -123,7 +123,7 @@ class AuthenticateUser:
                 if not device.is_active:
                     self._logger.warning(
                         "login on revoked device",
-                        user_id=user.id.value,
+                        user_id=str(user.id.value),
                         fingerprint=fingerprint.value,
                     )
                     raise InvalidCredentialsError()
@@ -141,7 +141,7 @@ class AuthenticateUser:
                 except DeviceLimitExceededError as e:
                     self._logger.warning(
                         "device limit exceeded",
-                        user_id=user.id.value,
+                        user_id=str(user.id.value),
                         email=email.address,
                     )
                     raise InvalidCredentialsError() from e
@@ -202,15 +202,15 @@ class AuthenticateUser:
 
         self._logger.info(
             "auth success",
-            user_id=user.id.value,
-            session_id=session.id.value,
-            device_id=device.id.value,
+            user_id=str(user.id.value),
+            session_id=str(session.id.value),
+            device_id=str(device.id.value),
         )
 
         return AuthenticateUserOutput(
             access_token=access_token,
             refresh_token=raw_refresh,
-            user_id=user.id.value,
-            session_id=session.id.value,
-            device_id=device.id.value,
+            user_id=str(user.id.value),
+            session_id=str(session.id.value),
+            device_id=str(device.id.value),
         )
