@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydentity.application.exceptions import InvalidTokenError
 from pydentity.domain.models.value_objects import SessionId
@@ -30,7 +31,8 @@ class LogoutUser:
         self._logger.debug("logging out", session_id=command.session_id)
 
         async with self._uow_factory() as uow:
-            session = await uow.sessions.find_by_id(SessionId(value=command.session_id))
+            session_id = SessionId(value=UUID(command.session_id))
+            session = await uow.sessions.find_by_id(session_id)
             if session is None:
                 self._logger.warning(
                     "logout failed — session not found", session_id=command.session_id

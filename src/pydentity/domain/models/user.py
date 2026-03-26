@@ -119,11 +119,13 @@ class User(AggregateRoot[UserId]):
             role_names=set(),
         )
 
-        user._record_event(UserRegistered(user_id=user_id.value, email=email.address))
+        user._record_event(
+            UserRegistered(user_id=str(user_id.value), email=email.address)
+        )
 
         if verification_token is not None:
             user._record_event(
-                VerificationTokenIssued(user_id=user_id.value, email=email.address)
+                VerificationTokenIssued(user_id=str(user_id.value), email=email.address)
             )
 
         return user
@@ -256,10 +258,10 @@ class User(AggregateRoot[UserId]):
 
         if self._status == UserStatus.PENDING_VERIFICATION:
             self._status = UserStatus.ACTIVE
-            self._record_event(UserActivated(user_id=self._id.value))
+            self._record_event(UserActivated(user_id=str(self._id.value)))
 
         self._record_event(
-            EmailVerified(user_id=self._id.value, email=self._email.address)
+            EmailVerified(user_id=str(self._id.value), email=self._email.address)
         )
 
     def request_password_reset(self, token: PasswordResetToken) -> None:
@@ -269,7 +271,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             PasswordResetRequested(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 email=self._email.address,
             )
         )
@@ -286,7 +288,7 @@ class User(AggregateRoot[UserId]):
         )
         self._login_tracking = self._login_tracking.reset()
         self._record_event(
-            PasswordReset(user_id=self._id.value, email=self._email.address)
+            PasswordReset(user_id=str(self._id.value), email=self._email.address)
         )
 
     def change_password(self, new_hash: HashedPassword, *, history_size: int) -> None:
@@ -294,7 +296,7 @@ class User(AggregateRoot[UserId]):
         self._credentials = self._credentials.with_new_password(new_hash, history_size)
         self._login_tracking = self._login_tracking.reset()
         self._record_event(
-            PasswordChanged(user_id=self._id.value, email=self._email.address)
+            PasswordChanged(user_id=str(self._id.value), email=self._email.address)
         )
 
     def ensure_can_attempt_login(self, now: datetime) -> HashedPassword:
@@ -318,7 +320,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             LoginFailed(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 email=self._email.address,
                 failed_attempts=self._login_tracking.failed_login_attempts.value,
             )
@@ -327,7 +329,7 @@ class User(AggregateRoot[UserId]):
         if new_lockout is not None:
             self._record_event(
                 AccountLocked(
-                    user_id=self._id.value,
+                    user_id=str(self._id.value),
                     email=self._email.address,
                     locked_until=new_lockout.locked_until,
                 )
@@ -338,7 +340,7 @@ class User(AggregateRoot[UserId]):
 
         self._login_tracking = self._login_tracking.after_successful_login()
 
-        self._record_event(LoginSucceeded(user_id=self._id.value))
+        self._record_event(LoginSucceeded(user_id=str(self._id.value)))
 
     def suspend(self, reason: str) -> None:
         if self._status == UserStatus.SUSPENDED:
@@ -350,7 +352,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             UserSuspended(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 email=self._email.address,
                 reason=reason.strip(),
             )
@@ -362,7 +364,7 @@ class User(AggregateRoot[UserId]):
 
         self._status = UserStatus.ACTIVE
 
-        self._record_event(UserReactivated(user_id=self._id.value))
+        self._record_event(UserReactivated(user_id=str(self._id.value)))
 
     def deactivate(self) -> None:
         self._ensure_not_already_deactivated()
@@ -370,7 +372,7 @@ class User(AggregateRoot[UserId]):
         self._status = UserStatus.DEACTIVATED
 
         self._record_event(
-            UserDeactivated(user_id=self._id.value, email=self._email.address)
+            UserDeactivated(user_id=str(self._id.value), email=self._email.address)
         )
 
     def change_email(
@@ -390,7 +392,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             UserEmailChanged(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 old_email=old_email.address,
                 new_email=new_email.address,
             )
@@ -399,7 +401,9 @@ class User(AggregateRoot[UserId]):
         if verification_token is not None:
             self._status = UserStatus.PENDING_VERIFICATION
             self._record_event(
-                VerificationTokenIssued(user_id=self._id.value, email=new_email.address)
+                VerificationTokenIssued(
+                    user_id=str(self._id.value), email=new_email.address
+                )
             )
 
     def reissue_verification_token(self, token: EmailVerificationToken) -> None:
@@ -408,7 +412,7 @@ class User(AggregateRoot[UserId]):
 
         self._email_verification = EmailVerification(is_verified=False, token=token)
 
-        self._record_event(VerificationTokenReissued(user_id=self._id.value))
+        self._record_event(VerificationTokenReissued(user_id=str(self._id.value)))
 
     def assign_role(self, role_name: RoleName) -> None:
         self._ensure_not_deactivated()
@@ -418,7 +422,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             RoleAssignedToUser(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 role_name=role_name.value,
             )
         )
@@ -431,7 +435,7 @@ class User(AggregateRoot[UserId]):
 
         self._record_event(
             RoleRevokedFromUser(
-                user_id=self._id.value,
+                user_id=str(self._id.value),
                 role_name=role_name.value,
             )
         )

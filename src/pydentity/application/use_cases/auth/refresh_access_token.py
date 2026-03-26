@@ -98,7 +98,7 @@ class RefreshAccessToken:
             if user is None:
                 self._logger.warning(
                     "token refresh failed — account not active",
-                    user_id=session.user_id.value,
+                    user_id=str(session.user_id.value),
                     status=None,
                 )
                 await self._revoke_session_and_raise(
@@ -107,7 +107,7 @@ class RefreshAccessToken:
             if not user.is_active:
                 self._logger.warning(
                     "token refresh failed — account not active",
-                    user_id=user.id.value,
+                    user_id=str(user.id.value),
                     status=user.status.value,
                 )
                 await self._revoke_session_and_raise(
@@ -121,8 +121,8 @@ class RefreshAccessToken:
             if device is None or not device.is_active:
                 self._logger.warning(
                     "token refresh failed — device not active",
-                    session_id=session.id.value,
-                    device_id=session.device_id.value,
+                    session_id=str(session.id.value),
+                    device_id=str(session.device_id.value),
                 )
                 await self._revoke_session_and_raise(session, uow, InvalidTokenError())
 
@@ -177,7 +177,7 @@ class RefreshAccessToken:
         events = session.collect_events() + device.collect_events()
         await self._event_publisher.publish(events)
 
-        self._logger.debug("token refreshed", session_id=session.id.value)
+        self._logger.debug("token refreshed", session_id=str(session.id.value))
 
         return RefreshAccessTokenOutput(
             access_token=access_token,

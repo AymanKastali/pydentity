@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
@@ -63,7 +64,7 @@ class ChangeEmail:
         async with self._uow_factory() as uow:
             change_user_email = ChangeUserEmail(user_repo=uow.users)
 
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
+            user = await uow.users.find_by_id(UserId(value=UUID(command.user_id)))
             if user is None:
                 self._logger.warning(
                     "email change failed — user not found", user_id=command.user_id

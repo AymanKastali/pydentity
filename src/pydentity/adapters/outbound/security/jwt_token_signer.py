@@ -21,8 +21,8 @@ class RS256JWTSigner(TokenSignerPort):
         key_pair = self._key_store.get_signing_key()
         payload: dict[str, object] = {
             "iss": claims.issuer,
-            "sub": claims.subject.value,
-            "sid": claims.session_id.value,
+            "sub": str(claims.subject.value),
+            "sid": str(claims.session_id.value),
             "iat": int(claims.issued_at.timestamp()),
             "exp": int(claims.expires_at.timestamp()),
             "jti": claims.token_id,

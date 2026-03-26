@@ -59,7 +59,7 @@ class RequestPasswordReset:
             await uow.users.upsert(user)
             await uow.commit()
 
-        self._logger.info("password reset requested", user_id=user.id.value)
+        self._logger.info("password reset requested", user_id=str(user.id.value))
 
         events = user.collect_events()
         await self._event_publisher.publish(events)

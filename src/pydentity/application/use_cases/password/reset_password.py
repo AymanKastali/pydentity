@@ -50,7 +50,7 @@ class ResetPassword:
                 self._logger.warning("password reset failed — invalid token")
                 raise InvalidTokenError()
 
-            self._logger.debug("resetting password", user_id=user.id.value)
+            self._logger.debug("resetting password", user_id=str(user.id.value))
 
             try:
                 await self._reset_user_password.execute(
@@ -65,7 +65,7 @@ class ResetPassword:
                 ResetTokenNotIssuedError,
             ):
                 self._logger.warning(
-                    "password reset failed — invalid token", user_id=user.id.value
+                    "password reset failed — invalid token", user_id=str(user.id.value)
                 )
                 raise InvalidTokenError() from None
 
@@ -78,7 +78,7 @@ class ResetPassword:
 
             await uow.commit()
 
-        self._logger.info("password reset", user_id=user.id.value)
+        self._logger.info("password reset", user_id=str(user.id.value))
 
         events = user.collect_events()
         for session in active_sessions:

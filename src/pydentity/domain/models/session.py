@@ -86,7 +86,7 @@ class Session(AggregateRoot[SessionId]):
             device_id=device_id,
             refresh_token_hash=initial_refresh_token_hash,
             refresh_token_family=RefreshTokenFamily(
-                family_id=session_id.value, generation=0
+                family_id=str(session_id.value), generation=0
             ),
             status=SessionStatus.ACTIVE,
             created_at=SessionCreatedAt(created_at=created_at),
@@ -98,9 +98,9 @@ class Session(AggregateRoot[SessionId]):
 
         session._record_event(
             SessionEstablished(
-                session_id=session_id.value,
-                user_id=user_id.value,
-                device_id=device_id.value,
+                session_id=str(session_id.value),
+                user_id=str(user_id.value),
+                device_id=str(device_id.value),
             )
         )
         return session
@@ -196,8 +196,8 @@ class Session(AggregateRoot[SessionId]):
         self._status = SessionStatus.REVOKED
         self._record_event(
             RefreshTokenReused(
-                session_id=self._id.value,
-                user_id=self._user_id.value,
+                session_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )
 
@@ -211,7 +211,10 @@ class Session(AggregateRoot[SessionId]):
         self._refresh_token_family = self._refresh_token_family.next_generation()
         self._last_refresh = SessionLastRefresh(refreshed_at=now)
         self._record_event(
-            RefreshTokenRotated(session_id=self._id.value, user_id=self._user_id.value)
+            RefreshTokenRotated(
+                session_id=str(self._id.value),
+                user_id=str(self._user_id.value),
+            )
         )
 
     def revoke(self) -> None:
@@ -221,8 +224,8 @@ class Session(AggregateRoot[SessionId]):
 
         self._record_event(
             SessionTerminated(
-                session_id=self._id.value,
-                user_id=self._user_id.value,
+                session_id=str(self._id.value),
+                user_id=str(self._user_id.value),
             )
         )
 

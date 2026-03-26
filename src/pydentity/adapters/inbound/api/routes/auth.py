@@ -120,4 +120,4 @@ async def logout(
     claims: Annotated[AccessTokenClaims, Depends(require_authenticated)],
     use_case: LogoutUser = Depends(get_logout_user),
 ) -> None:
-    await use_case.execute(LogoutUserInput(session_id=claims.session_id.value))
+    await use_case.execute(LogoutUserInput(session_id=str(claims.session_id.value)))

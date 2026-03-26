@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
@@ -33,7 +34,7 @@ class ChangePassword:
         self._logger.debug("changing password", user_id=command.user_id)
 
         async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
+            user = await uow.users.find_by_id(UserId(value=UUID(command.user_id)))
             if user is None:
                 self._logger.warning(
                     "password change failed — user not found", user_id=command.user_id
@@ -49,7 +50,7 @@ class ChangePassword:
             await uow.users.upsert(user)
 
             active_sessions = await uow.sessions.find_active_by_user_id(
-                UserId(value=command.user_id)
+                UserId(value=UUID(command.user_id))
             )
             for session in active_sessions:
                 session.revoke()

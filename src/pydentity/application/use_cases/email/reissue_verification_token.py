@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydentity.application.exceptions import ResourceNotFoundError
 from pydentity.domain.models.value_objects import UserId
@@ -46,7 +47,7 @@ class ReissueVerificationToken:
         now = self._clock.now()
 
         async with self._uow_factory() as uow:
-            user = await uow.users.find_by_id(UserId(value=command.user_id))
+            user = await uow.users.find_by_id(UserId(value=UUID(command.user_id)))
             if user is None:
                 self._logger.warning(
                     "verification token reissue failed — user not found",
