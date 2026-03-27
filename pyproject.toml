@@ -5,7 +5,18 @@ description = "A Python microservice for managing authentication and identity ve
 authors = [{ name = "AymanKastali" }]
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "sqlmodel>=0.0.22",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pyjwt[crypto]>=2.10.0",
+    "argon2-cffi>=23.1.0",
+    "pydantic[email]>=2.10.0",
+    "pydantic-settings>=2.7.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -31,7 +42,11 @@ src = ["src"]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TC"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/pydentity/adapters/inbound/api/routes/*.py" = ["B008", "TC001"]
+"src/pydentity/infrastructure/web/routes/*.py" = ["B008", "TC001"]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
+runtime-evaluated-decorators = ["dataclasses.dataclass"]
 
 [tool.mypy]
 python_version = "3.14"
