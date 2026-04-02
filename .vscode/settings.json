@@ -26,18 +26,9 @@
   "cSpell.words": [
     "ASGI",
     "asyncpg",
-    "autoflush",
-    "creds",
-    "dtos",
     "FASTAPI",
-    "isready",
-    "ondelete",
-    "onupdate",
-    "pgdata",
     "pydentity",
-    "redoc",
-    "selectinload",
-    "sessionmaker",
-    "STARTTLS"
+    "suspendable",
+    "totp"
   ]
 }

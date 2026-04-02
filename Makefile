@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean dev diagrams diagrams-svg diagrams-clean migrate migrate-new migrate-down migrate-history migrate-current env-setup infra docker-up docker-down docker-build docker-logs docker-ps release release-patch release-minor release-major generate-keys
+.PHONY: help ensure-uv setup sync lint format format-check type-check test test-cov check clean dev diagrams diagrams-svg diagrams-clean infra docker-up docker-down docker-build docker-logs docker-ps release release-patch release-minor release-major generate-keys
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -45,37 +45,19 @@ clean: ## Remove build artifacts and caches
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
-migrate: ## Apply all pending migrations
-	uv run alembic upgrade head
-
-migrate-new: ## Generate a new migration (use: make migrate-new MSG="description")
-	uv run alembic revision --autogenerate -m "$(MSG)"
-
-migrate-down: ## Rollback one migration step
-	uv run alembic downgrade -1
-
-migrate-history: ## Show migration history
-	uv run alembic history
-
-migrate-current: ## Show current migration revision
-	uv run alembic current
-
 dev: ## Start the app (infra assumed running via devcontainer or make infra)
 	uv run python -m pydentity
 
 COMPOSE      := docker compose -f docker/docker-compose.yml
 COMPOSE_PROD := $(COMPOSE) -f docker/docker-compose.prod.yml
 
-env-setup: ## Create .env from .env.example if it does not exist
-	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example — fill in required secrets before starting.")
-
-infra: env-setup ## Start infrastructure only (postgres, redis, mailhog)
+infra: ## Start infrastructure only (postgres, redis, mailhog)
 	$(COMPOSE) up -d
 
-docker-up: env-setup ## Start app + infrastructure (detached)
+docker-up: ## Start app + infrastructure (detached)
 	$(COMPOSE_PROD) up -d
 
-docker-build: env-setup ## Build and start app + infrastructure
+docker-build: ## Build and start app + infrastructure
 	$(COMPOSE_PROD) up --build -d
 
 docker-down: ## Stop and remove containers
