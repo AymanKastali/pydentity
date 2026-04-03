@@ -13,8 +13,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
 COPY README.md ./
-COPY alembic.ini ./
-COPY migrations/ migrations/
 COPY src/ src/
 
 # Install the project

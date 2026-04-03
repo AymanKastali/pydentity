@@ -48,5 +48,5 @@ docs/diagrams/*.png
 docs/diagrams/*.svg
 
 # Claude
-.claudespec/
+.claude/
 CLAUDE.md

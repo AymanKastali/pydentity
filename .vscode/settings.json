@@ -1,5 +1,5 @@
 {
-  "python.defaultInterpreterPath": "/workspaces/pydentity/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "charliermarsh.ruff",
   "[python]": {
@@ -26,18 +26,9 @@
   "cSpell.words": [
     "ASGI",
     "asyncpg",
-    "autoflush",
-    "creds",
-    "dtos",
     "FASTAPI",
-    "isready",
-    "ondelete",
-    "onupdate",
-    "pgdata",
     "pydentity",
-    "redoc",
-    "selectinload",
-    "sessionmaker",
-    "STARTTLS"
+    "suspendable",
+    "totp"
   ]
 }
