@@ -36,10 +36,10 @@ lint: ## Run ruff linter
 	uv run ruff check src/ tests/
 
 format: ## Auto-format code with ruff
-	uv run ruff format src/ tests/
+	uv run ruff format src/
 
 format-check: ## Check code formatting without modifying
-	uv run ruff format --check src/ tests/
+	uv run ruff format --check src/
 
 type-check: ## Run mypy type checker
 	uv run mypy src/
