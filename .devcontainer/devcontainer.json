@@ -1,18 +1,29 @@
 {
   "name": "pydentity",
-  "dockerComposeFile": ["docker-compose.yml", "../docker/docker-compose.yml"],
+  "dockerComposeFile": [
+    "docker-compose.yml",
+    "../docker/docker-compose.yml"
+  ],
   "service": "devcontainer",
   "workspaceFolder": "/workspaces/pydentity",
-  "remoteUser": "root",
+  "remoteUser": "vscode",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "moby": false
-    }
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {}
   },
-  "forwardPorts": [8000, 8025],
+  "forwardPorts": [
+    8000,
+    8025
+  ],
   "portsAttributes": {
-    "8000": { "label": "pydentity API" },
-    "8025": { "label": "MailHog UI" }
+    "8000": {
+      "label": "pydentity API"
+    },
+    "8025": {
+      "label": "MailHog UI"
+    }
   },
   "postCreateCommand": "make setup",
   "customizations": {
@@ -33,7 +44,10 @@
         "ms-azuretools.vscode-docker",
         "jebbs.plantuml",
         "continue.continue",
-        "cweijan.vscode-database-client2"
+        "cweijan.vscode-database-client2",
+        "github.vscode-pull-request-github",
+        "codezombiech.gitignore",
+        "github.vscode-github-actions"
       ]
     }
   }

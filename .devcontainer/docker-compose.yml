@@ -5,7 +5,6 @@ services:
       UV_LINK_MODE: copy
     volumes:
       - ..:/workspaces/pydentity:cached
-      - venv:/workspaces/pydentity/.venv
     command: sleep infinity
     depends_on:
       postgres:
@@ -15,5 +14,4 @@ services:
       mailhog:
         condition: service_started
 
-volumes:
-  venv:
+
