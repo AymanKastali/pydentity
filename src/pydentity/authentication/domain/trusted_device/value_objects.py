@@ -31,13 +31,7 @@ class TrustedDeviceStatus(StrEnum):
     REVOKED = auto()
     EXPIRED = auto()
 
-    def guard_not_revoked(self) -> None:
-        if self.is_revoked:
-            raise DeviceAlreadyRevokedError()
-
-    def guard_not_expired(self) -> None:
-        if self.is_expired:
-            raise DeviceAlreadyExpiredError()
+    # --- Queries ---
 
     @property
     def is_registered(self) -> bool:
@@ -50,6 +44,16 @@ class TrustedDeviceStatus(StrEnum):
     @property
     def is_expired(self) -> bool:
         return self is TrustedDeviceStatus.EXPIRED
+
+    # --- Guards ---
+
+    def guard_not_revoked(self) -> None:
+        if self.is_revoked:
+            raise DeviceAlreadyRevokedError()
+
+    def guard_not_expired(self) -> None:
+        if self.is_expired:
+            raise DeviceAlreadyExpiredError()
 
 
 @dataclass(frozen=True, slots=True)

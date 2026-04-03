@@ -15,6 +15,8 @@ if TYPE_CHECKING:
         HashedPasswordHistory,
     )
 
+    type PasswordHashVerifier = Callable[[str, HashedPassword], bool]
+
 
 class PreventPasswordReuse:
     @classmethod
@@ -23,7 +25,7 @@ class PreventPasswordReuse:
         raw_password: str,
         current_password: HashedPassword,
         password_history: HashedPasswordHistory,
-        password_hash_verifier: Callable[[str, HashedPassword], bool],
+        password_hash_verifier: PasswordHashVerifier,
     ) -> None:
         cls._guard_not_current_password(
             raw_password, current_password, password_hash_verifier
@@ -37,7 +39,7 @@ class PreventPasswordReuse:
         cls,
         raw_password: str,
         current_password: HashedPassword,
-        password_hash_verifier: Callable[[str, HashedPassword], bool],
+        password_hash_verifier: PasswordHashVerifier,
     ) -> None:
         if password_hash_verifier(raw_password, current_password):
             raise PasswordReuseError()
@@ -47,7 +49,7 @@ class PreventPasswordReuse:
         cls,
         raw_password: str,
         password_history: HashedPasswordHistory,
-        password_hash_verifier: Callable[[str, HashedPassword], bool],
+        password_hash_verifier: PasswordHashVerifier,
     ) -> None:
         for hashed_password in password_history.hashes:
             if password_hash_verifier(raw_password, hashed_password):

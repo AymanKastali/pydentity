@@ -45,6 +45,9 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TC"]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 runtime-evaluated-decorators = ["dataclasses.dataclass"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["TC"]
+
 [tool.mypy]
 python_version = "3.14"
 strict = true
@@ -52,6 +55,10 @@ strict = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+warn_return_any = false
+strict_equality = false
 
 [dependency-groups]
 dev = [

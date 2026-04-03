@@ -21,22 +21,22 @@ sync: ## Sync all dependencies
 	uv sync --all-groups
 
 lint: ## Run ruff linter
-	uv run ruff check .
+	RUFF_CACHE_DIR=/tmp/ruff_cache uv run ruff check .
 
 format: ## Auto-format code with ruff
-	uv run ruff format .
+	RUFF_CACHE_DIR=/tmp/ruff_cache uv run ruff format .
 
 format-check: ## Check code formatting without modifying
-	uv run ruff format --check .
+	RUFF_CACHE_DIR=/tmp/ruff_cache uv run ruff format --check .
 
 type-check: ## Run mypy type checker
-	uv run mypy .
+	MYPY_CACHE_DIR=/tmp/mypy_cache uv run mypy .
 
 test: ## Run tests
-	uv run pytest
+	COVERAGE_FILE=/tmp/.coverage uv run pytest
 
 test-cov: ## Run tests with coverage report
-	uv run pytest --cov=src/pydentity --cov-report=term-missing
+	COVERAGE_FILE=/tmp/.coverage uv run pytest --cov=pydentity --cov-report=term-missing
 
 check: lint format-check type-check test ## Run all checks (lint + format + types + tests)
 

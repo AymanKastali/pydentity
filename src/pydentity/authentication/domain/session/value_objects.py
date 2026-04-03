@@ -56,12 +56,16 @@ class RefreshToken(ValueObject):
         guard_not_empty(self.token_hash)
         guard_within_max_length(self.token_hash, self._MAX_HASH_LENGTH)
 
-    def guard_not_expired(self, now: datetime) -> None:
-        if self.is_expired(now):
-            raise RefreshTokenExpiredError()
+    # --- Queries ---
 
     def is_expired(self, now: datetime) -> bool:
         return now >= self.expires_at
+
+    # --- Guards ---
+
+    def guard_not_expired(self, now: datetime) -> None:
+        if self.is_expired(now):
+            raise RefreshTokenExpiredError()
 
     def guard_not_revoked(self) -> None:
         if self.is_revoked:

@@ -123,44 +123,32 @@ class EmailAddress(ValueObject):
 
     # --- Local part ---
 
-    def _guard_local_part_valid(self, local: str) -> None:
-        self._guard_local_part_not_empty(local)
-        self._guard_local_part_within_max_length(local)
-        self._guard_local_part_has_no_leading_dot(local)
-        self._guard_local_part_has_no_trailing_dot(local)
-        self._guard_local_part_has_no_consecutive_dots(local)
+    def _guard_local_part_valid(self, local_part: str) -> None:
+        guard_not_empty(local_part)
+        guard_within_max_length(local_part, self._MAX_LOCAL_PART_LENGTH)
+        self._guard_local_part_has_no_leading_dot(local_part)
+        self._guard_local_part_has_no_trailing_dot(local_part)
+        self._guard_local_part_has_no_consecutive_dots(local_part)
 
-    def _guard_local_part_not_empty(self, local: str) -> None:
-        guard_not_empty(local)
-
-    def _guard_local_part_within_max_length(self, local: str) -> None:
-        guard_within_max_length(local, self._MAX_LOCAL_PART_LENGTH)
-
-    def _guard_local_part_has_no_leading_dot(self, local: str) -> None:
-        if local.startswith("."):
+    def _guard_local_part_has_no_leading_dot(self, local_part: str) -> None:
+        if local_part.startswith("."):
             raise ValueError("Email local part must not start with a dot.")
 
-    def _guard_local_part_has_no_trailing_dot(self, local: str) -> None:
-        if local.endswith("."):
+    def _guard_local_part_has_no_trailing_dot(self, local_part: str) -> None:
+        if local_part.endswith("."):
             raise ValueError("Email local part must not end with a dot.")
 
-    def _guard_local_part_has_no_consecutive_dots(self, local: str) -> None:
-        if ".." in local:
+    def _guard_local_part_has_no_consecutive_dots(self, local_part: str) -> None:
+        if ".." in local_part:
             raise ValueError("Email local part must not contain consecutive dots.")
 
     # --- Domain ---
 
     def _guard_domain_valid(self, domain: str) -> None:
-        self._guard_domain_not_empty(domain)
-        self._guard_domain_within_max_length(domain)
+        guard_not_empty(domain)
+        guard_within_max_length(domain, self._MAX_DOMAIN_LENGTH)
         self._guard_domain_has_at_least_two_labels(domain)
         self._guard_domain_labels_valid(domain)
-
-    def _guard_domain_not_empty(self, domain: str) -> None:
-        guard_not_empty(domain)
-
-    def _guard_domain_within_max_length(self, domain: str) -> None:
-        guard_within_max_length(domain, self._MAX_DOMAIN_LENGTH)
 
     def _guard_domain_has_at_least_two_labels(self, domain: str) -> None:
         if "." not in domain:
@@ -174,17 +162,11 @@ class EmailAddress(ValueObject):
     # --- Domain label ---
 
     def _guard_domain_label_valid(self, label: str) -> None:
-        self._guard_domain_label_not_empty(label)
-        self._guard_domain_label_within_max_length(label)
+        guard_not_empty(label)
+        guard_within_max_length(label, self._MAX_DOMAIN_LABEL_LENGTH)
         self._guard_domain_label_no_leading_hyphen(label)
         self._guard_domain_label_no_trailing_hyphen(label)
         self._guard_domain_label_is_alphanumeric_or_hyphen(label)
-
-    def _guard_domain_label_not_empty(self, label: str) -> None:
-        guard_not_empty(label)
-
-    def _guard_domain_label_within_max_length(self, label: str) -> None:
-        guard_within_max_length(label, self._MAX_DOMAIN_LABEL_LENGTH)
 
     def _guard_domain_label_no_leading_hyphen(self, label: str) -> None:
         if label.startswith("-"):
@@ -289,19 +271,18 @@ class HashedRecoveryCodeSet(ValueObject):
     def is_empty(self) -> bool:
         return len(self.codes) == 0
 
+    @property
     def has_unused(self) -> bool:
         return any(code.is_unused for code in self.codes)
 
     def with_code_consumed(
         self, consumed_code: HashedRecoveryCode, now: datetime
     ) -> HashedRecoveryCodeSet:
-        codes: list[HashedRecoveryCode] = []
-        for code in self.codes:
-            if code == consumed_code:
-                codes.append(code.mark_used(now))
-            else:
-                codes.append(code)
-        return HashedRecoveryCodeSet(codes=tuple(codes))
+        updated_codes: tuple[HashedRecoveryCode, ...] = tuple(
+            code.mark_used(now) if code == consumed_code else code
+            for code in self.codes
+        )
+        return HashedRecoveryCodeSet(codes=updated_codes)
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,29 +290,35 @@ class LockoutState(ValueObject):
     _MAX_FAILED_ATTEMPTS: ClassVar[int] = 100
     _MAX_LOCKOUT_CYCLES: ClassVar[int] = 50
 
-    count: int
+    failed_attempt_count: int
     lockout_count: int
     last_failed_at: datetime | None
     lockout_until: datetime | None
 
     def __post_init__(self) -> None:
-        guard_not_negative(self.count)
-        guard_within_max(self.count, self._MAX_FAILED_ATTEMPTS)
+        guard_not_negative(self.failed_attempt_count)
+        guard_within_max(self.failed_attempt_count, self._MAX_FAILED_ATTEMPTS)
         guard_not_negative(self.lockout_count)
         guard_within_max(self.lockout_count, self._MAX_LOCKOUT_CYCLES)
 
     @classmethod
     def initialize(cls) -> LockoutState:
-        return cls(count=0, lockout_count=0, last_failed_at=None, lockout_until=None)
+        return cls(
+            failed_attempt_count=0,
+            lockout_count=0,
+            last_failed_at=None,
+            lockout_until=None,
+        )
 
     # --- Queries ---
 
     def is_threshold_reached(self, threshold: int) -> bool:
-        return self.count >= threshold
+        return self.failed_attempt_count >= threshold
 
     def is_expired_timed_lockout(self, now: datetime) -> bool:
-        return self.is_timed() and self.is_expired(now)
+        return self.is_timed and self.is_expired(now)
 
+    @property
     def is_timed(self) -> bool:
         return self.lockout_until is not None
 
@@ -344,7 +331,7 @@ class LockoutState(ValueObject):
 
     def increment(self, now: datetime) -> LockoutState:
         return LockoutState(
-            count=self.count + 1,
+            failed_attempt_count=self.failed_attempt_count + 1,
             lockout_count=self.lockout_count,
             last_failed_at=now,
             lockout_until=self.lockout_until,
@@ -357,7 +344,7 @@ class LockoutState(ValueObject):
         duration_minutes: int = tier_minutes[tier_index]
         lockout_until: datetime = now + timedelta(minutes=duration_minutes)
         return LockoutState(
-            count=0,
+            failed_attempt_count=0,
             lockout_count=self.lockout_count + 1,
             last_failed_at=self.last_failed_at,
             lockout_until=lockout_until,
@@ -368,7 +355,7 @@ class LockoutState(ValueObject):
 
     def clear_expiry(self) -> LockoutState:
         return LockoutState(
-            count=0,
+            failed_attempt_count=0,
             lockout_count=self.lockout_count,
             last_failed_at=self.last_failed_at,
             lockout_until=None,
@@ -376,7 +363,7 @@ class LockoutState(ValueObject):
 
     def apply_indefinite_lockout(self) -> LockoutState:
         return LockoutState(
-            count=self.count,
+            failed_attempt_count=self.failed_attempt_count,
             lockout_count=self.lockout_count,
             last_failed_at=self.last_failed_at,
             lockout_until=None,

@@ -103,7 +103,7 @@ class AuthenticationAttempt(AggregateRoot[AuthAttemptId]):
     ) -> None:
         self._status.guard_is_in_progress()
         self._guard_not_expired(now)
-        self._required_factors.guard_contains(AuthenticationFactor.POSSESSION)
+        self._required_factors.guard_has_factor(AuthenticationFactor.POSSESSION)
         self._guard_no_active_verification_code(now)
         self._assign_verification_code(verification_code)
         self.record_event(
@@ -112,8 +112,9 @@ class AuthenticationAttempt(AggregateRoot[AuthAttemptId]):
             )
         )
 
-    def _assign_verification_code(self, verification_code: VerificationCode) -> None:
-        self._verification_code = verification_code
+    def _guard_not_expired(self, now: datetime) -> None:
+        if self.is_expired(now):
+            raise AttemptExpiredError()
 
     def _guard_no_active_verification_code(self, now: datetime) -> None:
         if self._verification_code is not None and self._verification_code.is_active(
@@ -121,16 +122,15 @@ class AuthenticationAttempt(AggregateRoot[AuthAttemptId]):
         ):
             raise VerificationCodeAlreadyGeneratedError()
 
-    def _guard_not_expired(self, now: datetime) -> None:
-        if self.is_expired(now):
-            raise AttemptExpiredError()
+    def _assign_verification_code(self, verification_code: VerificationCode) -> None:
+        self._verification_code = verification_code
 
     # --- Factor verification ---
 
     def verify_factor(self, factor: AuthenticationFactor, now: datetime) -> None:
         self._status.guard_is_in_progress()
         self._guard_not_expired(now)
-        self._required_factors.guard_contains(factor)
+        self._required_factors.guard_has_factor(factor)
         self._verified_factors.guard_factor_not_verified(factor)
         self._record_verified_factor(factor)
         self._complete_if_all_factors_verified(now)

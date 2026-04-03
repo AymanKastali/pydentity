@@ -56,7 +56,7 @@ class Account(AggregateRoot[AccountId]):
         password_history: HashedPasswordHistory,
         totp_secret: EncryptedTOTPSecret | None,
         recovery_code_set: HashedRecoveryCodeSet,
-        mfa_enabled: bool,
+        is_mfa_enabled: bool,
         lockout_state: LockoutState,
     ) -> None:
         super().__init__(account_id)
@@ -67,7 +67,7 @@ class Account(AggregateRoot[AccountId]):
         self._password_history: HashedPasswordHistory = password_history
         self._totp_secret: EncryptedTOTPSecret | None = totp_secret
         self._recovery_code_set: HashedRecoveryCodeSet = recovery_code_set
-        self._mfa_enabled: bool = mfa_enabled
+        self._is_mfa_enabled: bool = is_mfa_enabled
         self._lockout_state: LockoutState = lockout_state
 
     # --- Creation ---
@@ -90,7 +90,7 @@ class Account(AggregateRoot[AccountId]):
             password_history=HashedPasswordHistory.initialize(),
             totp_secret=None,
             recovery_code_set=HashedRecoveryCodeSet.initialize(),
-            mfa_enabled=False,
+            is_mfa_enabled=False,
             lockout_state=LockoutState.initialize(),
         )
         account.record_event(AccountRegistered(occurred_at=now, account_id=account_id))
@@ -131,7 +131,7 @@ class Account(AggregateRoot[AccountId]):
 
     @property
     def is_mfa_enabled(self) -> bool:
-        return self._mfa_enabled
+        return self._is_mfa_enabled
 
     @property
     def lockout_state(self) -> LockoutState:
@@ -157,6 +157,9 @@ class Account(AggregateRoot[AccountId]):
             AccountLocked(occurred_at=now, account_id=self._id, reason=LockReason.ADMIN)
         )
 
+    def _mark_locked(self) -> None:
+        self._status = AccountStatus.LOCKED
+
     def _set_admin_lockout(self) -> None:
         self._lockout_state = self._lockout_state.apply_indefinite_lockout()
 
@@ -180,16 +183,13 @@ class Account(AggregateRoot[AccountId]):
         self._mark_suspended()
         self.record_event(AccountSuspended(occurred_at=now, account_id=self._id))
 
+    def _mark_suspended(self) -> None:
+        self._status = AccountStatus.SUSPENDED
+
     def close(self, now: datetime) -> None:
         self._status.guard_not_closed()
         self._mark_closed()
         self.record_event(AccountClosed(occurred_at=now, account_id=self._id))
-
-    def _mark_locked(self) -> None:
-        self._status = AccountStatus.LOCKED
-
-    def _mark_suspended(self) -> None:
-        self._status = AccountStatus.SUSPENDED
 
     def _mark_closed(self) -> None:
         self._status = AccountStatus.CLOSED
@@ -255,14 +255,15 @@ class Account(AggregateRoot[AccountId]):
             raise TOTPSecretNotFoundError()
 
     def _guard_can_remove_totp(self) -> None:
-        if self._mfa_enabled and not self._recovery_code_set.has_unused():
+        if self._is_mfa_enabled and not self._recovery_code_set.has_unused:
             raise CannotRemoveCredentialError()
+
+    @property
+    def _has_totp(self) -> bool:
+        return self._totp_secret is not None
 
     def _clear_totp_secret(self) -> None:
         self._totp_secret = None
-
-    def _has_totp(self) -> bool:
-        return self._totp_secret is not None
 
     # --- Recovery codes ---
 
@@ -276,17 +277,17 @@ class Account(AggregateRoot[AccountId]):
     def _replace_recovery_codes(self, code_set: HashedRecoveryCodeSet) -> None:
         self._recovery_code_set = code_set
 
-    def _consume_code(self, consumed_code: HashedRecoveryCode, now: datetime) -> None:
-        self._recovery_code_set = self._recovery_code_set.with_code_consumed(
-            consumed_code, now
-        )
-
     def consume_recovery_code(
         self, consumed_code: HashedRecoveryCode, now: datetime
     ) -> None:
         self._status.guard_is_active()
         self._consume_code(consumed_code, now)
         self.record_event(RecoveryCodeConsumed(occurred_at=now, account_id=self._id))
+
+    def _consume_code(self, consumed_code: HashedRecoveryCode, now: datetime) -> None:
+        self._recovery_code_set = self._recovery_code_set.with_code_consumed(
+            consumed_code, now
+        )
 
     # --- MFA management ---
 
@@ -298,15 +299,15 @@ class Account(AggregateRoot[AccountId]):
         self.record_event(MFAEnabled(occurred_at=now, account_id=self._id))
 
     def _guard_mfa_not_already_enabled(self) -> None:
-        if self._mfa_enabled:
+        if self._is_mfa_enabled:
             raise MFAAlreadyEnabledError()
 
     def _guard_has_totp_or_recovery_codes(self) -> None:
-        if not self._has_totp() and not self._recovery_code_set.has_unused():
+        if not self._has_totp and not self._recovery_code_set.has_unused:
             raise MFARequiresCredentialError()
 
     def _mark_mfa_enabled(self) -> None:
-        self._mfa_enabled = True
+        self._is_mfa_enabled = True
 
     def disable_mfa(self, now: datetime) -> None:
         self._status.guard_is_active()
@@ -315,11 +316,11 @@ class Account(AggregateRoot[AccountId]):
         self.record_event(MFADisabled(occurred_at=now, account_id=self._id))
 
     def _guard_mfa_is_enabled(self) -> None:
-        if not self._mfa_enabled:
+        if not self._is_mfa_enabled:
             raise MFANotEnabledError()
 
     def _mark_mfa_disabled(self) -> None:
-        self._mfa_enabled = False
+        self._is_mfa_enabled = False
 
     # --- Lockout management ---
 

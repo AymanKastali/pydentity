@@ -24,9 +24,7 @@ class AttemptStatus(StrEnum):
     FAILED = auto()
     EXPIRED = auto()
 
-    def guard_is_in_progress(self) -> None:
-        if not self.is_in_progress:
-            raise AttemptNotInProgressError()
+    # --- Queries ---
 
     @property
     def is_in_progress(self) -> bool:
@@ -43,6 +41,12 @@ class AttemptStatus(StrEnum):
     @property
     def is_expired(self) -> bool:
         return self is AttemptStatus.EXPIRED
+
+    # --- Guards ---
+
+    def guard_is_in_progress(self) -> None:
+        if not self.is_in_progress:
+            raise AttemptNotInProgressError()
 
 
 class AuthenticationFactor(StrEnum):
@@ -62,14 +66,14 @@ class RequiredFactors(ValueObject):
         guard_no_duplicates(self.factors)
         guard_within_max_size(self.factors, self._MAX_SIZE)
 
-    def contains(self, factor: AuthenticationFactor) -> bool:
+    def has_factor(self, factor: AuthenticationFactor) -> bool:
         return factor in self.factors
 
-    def is_satisfied_by(self, verified: VerifiedFactors) -> bool:
-        return set(self.factors) == set(verified.factors)
+    def is_satisfied_by(self, verified_factors: VerifiedFactors) -> bool:
+        return set(self.factors) == set(verified_factors.factors)
 
-    def guard_contains(self, factor: AuthenticationFactor) -> None:
-        if not self.contains(factor):
+    def guard_has_factor(self, factor: AuthenticationFactor) -> None:
+        if not self.has_factor(factor):
             raise FactorNotRequiredError()
 
 

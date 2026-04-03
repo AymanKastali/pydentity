@@ -92,18 +92,6 @@ class Session(AggregateRoot[SessionId]):
     def end(self, now: datetime) -> None:
         self._terminate(SessionEndReason.LOGOUT, now)
 
-    def idle_timeout(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.IDLE_TIMEOUT, now)
-
-    def absolute_timeout(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.ABSOLUTE_TIMEOUT, now)
-
-    def force_end(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.FORCED, now)
-
-    def flag_compromised(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.COMPROMISE, now)
-
     def _terminate(self, reason: SessionEndReason, now: datetime) -> None:
         self._status.guard_is_active()
         self._mark_ended()
@@ -118,3 +106,15 @@ class Session(AggregateRoot[SessionId]):
 
     def _mark_ended(self) -> None:
         self._status = SessionStatus.ENDED
+
+    def idle_timeout(self, now: datetime) -> None:
+        self._terminate(SessionEndReason.IDLE_TIMEOUT, now)
+
+    def absolute_timeout(self, now: datetime) -> None:
+        self._terminate(SessionEndReason.ABSOLUTE_TIMEOUT, now)
+
+    def force_end(self, now: datetime) -> None:
+        self._terminate(SessionEndReason.FORCED, now)
+
+    def flag_compromised(self, now: datetime) -> None:
+        self._terminate(SessionEndReason.COMPROMISE, now)

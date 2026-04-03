@@ -12,12 +12,12 @@ class AuditEntry(AggregateRoot[AuditEntryId]):
     def __init__(
         self,
         entry_id: AuditEntryId,
-        event_type: str,
+        event_name: str,
         account_id: AccountId,
         payload: EventPayload,
     ) -> None:
         super().__init__(entry_id)
-        self._event_type: str = event_type
+        self._event_name: str = event_name
         self._account_id: AccountId = account_id
         self._payload: EventPayload = payload
 
@@ -27,13 +27,13 @@ class AuditEntry(AggregateRoot[AuditEntryId]):
     def record(
         cls,
         entry_id: AuditEntryId,
-        event_type: str,
+        event_name: str,
         account_id: AccountId,
         payload: EventPayload,
     ) -> AuditEntry:
         return cls(
             entry_id=entry_id,
-            event_type=event_type,
+            event_name=event_name,
             account_id=account_id,
             payload=payload,
         )
@@ -41,8 +41,8 @@ class AuditEntry(AggregateRoot[AuditEntryId]):
     # --- Queries ---
 
     @property
-    def event_type(self) -> str:
-        return self._event_type
+    def event_name(self) -> str:
+        return self._event_name
 
     @property
     def account_id(self) -> AccountId:

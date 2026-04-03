@@ -114,6 +114,9 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
             )
         )
 
+    def _increment_attempt_count(self) -> None:
+        self._attempt_count += 1
+
     def _mark_sent(self) -> None:
         self._status = DeliveryStatus.SENT
 
@@ -153,8 +156,3 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
     def _guard_content_not_purged(self) -> None:
         if self._content is None:
             raise DeliveryRequestContentAlreadyPurgedError()
-
-    # --- Helpers ---
-
-    def _increment_attempt_count(self) -> None:
-        self._attempt_count += 1

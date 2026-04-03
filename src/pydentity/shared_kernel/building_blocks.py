@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -13,12 +12,8 @@ class DomainEvent:
     occurred_at: datetime
 
     @property
-    def event_type(self) -> str:
-        return self._to_snake_case(type(self).__name__)
-
-    @classmethod
-    def _to_snake_case(cls, name: str) -> str:
-        return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
+    def name(self) -> str:
+        return type(self).__name__
 
 
 class DomainError(Exception):
