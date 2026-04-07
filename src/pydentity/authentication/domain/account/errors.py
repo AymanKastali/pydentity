@@ -66,11 +66,6 @@ class MFARequiresCredentialError(DomainError):
         super().__init__("MFA requires at least one non-password credential.")
 
 
-class RecoveryCodeNotFoundError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Recovery code not found or already used.")
-
-
 class EmailAlreadyTakenError(DomainError):
     def __init__(self) -> None:
         super().__init__("Email address is already associated with an account.")

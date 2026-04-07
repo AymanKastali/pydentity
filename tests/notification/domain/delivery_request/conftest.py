@@ -8,6 +8,7 @@ from pydentity.notification.domain.delivery_request.aggregate_id import (
 )
 from pydentity.notification.domain.delivery_request.value_objects import (
     Channel,
+    ContentSensitivity,
     MessageContent,
     Recipient,
 )
@@ -42,7 +43,7 @@ def pending_delivery(
         recipient,
         Channel.EMAIL,
         message_content,
-        is_sensitive=False,
+        sensitivity=ContentSensitivity.STANDARD,
     )
 
 
@@ -59,5 +60,5 @@ def sensitive_pending_delivery(
         recipient,
         Channel.EMAIL,
         message_content,
-        is_sensitive=True,
+        sensitivity=ContentSensitivity.SENSITIVE,
     )

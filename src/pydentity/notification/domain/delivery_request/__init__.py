@@ -16,7 +16,9 @@ from pydentity.notification.domain.delivery_request.repository import (
     DeliveryRequestRepository,
 )
 from pydentity.notification.domain.delivery_request.value_objects import (
+    AttemptCount,
     Channel,
+    ContentSensitivity,
     DeliveryStatus,
     MessageContent,
     Recipient,
@@ -26,7 +28,9 @@ __all__ = [
     # aggregate_id
     "DeliveryRequestId",
     # value_objects
+    "AttemptCount",
     "Channel",
+    "ContentSensitivity",
     "DeliveryStatus",
     "MessageContent",
     "Recipient",

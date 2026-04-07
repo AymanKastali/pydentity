@@ -5,10 +5,13 @@ from typing import ClassVar
 from pydentity.notification.domain.delivery_request.errors import (
     DeliveryRequestAlreadyFailedError,
     DeliveryRequestAlreadySentError,
+    DeliveryRequestNotSensitiveError,
 )
 from pydentity.shared_kernel import (
     ValueObject,
     guard_not_empty,
+    guard_not_negative,
+    guard_within_max,
     guard_within_max_length,
 )
 
@@ -16,6 +19,19 @@ from pydentity.shared_kernel import (
 class Channel(StrEnum):
     EMAIL = auto()
     SMS = auto()
+
+
+class ContentSensitivity(StrEnum):
+    SENSITIVE = auto()
+    STANDARD = auto()
+
+    @property
+    def is_sensitive(self) -> bool:
+        return self is ContentSensitivity.SENSITIVE
+
+    def guard_is_sensitive(self) -> None:
+        if not self.is_sensitive:
+            raise DeliveryRequestNotSensitiveError()
 
 
 class DeliveryStatus(StrEnum):
@@ -72,3 +88,21 @@ class MessageContent(ValueObject):
         guard_within_max_length(self.body, self._MAX_BODY_LENGTH)
         if self.subject is not None:
             guard_within_max_length(self.subject, self._MAX_SUBJECT_LENGTH)
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptCount(ValueObject):
+    _MAX_ATTEMPTS: ClassVar[int] = 100
+
+    value: int
+
+    def __post_init__(self) -> None:
+        guard_not_negative(self.value)
+        guard_within_max(self.value, self._MAX_ATTEMPTS)
+
+    @classmethod
+    def initialize(cls) -> AttemptCount:
+        return cls(value=0)
+
+    def increment(self) -> AttemptCount:
+        return AttemptCount(value=self.value + 1)

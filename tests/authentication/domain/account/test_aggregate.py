@@ -43,6 +43,7 @@ from pydentity.authentication.domain.account.value_objects import (
     HashedRecoveryCodeSet,
     LockoutPolicy,
     LockReason,
+    MFAStatus,
     PasswordPolicy,
     UnlockReason,
 )
@@ -115,7 +116,7 @@ class TestAccountRegister:
         account = Account.register(
             account_id, identity_id, valid_email, hashed_password, now
         )
-        assert account.is_mfa_enabled is False
+        assert account.mfa_status is MFAStatus.DISABLED
 
     def test_initializes_no_totp_secret(
         self,
@@ -523,7 +524,7 @@ class TestConsumeRecoveryCode:
 
 
 class TestEnableMFA:
-    def test_with_totp_sets_flag(
+    def test_with_totp_sets_status_enabled(
         self,
         active_account_with_totp: Account,
         recovery_code_set: HashedRecoveryCodeSet,
@@ -532,7 +533,7 @@ class TestEnableMFA:
         active_account_with_totp.add_recovery_codes(recovery_code_set, now)
         active_account_with_totp.clear_events()
         active_account_with_totp.enable_mfa(now)
-        assert active_account_with_totp.is_mfa_enabled is True
+        assert active_account_with_totp.mfa_status is MFAStatus.ENABLED
 
     def test_records_mfa_enabled_event(
         self,
@@ -571,13 +572,13 @@ class TestEnableMFA:
 
 
 class TestDisableMFA:
-    def test_clears_flag(
+    def test_sets_status_disabled(
         self,
         active_account_with_mfa: Account,
         now: datetime,
     ):
         active_account_with_mfa.disable_mfa(now)
-        assert active_account_with_mfa.is_mfa_enabled is False
+        assert active_account_with_mfa.mfa_status is MFAStatus.DISABLED
 
     def test_records_mfa_disabled_event(
         self,
