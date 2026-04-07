@@ -11,17 +11,18 @@ This reading order is designed for humans learning these skills from scratch. Ea
 | 3 | **refactoring** | Transformation | clean-code | Safe structural changes, smell-to-technique mapping |
 | 4 | **design-patterns** | Problem-solving | solid-principles | Pattern selection by intent, anti-pattern detection |
 | 5 | **modern-python** | Language-specific | clean-code, solid-principles | Python 3.14+ idioms, type system, data modeling |
-| 6 | **architecture-decisions** | Planning | solid-principles, design-patterns | ADR process, trade-off analysis, decision governance |
-| 7 | **ddd-planning** | Planning | architecture-decisions | Domain discovery, Event Storming, strategic/tactical design planning |
-| 8 | **domain-driven-design** | Enforcement | ddd-planning, solid-principles | DDD implementation, layers, infrastructure isolation |
+| 6 | **python-testing** | Language-specific | modern-python, refactoring | pytest mastery, async testing, mocking boundaries, property-based testing |
+| 7 | **architecture-decisions** | Planning | solid-principles, design-patterns | ADR process, trade-off analysis, decision governance |
+| 8 | **ddd-planning** | Planning | architecture-decisions | Domain discovery, Event Storming, strategic/tactical design planning |
+| 9 | **domain-driven-design** | Enforcement | ddd-planning, solid-principles | DDD implementation, layers, infrastructure isolation |
 
 ## Two Learning Tracks
 
-**Track A — General Software Engineering (skills 1-5):**
-Start here if you want to write better code in any language/framework. Skills 1-4 are language-agnostic. Skill 5 applies them to Python specifically.
+**Track A — General Software Engineering (skills 1-6):**
+Start here if you want to write better code in any language/framework. Skills 1-4 are language-agnostic. Skills 5-6 apply them to Python specifically (idioms, then testing).
 
-**Track B — Domain-Driven Design (skills 6-8):**
-Start here after Track A if you're building domain-complex applications. Skill 6 teaches decision documentation. Skill 7 teaches DDD project planning. Skill 8 enforces DDD implementation.
+**Track B — Domain-Driven Design (skills 7-9):**
+Start here after Track A if you're building domain-complex applications. Skill 7 teaches decision documentation. Skill 8 teaches DDD project planning. Skill 9 enforces DDD implementation.
 
 ## How to Use These Skills
 

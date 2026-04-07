@@ -48,47 +48,52 @@ class TestAccountStatus:
     def test_closed_query(self):
         assert AccountStatus.CLOSED.is_closed is True
 
-    def test_guard_is_unverified_passes(self):
-        AccountStatus.UNVERIFIED.guard_is_unverified()
+    @pytest.mark.parametrize(
+        ("status", "guard_method"),
+        [
+            (AccountStatus.UNVERIFIED, "guard_is_unverified"),
+            (AccountStatus.ACTIVE, "guard_is_active"),
+            (AccountStatus.LOCKED, "guard_is_locked"),
+            (AccountStatus.ACTIVE, "guard_not_unverified"),
+            (AccountStatus.ACTIVE, "guard_not_suspended"),
+            (AccountStatus.ACTIVE, "guard_not_closed"),
+        ],
+        ids=[
+            "unverified-passes-guard_is_unverified",
+            "active-passes-guard_is_active",
+            "locked-passes-guard_is_locked",
+            "active-passes-guard_not_unverified",
+            "active-passes-guard_not_suspended",
+            "active-passes-guard_not_closed",
+        ],
+    )
+    def test_guard_passes(self, status: AccountStatus, guard_method: str):
+        getattr(status, guard_method)()
 
-    def test_guard_is_unverified_raises_when_active(self):
-        with pytest.raises(AccountNotUnverifiedError):
-            AccountStatus.ACTIVE.guard_is_unverified()
-
-    def test_guard_is_active_passes(self):
-        AccountStatus.ACTIVE.guard_is_active()
-
-    def test_guard_is_active_raises_when_locked(self):
-        with pytest.raises(AccountNotActiveError):
-            AccountStatus.LOCKED.guard_is_active()
-
-    def test_guard_is_locked_passes(self):
-        AccountStatus.LOCKED.guard_is_locked()
-
-    def test_guard_is_locked_raises_when_active(self):
-        with pytest.raises(AccountNotLockedError):
-            AccountStatus.ACTIVE.guard_is_locked()
-
-    def test_guard_not_unverified_passes_when_active(self):
-        AccountStatus.ACTIVE.guard_not_unverified()
-
-    def test_guard_not_unverified_raises_when_unverified(self):
-        with pytest.raises(AccountUnverifiedError):
-            AccountStatus.UNVERIFIED.guard_not_unverified()
-
-    def test_guard_not_suspended_passes_when_active(self):
-        AccountStatus.ACTIVE.guard_not_suspended()
-
-    def test_guard_not_suspended_raises_when_suspended(self):
-        with pytest.raises(AccountAlreadySuspendedError):
-            AccountStatus.SUSPENDED.guard_not_suspended()
-
-    def test_guard_not_closed_passes_when_active(self):
-        AccountStatus.ACTIVE.guard_not_closed()
-
-    def test_guard_not_closed_raises_when_closed(self):
-        with pytest.raises(AccountAlreadyClosedError):
-            AccountStatus.CLOSED.guard_not_closed()
+    @pytest.mark.parametrize(
+        ("status", "guard_method", "expected_error"),
+        [
+            (AccountStatus.ACTIVE, "guard_is_unverified", AccountNotUnverifiedError),
+            (AccountStatus.LOCKED, "guard_is_active", AccountNotActiveError),
+            (AccountStatus.ACTIVE, "guard_is_locked", AccountNotLockedError),
+            (AccountStatus.UNVERIFIED, "guard_not_unverified", AccountUnverifiedError),
+            (AccountStatus.SUSPENDED, "guard_not_suspended", AccountAlreadySuspendedError),
+            (AccountStatus.CLOSED, "guard_not_closed", AccountAlreadyClosedError),
+        ],
+        ids=[
+            "active-fails-guard_is_unverified",
+            "locked-fails-guard_is_active",
+            "active-fails-guard_is_locked",
+            "unverified-fails-guard_not_unverified",
+            "suspended-fails-guard_not_suspended",
+            "closed-fails-guard_not_closed",
+        ],
+    )
+    def test_guard_raises(
+        self, status: AccountStatus, guard_method: str, expected_error: type
+    ):
+        with pytest.raises(expected_error):
+            getattr(status, guard_method)()
 
 
 # --- LockReason / UnlockReason ---
@@ -122,74 +127,48 @@ class TestEmailAddress:
         email = EmailAddress(value="  user@example.com  ")
         assert email.value == "user@example.com"
 
-    def test_rejects_empty(self):
+    @pytest.mark.parametrize(
+        "invalid_email",
+        [
+            "",
+            "a" * 65 + "@" + "b" * 190 + ".com",
+            "userexample.com",
+            "user@@example.com",
+            "@example.com",
+            "a" * 65 + "@example.com",
+            ".user@example.com",
+            "user.@example.com",
+            "us..er@example.com",
+            "user@",
+            "user@localhost",
+            "user@.example.com",
+            "user@" + "a" * 64 + ".com",
+            "user@-example.com",
+            "user@example-.com",
+            "user@exam!ple.com",
+        ],
+        ids=[
+            "empty",
+            "exceeds-max-length",
+            "no-at-sign",
+            "multiple-at-signs",
+            "empty-local-part",
+            "local-part-exceeds-max",
+            "leading-dot-in-local",
+            "trailing-dot-in-local",
+            "consecutive-dots-in-local",
+            "empty-domain",
+            "domain-without-dot",
+            "empty-domain-label",
+            "domain-label-exceeds-max",
+            "domain-label-leading-hyphen",
+            "domain-label-trailing-hyphen",
+            "domain-label-special-chars",
+        ],
+    )
+    def test_rejects_invalid_email(self, invalid_email: str):
         with pytest.raises(ValueError):
-            EmailAddress(value="")
-
-    def test_rejects_exceeding_max_length(self):
-        local = "a" * 64
-        domain = "b" * 63 + "." + "c" * 63 + "." + "d" * 63 + ".com"
-        long_email = f"{local}@{domain}"
-        if len(long_email) <= 254:
-            EmailAddress(value=long_email)
-        with pytest.raises(ValueError):
-            EmailAddress(value="a" * 65 + "@" + "b" * 190 + ".com")
-
-    def test_rejects_no_at_sign(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="userexample.com")
-
-    def test_rejects_multiple_at_signs(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@@example.com")
-
-    def test_rejects_empty_local_part(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="@example.com")
-
-    def test_rejects_local_part_exceeding_max_length(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="a" * 65 + "@example.com")
-
-    def test_rejects_leading_dot_in_local_part(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value=".user@example.com")
-
-    def test_rejects_trailing_dot_in_local_part(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user.@example.com")
-
-    def test_rejects_consecutive_dots_in_local_part(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="us..er@example.com")
-
-    def test_rejects_empty_domain(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@")
-
-    def test_rejects_domain_without_dot(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@localhost")
-
-    def test_rejects_empty_domain_label(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@.example.com")
-
-    def test_rejects_domain_label_exceeding_max_length(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@" + "a" * 64 + ".com")
-
-    def test_rejects_domain_label_leading_hyphen(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@-example.com")
-
-    def test_rejects_domain_label_trailing_hyphen(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@example-.com")
-
-    def test_rejects_domain_label_with_special_characters(self):
-        with pytest.raises(ValueError):
-            EmailAddress(value="user@exam!ple.com")
+            EmailAddress(value=invalid_email)
 
 
 # --- HashedPassword ---
@@ -534,25 +513,28 @@ class TestLockoutPolicy:
         assert policy.threshold == 5
         assert policy.tier_minutes == (5, 15, 60)
 
-    def test_rejects_zero_threshold(self):
+    @pytest.mark.parametrize(
+        ("threshold", "tier_minutes"),
+        [
+            (0, (5,)),
+            (101, (5,)),
+            (5, ()),
+            (5, (0,)),
+            (5, (1441,)),
+        ],
+        ids=[
+            "zero-threshold",
+            "threshold-exceeds-max",
+            "empty-tier-minutes",
+            "non-positive-tier-minutes",
+            "tier-minutes-exceeds-max",
+        ],
+    )
+    def test_rejects_invalid_construction(
+        self, threshold: int, tier_minutes: tuple[int, ...]
+    ):
         with pytest.raises(ValueError):
-            LockoutPolicy(threshold=0, tier_minutes=(5,))
-
-    def test_rejects_exceeding_max_threshold(self):
-        with pytest.raises(ValueError):
-            LockoutPolicy(threshold=101, tier_minutes=(5,))
-
-    def test_rejects_empty_tier_minutes(self):
-        with pytest.raises(ValueError):
-            LockoutPolicy(threshold=5, tier_minutes=())
-
-    def test_rejects_non_positive_tier_minutes(self):
-        with pytest.raises(ValueError):
-            LockoutPolicy(threshold=5, tier_minutes=(0,))
-
-    def test_rejects_tier_minutes_exceeding_max(self):
-        with pytest.raises(ValueError):
-            LockoutPolicy(threshold=5, tier_minutes=(1441,))
+            LockoutPolicy(threshold=threshold, tier_minutes=tier_minutes)
 
 
 # --- PasswordPolicy ---
@@ -571,64 +553,35 @@ class TestPasswordPolicy:
         )
         assert policy.min_length == 8
 
-    def test_rejects_min_below_absolute_min(self):
+    @pytest.mark.parametrize(
+        ("min_length", "max_length", "history_depth"),
+        [
+            (7, 128, 0),
+            (8, 129, 0),
+            (20, 10, 0),
+            (8, 128, -1),
+            (8, 128, 25),
+        ],
+        ids=[
+            "min-below-absolute-min",
+            "max-above-absolute-max",
+            "min-greater-than-max",
+            "negative-history-depth",
+            "history-depth-exceeds-max",
+        ],
+    )
+    def test_rejects_invalid_construction(
+        self, min_length: int, max_length: int, history_depth: int
+    ):
         with pytest.raises(ValueError):
             PasswordPolicy(
-                min_length=7,
-                max_length=128,
+                min_length=min_length,
+                max_length=max_length,
                 require_uppercase=False,
                 require_lowercase=False,
                 require_digit=False,
                 require_special=False,
-                history_depth=0,
-            )
-
-    def test_rejects_max_above_absolute_max(self):
-        with pytest.raises(ValueError):
-            PasswordPolicy(
-                min_length=8,
-                max_length=129,
-                require_uppercase=False,
-                require_lowercase=False,
-                require_digit=False,
-                require_special=False,
-                history_depth=0,
-            )
-
-    def test_rejects_min_greater_than_max(self):
-        with pytest.raises(ValueError):
-            PasswordPolicy(
-                min_length=20,
-                max_length=10,
-                require_uppercase=False,
-                require_lowercase=False,
-                require_digit=False,
-                require_special=False,
-                history_depth=0,
-            )
-
-    def test_rejects_negative_history_depth(self):
-        with pytest.raises(ValueError):
-            PasswordPolicy(
-                min_length=8,
-                max_length=128,
-                require_uppercase=False,
-                require_lowercase=False,
-                require_digit=False,
-                require_special=False,
-                history_depth=-1,
-            )
-
-    def test_rejects_history_depth_exceeding_max(self):
-        with pytest.raises(ValueError):
-            PasswordPolicy(
-                min_length=8,
-                max_length=128,
-                require_uppercase=False,
-                require_lowercase=False,
-                require_digit=False,
-                require_special=False,
-                history_depth=25,
+                history_depth=history_depth,
             )
 
     def test_validate_passes_strong_password(self):
@@ -643,93 +596,44 @@ class TestPasswordPolicy:
         )
         policy.validate("Str0ng!Pass")
 
-    def test_validate_rejects_empty(self):
+    @pytest.mark.parametrize(
+        ("password", "max_length", "uppercase", "lowercase", "digit", "special"),
+        [
+            ("", 128, False, False, False, False),
+            ("short", 128, False, False, False, False),
+            ("a" * 21, 20, False, False, False, False),
+            ("alllowercase1!", 128, True, False, False, False),
+            ("ALLUPPERCASE1!", 128, False, True, False, False),
+            ("NoDigitsHere!", 128, False, False, True, False),
+            ("NoSpecial123", 128, False, False, False, True),
+        ],
+        ids=[
+            "empty",
+            "too-short",
+            "too-long",
+            "missing-uppercase",
+            "missing-lowercase",
+            "missing-digit",
+            "missing-special",
+        ],
+    )
+    def test_validate_rejects_invalid_password(
+        self,
+        password: str,
+        max_length: int,
+        uppercase: bool,
+        lowercase: bool,
+        digit: bool,
+        special: bool,
+    ):
         policy = PasswordPolicy(
             min_length=8,
-            max_length=128,
-            require_uppercase=False,
-            require_lowercase=False,
-            require_digit=False,
-            require_special=False,
+            max_length=max_length,
+            require_uppercase=uppercase,
+            require_lowercase=lowercase,
+            require_digit=digit,
+            require_special=special,
             history_depth=0,
         )
         with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("")
-
-    def test_validate_rejects_too_short(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=128,
-            require_uppercase=False,
-            require_lowercase=False,
-            require_digit=False,
-            require_special=False,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("short")
-
-    def test_validate_rejects_too_long(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=20,
-            require_uppercase=False,
-            require_lowercase=False,
-            require_digit=False,
-            require_special=False,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("a" * 21)
-
-    def test_validate_rejects_missing_uppercase(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=128,
-            require_uppercase=True,
-            require_lowercase=False,
-            require_digit=False,
-            require_special=False,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("alllowercase1!")
-
-    def test_validate_rejects_missing_lowercase(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=128,
-            require_uppercase=False,
-            require_lowercase=True,
-            require_digit=False,
-            require_special=False,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("ALLUPPERCASE1!")
-
-    def test_validate_rejects_missing_digit(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=128,
-            require_uppercase=False,
-            require_lowercase=False,
-            require_digit=True,
-            require_special=False,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("NoDigitsHere!")
-
-    def test_validate_rejects_missing_special(self):
-        policy = PasswordPolicy(
-            min_length=8,
-            max_length=128,
-            require_uppercase=False,
-            require_lowercase=False,
-            require_digit=False,
-            require_special=True,
-            history_depth=0,
-        )
-        with pytest.raises(PasswordPolicyViolationError):
-            policy.validate("NoSpecial123")
+            policy.validate(password)
