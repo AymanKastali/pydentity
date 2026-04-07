@@ -1,6 +1,6 @@
-# Authentication Service — Tactical Design
+# Authentication Service — Tactical Design: Audit & Notification
 
-## Audit & Notification Bounded Contexts
+This file is the canonical source for the 30 Authentication domain events consumed by Audit (with payload details) and the 3 events consumed by Notification. Other rule files reference this file rather than duplicating these lists.
 
 ---
 
@@ -291,67 +291,3 @@ Authentication publishes events and does not know Notification exists (Conformis
 | Domain Events Produced | 2 | Message Delivered, Message Delivery Failed (internal only) |
 | Events Triggering Delivery | 3 | Email Verification Requested, Verification Code Generated, Recovery Token Issued |
 | Repository | 1 | Delivery Request Repository |
-
----
-
----
-
-## 4. Full Service Model Summary (All Three Contexts)
-
-### Aggregates (8 total)
-
-| Context | Aggregate | Purpose |
-|---------|-----------|---------|
-| Authentication | Identity | Immutable reference. Persists beyond Account. |
-| Authentication | Account | Stateful record. Holds Credentials. |
-| Authentication | Session | Time-bound authenticated access. Holds Refresh Token. |
-| Authentication | Trusted Device | Remembered device that may relax MFA. |
-| Authentication | Authentication Attempt | Short-lived identity verification. Generates Verification Codes for email/SMS MFA. |
-| Authentication | Recovery Request | Short-lived Password Reset request. Owns Recovery Token. |
-| Audit | Audit Entry | Immutable record of a security event. No PII in payload. Event type stored as string. |
-| Notification | Delivery Request | Request to deliver a message. Sensitive content purged after delivery. |
-
-### Repositories (8 total)
-
-| Context | Repository |
-|---------|-----------|
-| Authentication | Identity, Account, Session, Trusted Device, Authentication Attempt, Recovery Request |
-| Audit | Audit Entry |
-| Notification | Delivery Request |
-
-### Factories (6 total — classmethod factories on aggregates)
-
-Factories are implemented as classmethod factories on aggregates: `Identity.create()`, `Account.register()`, `Session.start()`, `AuthenticationAttempt.initiate()`, `RecoveryRequest.create()`, `TrustedDevice.register()`.
-
-### Application Services (2 total — Authentication only)
-
-| Service | Purpose |
-|---------|---------|
-| Authenticate Identity | Orchestrates the login use case (including MFA with Verification Code generation and delivery) |
-| Recover Account | Orchestrates the Password Reset use case |
-
-### Domain Services (5 total — Authentication only, 2 not yet implemented)
-
-| Service | Purpose |
-|---------|---------|
-| PreventPasswordReuse | New password must not match current or historical passwords |
-| PreventDuplicateEmail | Email addresses must be unique across accounts |
-| EnforceDeviceLimit | Account cannot exceed max Trusted Devices (accepts DevicePolicy) |
-| Terminate Sessions | Locked/suspended/closed Account → end all Sessions (not yet implemented) |
-| Revoke Trusted Devices | Locked/closed Account → revoke all devices (not yet implemented) |
-
-### Domain Events (32 total across all contexts)
-
-| Context | Events |
-|---------|--------|
-| Authentication | 30 events (see Authentication tactical design document for full list) |
-| Notification | 2 internal events: Message Delivered, Message Delivery Failed |
-| Audit | 0 events (terminal consumer) |
-
-### Security Measures Across Contexts
-
-| Context | Measure |
-|---------|---------|
-| Authentication | All secrets hashed or encrypted. Access Token payload non-sensitive. Verification Codes hashed within attempts. |
-| Audit | No PII in event payloads. Identifiers only. Access control on query endpoints. |
-| Notification | Sensitive Delivery Requests purged after delivery. Raw tokens and codes do not persist long-term. |
