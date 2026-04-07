@@ -14,7 +14,9 @@ from pydentity.notification.domain.delivery_request.events import (
     MessageDeliveryFailed,
 )
 from pydentity.notification.domain.delivery_request.value_objects import (
+    AttemptCount,
     Channel,
+    ContentSensitivity,
     DeliveryStatus,
 )
 
@@ -30,15 +32,15 @@ class TestDeliveryRequestCreate:
         assert pending_delivery.channel == Channel.EMAIL
 
     def test_initializes_zero_attempt_count(self, pending_delivery: DeliveryRequest):
-        assert pending_delivery.attempt_count == 0
+        assert pending_delivery.attempt_count == AttemptCount.initialize()
 
-    def test_stores_sensitivity_flag(
+    def test_stores_sensitivity(
         self,
         pending_delivery: DeliveryRequest,
         sensitive_pending_delivery: DeliveryRequest,
     ):
-        assert pending_delivery.is_sensitive is False
-        assert sensitive_pending_delivery.is_sensitive is True
+        assert pending_delivery.sensitivity is ContentSensitivity.STANDARD
+        assert sensitive_pending_delivery.sensitivity is ContentSensitivity.SENSITIVE
 
 
 # --- Mark sent ---
@@ -59,7 +61,7 @@ class TestMarkSent:
         now: datetime,
     ):
         pending_delivery.mark_sent(now)
-        assert pending_delivery.attempt_count == 1
+        assert pending_delivery.attempt_count == AttemptCount(value=1)
 
     def test_records_message_delivered_event(
         self,
@@ -94,7 +96,7 @@ class TestMarkSent:
 class TestRecordFailedAttempt:
     def test_increments_count(self, pending_delivery: DeliveryRequest):
         pending_delivery.record_failed_attempt()
-        assert pending_delivery.attempt_count == 1
+        assert pending_delivery.attempt_count == AttemptCount(value=1)
 
     def test_raises_when_already_sent(
         self,

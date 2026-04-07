@@ -14,7 +14,6 @@ from pydentity.authentication.domain.account.errors import (
     MFARequiresCredentialError,
     PasswordPolicyViolationError,
     PasswordReuseError,
-    RecoveryCodeNotFoundError,
     TOTPSecretNotFoundError,
 )
 from pydentity.authentication.domain.account.events import (
@@ -50,6 +49,7 @@ from pydentity.authentication.domain.account.value_objects import (
     LockoutPolicy,
     LockoutState,
     LockReason,
+    MFAStatus,
     PasswordPolicy,
     UnlockReason,
 )
@@ -69,6 +69,7 @@ __all__ = [
     "LockReason",
     "LockoutPolicy",
     "LockoutState",
+    "MFAStatus",
     "PasswordPolicy",
     "UnlockReason",
     # events
@@ -102,7 +103,6 @@ __all__ = [
     "MFARequiresCredentialError",
     "PasswordPolicyViolationError",
     "PasswordReuseError",
-    "RecoveryCodeNotFoundError",
     "TOTPSecretNotFoundError",
     # aggregate
     "Account",

@@ -3,8 +3,6 @@ from typing import TYPE_CHECKING
 from pydentity.authentication.domain.account.errors import (
     CannotRemoveCredentialError,
     DuplicateTOTPSecretError,
-    MFAAlreadyEnabledError,
-    MFANotEnabledError,
     MFARequiresCredentialError,
     TOTPSecretNotFoundError,
 )
@@ -36,6 +34,7 @@ from pydentity.authentication.domain.account.value_objects import (
     LockoutPolicy,
     LockoutState,
     LockReason,
+    MFAStatus,
     PasswordPolicy,
     UnlockReason,
 )
@@ -56,7 +55,7 @@ class Account(AggregateRoot[AccountId]):
         password_history: HashedPasswordHistory,
         totp_secret: EncryptedTOTPSecret | None,
         recovery_code_set: HashedRecoveryCodeSet,
-        is_mfa_enabled: bool,
+        mfa_status: MFAStatus,
         lockout_state: LockoutState,
     ) -> None:
         super().__init__(account_id)
@@ -67,7 +66,7 @@ class Account(AggregateRoot[AccountId]):
         self._password_history: HashedPasswordHistory = password_history
         self._totp_secret: EncryptedTOTPSecret | None = totp_secret
         self._recovery_code_set: HashedRecoveryCodeSet = recovery_code_set
-        self._is_mfa_enabled: bool = is_mfa_enabled
+        self._mfa_status: MFAStatus = mfa_status
         self._lockout_state: LockoutState = lockout_state
 
     # --- Creation ---
@@ -90,7 +89,7 @@ class Account(AggregateRoot[AccountId]):
             password_history=HashedPasswordHistory.initialize(),
             totp_secret=None,
             recovery_code_set=HashedRecoveryCodeSet.initialize(),
-            is_mfa_enabled=False,
+            mfa_status=MFAStatus.DISABLED,
             lockout_state=LockoutState.initialize(),
         )
         account.record_event(AccountRegistered(occurred_at=now, account_id=account_id))
@@ -130,8 +129,8 @@ class Account(AggregateRoot[AccountId]):
         return self._recovery_code_set
 
     @property
-    def is_mfa_enabled(self) -> bool:
-        return self._is_mfa_enabled
+    def mfa_status(self) -> MFAStatus:
+        return self._mfa_status
 
     @property
     def lockout_state(self) -> LockoutState:
@@ -255,7 +254,7 @@ class Account(AggregateRoot[AccountId]):
             raise TOTPSecretNotFoundError()
 
     def _guard_can_remove_totp(self) -> None:
-        if self._is_mfa_enabled and not self._recovery_code_set.has_unused:
+        if self._mfa_status.is_enabled and not self._recovery_code_set.has_unused:
             raise CannotRemoveCredentialError()
 
     @property
@@ -293,34 +292,26 @@ class Account(AggregateRoot[AccountId]):
 
     def enable_mfa(self, now: datetime) -> None:
         self._status.guard_is_active()
-        self._guard_mfa_not_already_enabled()
+        self._mfa_status.guard_not_already_enabled()
         self._guard_has_totp_or_recovery_codes()
         self._mark_mfa_enabled()
         self.record_event(MFAEnabled(occurred_at=now, account_id=self._id))
-
-    def _guard_mfa_not_already_enabled(self) -> None:
-        if self._is_mfa_enabled:
-            raise MFAAlreadyEnabledError()
 
     def _guard_has_totp_or_recovery_codes(self) -> None:
         if not self._has_totp and not self._recovery_code_set.has_unused:
             raise MFARequiresCredentialError()
 
     def _mark_mfa_enabled(self) -> None:
-        self._is_mfa_enabled = True
+        self._mfa_status = MFAStatus.ENABLED
 
     def disable_mfa(self, now: datetime) -> None:
         self._status.guard_is_active()
-        self._guard_mfa_is_enabled()
+        self._mfa_status.guard_is_enabled()
         self._mark_mfa_disabled()
         self.record_event(MFADisabled(occurred_at=now, account_id=self._id))
 
-    def _guard_mfa_is_enabled(self) -> None:
-        if not self._is_mfa_enabled:
-            raise MFANotEnabledError()
-
     def _mark_mfa_disabled(self) -> None:
-        self._is_mfa_enabled = False
+        self._mfa_status = MFAStatus.DISABLED
 
     # --- Lockout management ---
 

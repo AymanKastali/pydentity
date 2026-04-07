@@ -10,6 +10,8 @@ from pydentity.authentication.domain.account.errors import (
     AccountNotLockedError,
     AccountNotUnverifiedError,
     AccountUnverifiedError,
+    MFAAlreadyEnabledError,
+    MFANotEnabledError,
     PasswordPolicyViolationError,
 )
 from pydentity.shared_kernel import (
@@ -92,6 +94,23 @@ class LockReason(StrEnum):
 class UnlockReason(StrEnum):
     ADMIN = auto()
     EXPIRY = auto()
+
+
+class MFAStatus(StrEnum):
+    ENABLED = auto()
+    DISABLED = auto()
+
+    @property
+    def is_enabled(self) -> bool:
+        return self is MFAStatus.ENABLED
+
+    def guard_is_enabled(self) -> None:
+        if not self.is_enabled:
+            raise MFANotEnabledError()
+
+    def guard_not_already_enabled(self) -> None:
+        if self.is_enabled:
+            raise MFAAlreadyEnabledError()
 
 
 @dataclass(frozen=True, slots=True)

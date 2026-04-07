@@ -3,9 +3,12 @@ import pytest
 from pydentity.notification.domain.delivery_request.errors import (
     DeliveryRequestAlreadyFailedError,
     DeliveryRequestAlreadySentError,
+    DeliveryRequestNotSensitiveError,
 )
 from pydentity.notification.domain.delivery_request.value_objects import (
+    AttemptCount,
     Channel,
+    ContentSensitivity,
     DeliveryStatus,
     MessageContent,
     Recipient,
@@ -89,3 +92,52 @@ class TestMessageContent:
     def test_rejects_subject_exceeding_max_length(self):
         with pytest.raises(ValueError):
             MessageContent(subject="x" * 201, body="Body")
+
+
+# --- AttemptCount ---
+
+
+class TestAttemptCount:
+    def test_initializes_to_zero(self):
+        count = AttemptCount.initialize()
+        assert count.value == 0
+
+    def test_increment_returns_new_instance(self):
+        count = AttemptCount.initialize()
+        incremented = count.increment()
+        assert incremented.value == 1
+        assert count.value == 0
+
+    def test_rejects_negative_value(self):
+        with pytest.raises(ValueError):
+            AttemptCount(value=-1)
+
+    def test_rejects_exceeding_max(self):
+        with pytest.raises(ValueError):
+            AttemptCount(value=101)
+
+    def test_accepts_max_value(self):
+        count = AttemptCount(value=100)
+        assert count.value == 100
+
+    def test_equality(self):
+        assert AttemptCount(value=3) == AttemptCount(value=3)
+        assert AttemptCount(value=3) != AttemptCount(value=4)
+
+
+# --- ContentSensitivity ---
+
+
+class TestContentSensitivity:
+    def test_sensitive_query(self):
+        assert ContentSensitivity.SENSITIVE.is_sensitive is True
+
+    def test_standard_query(self):
+        assert ContentSensitivity.STANDARD.is_sensitive is False
+
+    def test_guard_passes_for_sensitive(self):
+        ContentSensitivity.SENSITIVE.guard_is_sensitive()
+
+    def test_guard_raises_for_standard(self):
+        with pytest.raises(DeliveryRequestNotSensitiveError):
+            ContentSensitivity.STANDARD.guard_is_sensitive()

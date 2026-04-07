@@ -5,14 +5,15 @@ from pydentity.notification.domain.delivery_request.aggregate_id import (
 )
 from pydentity.notification.domain.delivery_request.errors import (
     DeliveryRequestContentAlreadyPurgedError,
-    DeliveryRequestNotSensitiveError,
 )
 from pydentity.notification.domain.delivery_request.events import (
     MessageDelivered,
     MessageDeliveryFailed,
 )
 from pydentity.notification.domain.delivery_request.value_objects import (
+    AttemptCount,
     Channel,
+    ContentSensitivity,
     DeliveryStatus,
     MessageContent,
     Recipient,
@@ -34,8 +35,8 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
         channel: Channel,
         content: MessageContent | None,
         status: DeliveryStatus,
-        attempt_count: int,
-        is_sensitive: bool,
+        attempt_count: AttemptCount,
+        sensitivity: ContentSensitivity,
     ) -> None:
         super().__init__(request_id)
         self._account_id: AccountId = account_id
@@ -43,8 +44,8 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
         self._channel: Channel = channel
         self._content: MessageContent | None = content
         self._status: DeliveryStatus = status
-        self._attempt_count: int = attempt_count
-        self._is_sensitive: bool = is_sensitive
+        self._attempt_count: AttemptCount = attempt_count
+        self._sensitivity: ContentSensitivity = sensitivity
 
     # --- Creation ---
 
@@ -56,7 +57,7 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
         recipient: Recipient,
         channel: Channel,
         content: MessageContent,
-        is_sensitive: bool,
+        sensitivity: ContentSensitivity,
     ) -> DeliveryRequest:
         return cls(
             request_id=request_id,
@@ -65,8 +66,8 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
             channel=channel,
             content=content,
             status=DeliveryStatus.PENDING,
-            attempt_count=0,
-            is_sensitive=is_sensitive,
+            attempt_count=AttemptCount.initialize(),
+            sensitivity=sensitivity,
         )
 
     # --- Queries ---
@@ -92,12 +93,12 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
         return self._status
 
     @property
-    def attempt_count(self) -> int:
+    def attempt_count(self) -> AttemptCount:
         return self._attempt_count
 
     @property
-    def is_sensitive(self) -> bool:
-        return self._is_sensitive
+    def sensitivity(self) -> ContentSensitivity:
+        return self._sensitivity
 
     # --- Delivery success ---
 
@@ -115,7 +116,7 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
         )
 
     def _increment_attempt_count(self) -> None:
-        self._attempt_count += 1
+        self._attempt_count = self._attempt_count.increment()
 
     def _mark_sent(self) -> None:
         self._status = DeliveryStatus.SENT
@@ -145,13 +146,9 @@ class DeliveryRequest(AggregateRoot[DeliveryRequestId]):
     # --- Content purge ---
 
     def purge_content(self) -> None:
-        self._guard_is_sensitive()
+        self._sensitivity.guard_is_sensitive()
         self._guard_content_not_purged()
         self._content = None
-
-    def _guard_is_sensitive(self) -> None:
-        if not self._is_sensitive:
-            raise DeliveryRequestNotSensitiveError()
 
     def _guard_content_not_purged(self) -> None:
         if self._content is None:
