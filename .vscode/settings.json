@@ -26,9 +26,12 @@
   "cSpell.words": [
     "ASGI",
     "asyncpg",
+    "Decrypter",
+    "Encrypter",
     "FASTAPI",
     "pydentity",
     "suspendable",
-    "totp"
+    "totp",
+    "Unlockable"
   ]
 }

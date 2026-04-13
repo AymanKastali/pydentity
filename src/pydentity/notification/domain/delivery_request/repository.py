@@ -1,13 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pydentity.notification.domain.delivery_request.aggregate import (
-        DeliveryRequest,
-    )
-    from pydentity.notification.domain.delivery_request.aggregate_id import (
-        DeliveryRequestId,
-    )
+from pydentity.notification.domain.delivery_request.aggregate import DeliveryRequest
+from pydentity.notification.domain.delivery_request.value_objects import (
+    DeliveryRequestId,
+)
 
 
 class DeliveryRequestRepository(ABC):

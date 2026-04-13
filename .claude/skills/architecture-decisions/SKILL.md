@@ -1,6 +1,7 @@
 ---
 name: architecture-decisions
 description: Use when making, documenting, or reviewing significant architectural decisions — enforces decision identification, context capture, trade-off analysis, ADR documentation, and review governance through mandatory phased gates before marking the decision record complete
+disable-model-invocation: true
 ---
 
 # Architecture Decisions

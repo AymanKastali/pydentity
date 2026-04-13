@@ -1,0 +1,191 @@
+@startuml account
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class CredentialId <<ValueObject>> {
+    - value: UUID
+}
+
+class Email <<ValueObject>> {
+    - value: str
+}
+
+class RawPassword <<ValueObject>> {
+    - value: str
+}
+
+class HashedPassword <<ValueObject>> {
+    - value: str
+}
+
+class FailedAttemptCount <<ValueObject>> {
+    - value: int
+}
+
+class PasswordPolicy <<ValueObject>> {
+    - min_length: int
+    - max_length: int
+    - max_history: int
+}
+
+class LockoutPolicy <<ValueObject>> {
+    - max_failed_attempts: int
+    - lockout_duration_seconds: int
+}
+
+' ===== ENUMS =====
+enum AccountStatus {
+    PENDING_VERIFICATION
+    ACTIVE
+    LOCKED
+    SUSPENDED
+    CLOSED
+}
+
+enum LockReason {
+    THRESHOLD
+    ADMIN
+}
+
+enum UnlockReason {
+    EXPIRY
+    ADMIN
+}
+
+' ===== DOMAIN INTERFACES =====
+interface PasswordHasher <<DomainInterface>> {
+    + hash(password: RawPassword): HashedPassword
+}
+
+interface PasswordVerifier <<DomainInterface>> {
+    + verify(password: RawPassword, hash: HashedPassword): bool
+}
+
+interface CompromisedPasswordChecker <<DomainInterface>> {
+    + check(password: RawPassword): bool
+}
+
+' ===== DOMAIN SERVICES =====
+class PreventDuplicateEmail <<DomainService>> {
+    + check(email: Email)
+}
+
+' ===== FACTORY =====
+class AccountFactory <<Factory>> {
+    + register_account(email: Email, password: RawPassword, hasher: PasswordHasher, policy: PasswordPolicy, compromised_checker: CompromisedPasswordChecker, duplicate_checker: PreventDuplicateEmail): Account
+}
+
+' ===== ENTITY =====
+class EmailPasswordCredential <<Entity>> {
+    - id: CredentialId
+    - email: Email
+    - hashed_password: HashedPassword
+    - password_history: list[HashedPassword]
+    + change_password(new_password: RawPassword, verifier: PasswordVerifier, new_hash: HashedPassword, max_history: int)
+    + change_email(new_email: Email)
+}
+
+' ===== AGGREGATE ROOT =====
+class Account <<AggregateRoot>> {
+    - id: AccountId
+    - status: AccountStatus
+    - credentials: EmailPasswordCredential
+    - failed_attempt_count: FailedAttemptCount
+    + {static} create(id: AccountId, credential: EmailPasswordCredential): Account
+    + authenticate(password: RawPassword, verifier: PasswordVerifier, lockout_policy: LockoutPolicy)
+    + verify_email()
+    + change_password(current_password: RawPassword, new_password: RawPassword, verifier: PasswordVerifier, hasher: PasswordHasher, policy: PasswordPolicy, compromised_checker: CompromisedPasswordChecker)
+    + change_email(new_email: Email, duplicate_checker: PreventDuplicateEmail)
+    + lock(reason: LockReason)
+    + unlock(reason: UnlockReason)
+    + suspend()
+    + close()
+}
+
+' ===== DOMAIN EVENTS =====
+class AccountRegistered <<DomainEvent>> {
+    - account_id: AccountId
+    - email: Email
+}
+
+class LoginSucceeded <<DomainEvent>> {
+    - account_id: AccountId
+}
+
+class LoginFailed <<DomainEvent>> {
+    - account_id: AccountId
+    - failed_attempt_count: FailedAttemptCount
+}
+
+class EmailVerified <<DomainEvent>> {
+    - account_id: AccountId
+}
+
+class EmailChanged <<DomainEvent>> {
+    - account_id: AccountId
+    - old_email: Email
+    - new_email: Email
+}
+
+class PasswordChanged <<DomainEvent>> {
+    - account_id: AccountId
+}
+
+class AccountLocked <<DomainEvent>> {
+    - account_id: AccountId
+    - reason: LockReason
+}
+
+class AccountUnlocked <<DomainEvent>> {
+    - account_id: AccountId
+    - reason: UnlockReason
+}
+
+class AccountSuspended <<DomainEvent>> {
+    - account_id: AccountId
+}
+
+class AccountClosed <<DomainEvent>> {
+    - account_id: AccountId
+}
+
+' ===== REPOSITORIES =====
+interface AccountRepository <<Repository>> {
+    + find_by_id(account_id: AccountId): Account
+    + find_by_email(email: Email): Account
+    + exists(email: Email): bool
+    + save(account: Account)
+}
+
+' ===== RELATIONSHIPS =====
+Account "1" *-- "1" EmailPasswordCredential
+
+Account ..> AccountRegistered : publishes >
+Account ..> LoginSucceeded : publishes >
+Account ..> LoginFailed : publishes >
+Account ..> EmailVerified : publishes >
+Account ..> EmailChanged : publishes >
+Account ..> PasswordChanged : publishes >
+Account ..> AccountLocked : publishes >
+Account ..> AccountUnlocked : publishes >
+Account ..> AccountSuspended : publishes >
+Account ..> AccountClosed : publishes >
+
+Account ..> PasswordVerifier : uses >
+Account ..> PasswordHasher : uses >
+Account ..> PasswordPolicy : uses >
+Account ..> LockoutPolicy : uses >
+Account ..> CompromisedPasswordChecker : uses >
+Account ..> PreventDuplicateEmail : uses >
+
+AccountFactory ..> Account : creates >
+AccountFactory ..> PasswordHasher : uses >
+AccountFactory ..> PasswordPolicy : uses >
+AccountFactory ..> CompromisedPasswordChecker : uses >
+AccountFactory ..> PreventDuplicateEmail : uses >
+
+PreventDuplicateEmail ..> AccountRepository : uses >
+
+@enduml

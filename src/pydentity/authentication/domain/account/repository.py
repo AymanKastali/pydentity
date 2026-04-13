@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pydentity.authentication.domain.account.aggregate import Account
-    from pydentity.authentication.domain.account.value_objects import EmailAddress
-    from pydentity.shared_kernel import AccountId, IdentityId
+from pydentity.authentication.domain.account.aggregate import Account
+from pydentity.authentication.domain.account.value_objects import Email
+from pydentity.shared_kernel.value_objects import AccountId
 
 
 class AccountRepository(ABC):
@@ -15,7 +13,7 @@ class AccountRepository(ABC):
     async def find_by_id(self, account_id: AccountId) -> Account | None: ...
 
     @abstractmethod
-    async def find_by_email(self, email: EmailAddress) -> Account | None: ...
+    async def find_by_email(self, email: Email) -> Account | None: ...
 
     @abstractmethod
-    async def find_by_identity_id(self, identity_id: IdentityId) -> Account | None: ...
+    async def exists_by_email(self, email: Email) -> bool: ...

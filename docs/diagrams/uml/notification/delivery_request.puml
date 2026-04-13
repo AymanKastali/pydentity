@@ -1,0 +1,82 @@
+@startuml delivery_request
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class DeliveryRequestId <<ValueObject>> {
+    - value: UUID
+}
+
+class Recipient <<ValueObject>> {
+    - address: str
+}
+
+class MessageContent <<ValueObject>> {
+    - subject: str | None
+    - body: str
+}
+
+class AttemptCount <<ValueObject>> {
+    - value: int
+}
+
+' ===== ENUMS =====
+enum Channel {
+    EMAIL
+    SMS
+}
+
+enum ContentSensitivity {
+    SENSITIVE
+    STANDARD
+}
+
+enum DeliveryStatus {
+    PENDING
+    SENT
+    FAILED
+}
+
+' ===== AGGREGATE ROOT =====
+class DeliveryRequest <<AggregateRoot>> {
+    - id: DeliveryRequestId
+    - account_id: AccountId
+    - recipient: Recipient
+    - channel: Channel
+    - content: MessageContent | None
+    - status: DeliveryStatus
+    - attempt_count: AttemptCount
+    - sensitivity: ContentSensitivity
+    + {static} create(id: DeliveryRequestId, account_id: AccountId, recipient: Recipient, channel: Channel, content: MessageContent, sensitivity: ContentSensitivity): DeliveryRequest
+    + mark_sent()
+    + record_failed_attempt()
+    + mark_failed()
+    + purge_content()
+}
+
+' ===== DOMAIN EVENTS =====
+class MessageDelivered <<DomainEvent>> {
+    - delivery_request_id: DeliveryRequestId
+    - account_id: AccountId
+}
+
+class MessageDeliveryFailed <<DomainEvent>> {
+    - delivery_request_id: DeliveryRequestId
+    - account_id: AccountId
+}
+
+' ===== REPOSITORIES =====
+interface DeliveryRequestRepository <<Repository>> {
+    + find_by_id(request_id: DeliveryRequestId): DeliveryRequest
+    + find_pending(): list[DeliveryRequest]
+    + find_failed(): list[DeliveryRequest]
+    + find_sensitive_requiring_purge(): list[DeliveryRequest]
+    + save(request: DeliveryRequest)
+}
+
+' ===== RELATIONSHIPS =====
+DeliveryRequest ..> MessageDelivered : publishes >
+DeliveryRequest ..> MessageDeliveryFailed : publishes >
+
+@enduml

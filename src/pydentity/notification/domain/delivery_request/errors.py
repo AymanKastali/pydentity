@@ -1,21 +1,31 @@
-from pydentity.shared_kernel import DomainError
+from pydentity.notification.domain.delivery_request.value_objects import (
+    ContentSensitivity,
+    DeliveryStatus,
+)
+from pydentity.shared_kernel.building_blocks import DomainError
 
 
-class DeliveryRequestAlreadySentError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Delivery request is already sent.")
+class DeliveryRequestError(DomainError):
+    pass
 
 
-class DeliveryRequestAlreadyFailedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Delivery request has already permanently failed.")
+class DeliveryRequestNotPendingError(DeliveryRequestError):
+    def __init__(self, current_status: DeliveryStatus) -> None:
+        super().__init__(
+            f"Delivery request must be pending, but status is {current_status}."
+        )
 
 
-class DeliveryRequestNotSensitiveError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Delivery request is not sensitive.")
+class ContentPurgeRequiresSentError(DeliveryRequestError):
+    def __init__(self, current_status: DeliveryStatus) -> None:
+        super().__init__(
+            f"Content purge requires sent status, but status is {current_status}."
+        )
 
 
-class DeliveryRequestContentAlreadyPurgedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Delivery request content is already purged.")
+class ContentPurgeRequiresSensitiveError(DeliveryRequestError):
+    def __init__(self, current_sensitivity: ContentSensitivity) -> None:
+        super().__init__(
+            "Content purge requires sensitive content, "
+            f"but sensitivity is {current_sensitivity}."
+        )

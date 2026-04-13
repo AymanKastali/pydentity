@@ -1,0 +1,35 @@
+@startuml building_blocks
+!theme blueprint
+hide empty members
+
+' ===== BASE VALUE OBJECT =====
+abstract class ValueObject {
+}
+
+' ===== BASE DOMAIN EVENT =====
+abstract class DomainEvent {
+    + name: EventName
+}
+
+' ===== BASE DOMAIN ERROR =====
+abstract class DomainError {
+    - message: str
+}
+
+' ===== BASE ENTITY =====
+abstract class Entity<TId> {
+    - id: TId
+}
+
+' ===== BASE AGGREGATE ROOT =====
+abstract class AggregateRoot<TId> {
+    - events: list[DomainEvent]
+    + record_event(event: DomainEvent)
+    + pop_events()
+}
+
+' ===== RELATIONSHIPS =====
+AggregateRoot --|> Entity
+AggregateRoot o-- DomainEvent
+
+@enduml

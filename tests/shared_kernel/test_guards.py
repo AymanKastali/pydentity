@@ -1,8 +1,8 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import pytest
 
-from pydentity.shared_kernel import (
+from pydentity.shared_kernel.guards import (
     guard_all_positive,
     guard_all_within_max,
     guard_before,
@@ -20,182 +20,199 @@ from pydentity.shared_kernel import (
     guard_within_range,
 )
 
-# --- String guards ---
+
+# ── String guards ──
 
 
 class TestGuardNotEmpty:
-    def test_passes_with_value(self):
+    def test_accepts_non_empty(self):
         guard_not_empty("hello")
 
-    def test_raises_on_empty_string(self):
-        with pytest.raises(ValueError):
+    def test_rejects_empty(self):
+        with pytest.raises(ValueError, match="must not be empty"):
             guard_not_empty("")
 
 
 class TestGuardNotBlank:
-    def test_passes_with_content(self):
+    def test_accepts_non_blank(self):
         guard_not_blank("hello")
 
-    def test_raises_on_whitespace_only(self):
-        with pytest.raises(ValueError):
-            guard_not_blank("   ")
-
-    def test_raises_on_empty_string(self):
-        with pytest.raises(ValueError):
+    def test_rejects_empty(self):
+        with pytest.raises(ValueError, match="must not be blank"):
             guard_not_blank("")
+
+    def test_rejects_whitespace_only(self):
+        with pytest.raises(ValueError, match="must not be blank"):
+            guard_not_blank("   ")
 
 
 class TestGuardWithinMaxLength:
-    def test_passes_at_boundary(self):
-        guard_within_max_length("abc", 3)
+    def test_accepts_within_limit(self):
+        guard_within_max_length("abc", 5)
 
-    def test_raises_over_boundary(self):
-        with pytest.raises(ValueError):
-            guard_within_max_length("abcd", 3)
+    def test_accepts_at_limit(self):
+        guard_within_max_length("abcde", 5)
+
+    def test_rejects_over_limit(self):
+        with pytest.raises(ValueError, match="must not exceed 5 characters"):
+            guard_within_max_length("abcdef", 5)
 
 
-# --- Numeric guards ---
+# ── Numeric guards ──
 
 
 class TestGuardNotNegative:
-    def test_passes_on_zero(self):
+    def test_accepts_zero(self):
         guard_not_negative(0)
 
-    def test_raises_on_negative(self):
-        with pytest.raises(ValueError):
+    def test_accepts_positive(self):
+        guard_not_negative(5)
+
+    def test_rejects_negative(self):
+        with pytest.raises(ValueError, match="cannot be negative"):
             guard_not_negative(-1)
 
 
 class TestGuardPositive:
-    def test_passes_on_one(self):
+    def test_accepts_positive(self):
         guard_positive(1)
 
-    def test_raises_on_zero(self):
-        with pytest.raises(ValueError):
+    def test_rejects_zero(self):
+        with pytest.raises(ValueError, match="must be positive"):
             guard_positive(0)
 
-    def test_raises_on_negative(self):
-        with pytest.raises(ValueError):
+    def test_rejects_negative(self):
+        with pytest.raises(ValueError, match="must be positive"):
             guard_positive(-1)
 
 
 class TestGuardWithinMax:
-    def test_passes_at_boundary(self):
+    def test_accepts_under_max(self):
+        guard_within_max(5, 10)
+
+    def test_accepts_at_max(self):
         guard_within_max(10, 10)
 
-    def test_raises_over_boundary(self):
-        with pytest.raises(ValueError):
+    def test_rejects_over_max(self):
+        with pytest.raises(ValueError, match="cannot exceed 10"):
             guard_within_max(11, 10)
 
 
 class TestGuardWithinMin:
-    def test_passes_at_boundary(self):
-        guard_within_min(5, 5)
+    def test_accepts_above_min(self):
+        guard_within_min(5, 1)
 
-    def test_raises_under_boundary(self):
-        with pytest.raises(ValueError):
-            guard_within_min(4, 5)
+    def test_accepts_at_min(self):
+        guard_within_min(1, 1)
+
+    def test_rejects_under_min(self):
+        with pytest.raises(ValueError, match="cannot be less than 5"):
+            guard_within_min(3, 5)
 
 
 class TestGuardWithinRange:
-    def test_passes_at_lower_boundary(self):
-        guard_within_range(1, 1, 10)
+    def test_accepts_within(self):
+        guard_within_range(5, 1, 10)
 
-    def test_passes_at_upper_boundary(self):
+    def test_accepts_at_boundaries(self):
+        guard_within_range(1, 1, 10)
         guard_within_range(10, 1, 10)
 
-    def test_raises_below_lower(self):
-        with pytest.raises(ValueError):
+    def test_rejects_below(self):
+        with pytest.raises(ValueError, match="must be between 1 and 10"):
             guard_within_range(0, 1, 10)
 
-    def test_raises_above_upper(self):
-        with pytest.raises(ValueError):
+    def test_rejects_above(self):
+        with pytest.raises(ValueError, match="must be between 1 and 10"):
             guard_within_range(11, 1, 10)
 
 
-# --- Collection guards ---
+# ── Collection guards ──
 
 
 class TestGuardNotEmptyCollection:
-    def test_passes_with_elements(self):
+    def test_accepts_non_empty(self):
         guard_not_empty_collection([1, 2])
 
-    def test_raises_on_empty(self):
-        with pytest.raises(ValueError):
+    def test_rejects_empty(self):
+        with pytest.raises(ValueError, match="must not be empty"):
             guard_not_empty_collection([])
 
 
 class TestGuardWithinMaxSize:
-    def test_passes_at_boundary(self):
+    def test_accepts_within(self):
+        guard_within_max_size([1, 2], 3)
+
+    def test_accepts_at_limit(self):
         guard_within_max_size([1, 2, 3], 3)
 
-    def test_raises_over_boundary(self):
-        with pytest.raises(ValueError):
+    def test_rejects_over(self):
+        with pytest.raises(ValueError, match="cannot exceed 3"):
             guard_within_max_size([1, 2, 3, 4], 3)
 
 
 class TestGuardNoDuplicates:
-    def test_passes_without_duplicates(self):
+    def test_accepts_unique(self):
         guard_no_duplicates([1, 2, 3])
 
-    def test_raises_with_duplicates(self):
-        with pytest.raises(ValueError):
+    def test_rejects_duplicates(self):
+        with pytest.raises(ValueError, match="must not contain duplicates"):
             guard_no_duplicates([1, 2, 2])
 
 
 class TestGuardAllPositive:
-    def test_passes_with_positive_values(self):
+    def test_accepts_all_positive(self):
         guard_all_positive([1, 2, 3])
 
-    def test_raises_with_zero(self):
-        with pytest.raises(ValueError):
+    def test_rejects_zero(self):
+        with pytest.raises(ValueError, match="must be positive"):
             guard_all_positive([1, 0, 3])
 
-    def test_raises_with_negative(self):
-        with pytest.raises(ValueError):
+    def test_rejects_negative(self):
+        with pytest.raises(ValueError, match="must be positive"):
             guard_all_positive([1, -1, 3])
 
 
 class TestGuardAllWithinMax:
-    def test_passes_at_boundary(self):
-        guard_all_within_max([5, 10], 10)
+    def test_accepts_all_within(self):
+        guard_all_within_max([1, 5, 10], 10)
 
-    def test_raises_over_boundary(self):
-        with pytest.raises(ValueError):
-            guard_all_within_max([5, 11], 10)
+    def test_rejects_over(self):
+        with pytest.raises(ValueError, match="cannot exceed 10"):
+            guard_all_within_max([1, 11, 5], 10)
 
 
-# --- Temporal guards ---
+# ── Temporal guards ──
 
 
 class TestGuardBefore:
-    def test_passes_when_start_before_end(self):
-        start = datetime(2026, 1, 1, tzinfo=UTC)
-        end = datetime(2026, 1, 2, tzinfo=UTC)
+    def test_accepts_start_before_end(self):
+        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2024, 1, 2, tzinfo=timezone.utc)
         guard_before(start, end)
 
-    def test_raises_when_start_equals_end(self):
-        same = datetime(2026, 1, 1, tzinfo=UTC)
-        with pytest.raises(ValueError):
-            guard_before(same, same)
+    def test_rejects_equal(self):
+        now = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        with pytest.raises(ValueError, match="must be before"):
+            guard_before(now, now)
 
-    def test_raises_when_start_after_end(self):
-        start = datetime(2026, 1, 2, tzinfo=UTC)
-        end = datetime(2026, 1, 1, tzinfo=UTC)
-        with pytest.raises(ValueError):
+    def test_rejects_start_after_end(self):
+        start = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        end = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        with pytest.raises(ValueError, match="must be before"):
             guard_before(start, end)
 
 
-# --- Comparison guards ---
+# ── Comparison guards ──
 
 
 class TestGuardMinNotGreaterThanMax:
-    def test_passes_when_equal(self):
+    def test_accepts_min_less_than_max(self):
+        guard_min_not_greater_than_max(1, 10)
+
+    def test_accepts_equal(self):
         guard_min_not_greater_than_max(5, 5)
 
-    def test_passes_when_min_less_than_max(self):
-        guard_min_not_greater_than_max(3, 5)
-
-    def test_raises_when_min_exceeds_max(self):
-        with pytest.raises(ValueError):
-            guard_min_not_greater_than_max(6, 5)
+    def test_rejects_min_greater(self):
+        with pytest.raises(ValueError, match="cannot exceed maximum"):
+            guard_min_not_greater_than_max(10, 1)

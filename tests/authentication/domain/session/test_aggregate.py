@@ -1,190 +1,167 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 
 from pydentity.authentication.domain.session.aggregate import Session
-from pydentity.authentication.domain.session.aggregate_id import SessionId
-from pydentity.authentication.domain.session.errors import (
-    RefreshTokenExpiredError,
-    RefreshTokenRevokedError,
-    SessionAlreadyEndedError,
-)
+from pydentity.authentication.domain.session.errors import SessionNotActiveError
 from pydentity.authentication.domain.session.events import (
-    RefreshTokenRotated,
-    SessionEnded,
+    SessionRefreshed,
+    SessionRevoked,
     SessionStarted,
 )
 from pydentity.authentication.domain.session.value_objects import (
-    RefreshToken,
-    SessionEndReason,
+    SessionExpiry,
+    SessionId,
+    SessionPolicy,
+    SessionRevocationReason,
     SessionStatus,
 )
-from pydentity.shared_kernel import AccountId
+from pydentity.shared_kernel.building_blocks import AggregateRoot
+from pydentity.shared_kernel.value_objects import AccountId, DeviceId
 
-# --- Factory ---
+
+def _make_session() -> Session:
+    return Session.create(
+        session_id=SessionId(value=uuid4()),
+        account_id=AccountId(value=uuid4()),
+        device_id=DeviceId(value=uuid4()),
+        expiry=SessionExpiry(
+            value=datetime.now(UTC) + timedelta(hours=1),
+        ),
+    )
 
 
-class TestSessionStart:
-    def test_creates_active_session(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, refresh_token, now)
+class TestSessionCreate:
+    def test_create_returns_active_status(self):
+        session = _make_session()
         assert session.status == SessionStatus.ACTIVE
 
-    def test_records_session_started_event(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, refresh_token, now)
+    def test_create_returns_correct_fields(self):
+        sid = SessionId(value=uuid4())
+        aid = AccountId(value=uuid4())
+        did = DeviceId(value=uuid4())
+        expiry = SessionExpiry(
+            value=datetime.now(UTC) + timedelta(hours=1),
+        )
+
+        session = Session.create(
+            session_id=sid,
+            account_id=aid,
+            device_id=did,
+            expiry=expiry,
+        )
+
+        assert session.id == sid
+        assert session.account_id == aid
+        assert session.device_id == did
+        assert session.expiry == expiry
+
+    def test_create_records_session_started_event(self):
+        session = _make_session()
+        events = session.events
+        assert len(events) == 1
+        assert isinstance(events[0], SessionStarted)
+
+
+class TestSessionAggregate:
+    def test_is_aggregate_root(self):
+        session = _make_session()
+        assert isinstance(session, AggregateRoot)
+
+    def test_identity_equality(self):
+        uid = uuid4()
+        sid = SessionId(value=uid)
+        a = Session.create(
+            session_id=sid,
+            account_id=AccountId(value=uuid4()),
+            device_id=DeviceId(value=uuid4()),
+            expiry=SessionExpiry(
+                value=datetime.now(UTC) + timedelta(hours=1),
+            ),
+        )
+        b = Session.create(
+            session_id=sid,
+            account_id=AccountId(value=uuid4()),
+            device_id=DeviceId(value=uuid4()),
+            expiry=SessionExpiry(
+                value=datetime.now(UTC) + timedelta(hours=2),
+            ),
+        )
+        assert a == b
+
+    def test_different_id_not_equal(self):
+        a = _make_session()
+        b = _make_session()
+        assert a != b
+
+    def test_clear_events(self):
+        session = _make_session()
         assert len(session.events) == 1
-        assert isinstance(session.events[0], SessionStarted)
-
-    def test_stores_account_id(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, refresh_token, now)
-        assert session.account_id == account_id
-
-    def test_stores_refresh_token(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, refresh_token, now)
-        assert session.refresh_token == refresh_token
-
-
-# --- Refresh ---
-
-
-class TestSessionRefresh:
-    def test_rotates_token(
-        self,
-        active_session: Session,
-        new_refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        active_session.refresh(new_refresh_token, now)
-        assert active_session.refresh_token == new_refresh_token
-
-    def test_records_refresh_token_rotated_event(
-        self,
-        active_session: Session,
-        new_refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        active_session.refresh(new_refresh_token, now)
-        assert isinstance(active_session.events[0], RefreshTokenRotated)
-
-    def test_raises_when_session_ended(
-        self,
-        ended_session: Session,
-        new_refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        with pytest.raises(SessionAlreadyEndedError):
-            ended_session.refresh(new_refresh_token, now)
-
-    def test_raises_when_token_expired(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        expired_refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, expired_refresh_token, now)
         session.clear_events()
-        new_token = RefreshToken(token_hash="$new", expires_at=now, is_revoked=False)
-        with pytest.raises(RefreshTokenExpiredError):
-            session.refresh(new_token, now)
+        assert session.events == []
 
-    def test_raises_when_token_revoked(
-        self,
-        session_id: SessionId,
-        account_id: AccountId,
-        revoked_refresh_token: RefreshToken,
-        now: datetime,
-    ):
-        session = Session.start(session_id, account_id, revoked_refresh_token, now)
+
+class TestRevoke:
+    def test_transitions_to_revoked(self):
+        session = _make_session()
+        session.revoke(SessionRevocationReason.LOGOUT)
+        assert session.status == SessionStatus.REVOKED
+
+    def test_records_session_revoked_event(self):
+        session = _make_session()
         session.clear_events()
-        new_token = RefreshToken(token_hash="$new", expires_at=now, is_revoked=False)
-        with pytest.raises(RefreshTokenRevokedError):
-            session.refresh(new_token, now)
+        session.revoke(SessionRevocationReason.EXPIRED)
+        events = session.events
+        assert len(events) == 1
+        assert isinstance(events[0], SessionRevoked)
+
+    def test_session_revoked_event_carries_reason(self):
+        session = _make_session()
+        session.clear_events()
+        session.revoke(SessionRevocationReason.COMPROMISE)
+        event = session.events[0]
+        assert isinstance(event, SessionRevoked)
+        assert event.reason == SessionRevocationReason.COMPROMISE
+
+    def test_from_revoked_raises(self):
+        session = _make_session()
+        session.revoke(SessionRevocationReason.LOGOUT)
+        with pytest.raises(SessionNotActiveError):
+            session.revoke(SessionRevocationReason.FORCED)
 
 
-# --- Termination ---
+class TestRefresh:
+    def test_updates_expiry(self):
+        session = _make_session()
+        old_expiry = session.expiry
+        policy = SessionPolicy(ttl_seconds=7200)
+        session.refresh(policy, datetime.now(UTC))
+        assert session.expiry != old_expiry
 
+    def test_new_expiry_is_in_the_future(self):
+        session = _make_session()
+        policy = SessionPolicy(ttl_seconds=3600)
+        session.refresh(policy, datetime.now(UTC))
+        assert session.expiry.value > datetime.now(UTC)
 
-class TestSessionTermination:
-    def test_end_transitions_to_ended(self, active_session: Session, now: datetime):
-        active_session.end(now)
-        assert active_session.status == SessionStatus.ENDED
+    def test_records_session_refreshed_event(self):
+        session = _make_session()
+        session.clear_events()
+        policy = SessionPolicy(ttl_seconds=3600)
+        session.refresh(policy, datetime.now(UTC))
+        events = session.events
+        assert len(events) == 1
+        assert isinstance(events[0], SessionRefreshed)
 
-    def test_end_records_session_ended_with_logout_reason(
-        self, active_session: Session, now: datetime
-    ):
-        active_session.end(now)
-        event = active_session.events[0]
-        assert isinstance(event, SessionEnded)
-        assert event.reason == SessionEndReason.LOGOUT
+    def test_stays_active(self):
+        session = _make_session()
+        policy = SessionPolicy(ttl_seconds=3600)
+        session.refresh(policy, datetime.now(UTC))
+        assert session.status == SessionStatus.ACTIVE
 
-    def test_idle_timeout_records_correct_reason(
-        self, active_session: Session, now: datetime
-    ):
-        active_session.idle_timeout(now)
-        event = active_session.events[0]
-        assert isinstance(event, SessionEnded)
-        assert event.reason == SessionEndReason.IDLE_TIMEOUT
-
-    def test_absolute_timeout_records_correct_reason(
-        self, active_session: Session, now: datetime
-    ):
-        active_session.absolute_timeout(now)
-        event = active_session.events[0]
-        assert isinstance(event, SessionEnded)
-        assert event.reason == SessionEndReason.ABSOLUTE_TIMEOUT
-
-    def test_force_end_records_correct_reason(
-        self, active_session: Session, now: datetime
-    ):
-        active_session.force_end(now)
-        event = active_session.events[0]
-        assert isinstance(event, SessionEnded)
-        assert event.reason == SessionEndReason.FORCED
-
-    def test_flag_compromised_records_correct_reason(
-        self, active_session: Session, now: datetime
-    ):
-        active_session.flag_compromised(now)
-        event = active_session.events[0]
-        assert isinstance(event, SessionEnded)
-        assert event.reason == SessionEndReason.COMPROMISE
-
-    def test_end_raises_when_already_ended(self, ended_session: Session, now: datetime):
-        with pytest.raises(SessionAlreadyEndedError):
-            ended_session.end(now)
-
-    def test_idle_timeout_raises_when_already_ended(
-        self, ended_session: Session, now: datetime
-    ):
-        with pytest.raises(SessionAlreadyEndedError):
-            ended_session.idle_timeout(now)
-
-    def test_force_end_raises_when_already_ended(
-        self, ended_session: Session, now: datetime
-    ):
-        with pytest.raises(SessionAlreadyEndedError):
-            ended_session.force_end(now)
+    def test_from_revoked_raises(self):
+        session = _make_session()
+        session.revoke(SessionRevocationReason.LOGOUT)
+        with pytest.raises(SessionNotActiveError):
+            session.refresh(SessionPolicy(ttl_seconds=3600), datetime.now(UTC))

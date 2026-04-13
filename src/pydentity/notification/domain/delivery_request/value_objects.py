@@ -1,17 +1,13 @@
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import ClassVar
+from typing import ClassVar, Final
+from uuid import UUID
 
-from pydentity.notification.domain.delivery_request.errors import (
-    DeliveryRequestAlreadyFailedError,
-    DeliveryRequestAlreadySentError,
-    DeliveryRequestNotSensitiveError,
-)
-from pydentity.shared_kernel import (
-    ValueObject,
-    guard_not_empty,
+from pydentity.shared_kernel.building_blocks import ValueObject
+from pydentity.shared_kernel.guards import (
+    guard_not_blank,
     guard_not_negative,
-    guard_within_max,
+    guard_not_none,
     guard_within_max_length,
 )
 
@@ -25,66 +21,42 @@ class ContentSensitivity(StrEnum):
     SENSITIVE = auto()
     STANDARD = auto()
 
-    @property
-    def is_sensitive(self) -> bool:
-        return self is ContentSensitivity.SENSITIVE
-
-    def guard_is_sensitive(self) -> None:
-        if not self.is_sensitive:
-            raise DeliveryRequestNotSensitiveError()
-
 
 class DeliveryStatus(StrEnum):
     PENDING = auto()
     SENT = auto()
     FAILED = auto()
 
-    # --- Queries ---
 
-    @property
-    def is_pending(self) -> bool:
-        return self is DeliveryStatus.PENDING
+@dataclass(frozen=True, slots=True)
+class DeliveryRequestId(ValueObject):
+    value: UUID
 
-    @property
-    def is_sent(self) -> bool:
-        return self is DeliveryStatus.SENT
-
-    @property
-    def is_failed(self) -> bool:
-        return self is DeliveryStatus.FAILED
-
-    # --- Guards ---
-
-    def guard_not_sent(self) -> None:
-        if self.is_sent:
-            raise DeliveryRequestAlreadySentError()
-
-    def guard_not_failed(self) -> None:
-        if self.is_failed:
-            raise DeliveryRequestAlreadyFailedError()
+    def __post_init__(self) -> None:
+        guard_not_none(self.value)
 
 
 @dataclass(frozen=True, slots=True)
 class Recipient(ValueObject):
-    _MAX_LENGTH: ClassVar[int] = 254
+    _MAX_ADDRESS_LENGTH: ClassVar[Final[int]] = 254
 
     address: str
 
     def __post_init__(self) -> None:
-        guard_not_empty(self.address)
-        guard_within_max_length(self.address, self._MAX_LENGTH)
+        guard_not_blank(self.address)
+        guard_within_max_length(self.address, self._MAX_ADDRESS_LENGTH)
 
 
 @dataclass(frozen=True, slots=True)
 class MessageContent(ValueObject):
-    _MAX_SUBJECT_LENGTH: ClassVar[int] = 200
-    _MAX_BODY_LENGTH: ClassVar[int] = 50_000
+    _MAX_SUBJECT_LENGTH: ClassVar[Final[int]] = 200
+    _MAX_BODY_LENGTH: ClassVar[Final[int]] = 50_000
 
     subject: str | None
     body: str
 
     def __post_init__(self) -> None:
-        guard_not_empty(self.body)
+        guard_not_blank(self.body)
         guard_within_max_length(self.body, self._MAX_BODY_LENGTH)
         if self.subject is not None:
             guard_within_max_length(self.subject, self._MAX_SUBJECT_LENGTH)
@@ -92,17 +64,7 @@ class MessageContent(ValueObject):
 
 @dataclass(frozen=True, slots=True)
 class AttemptCount(ValueObject):
-    _MAX_ATTEMPTS: ClassVar[int] = 100
-
     value: int
 
     def __post_init__(self) -> None:
         guard_not_negative(self.value)
-        guard_within_max(self.value, self._MAX_ATTEMPTS)
-
-    @classmethod
-    def initialize(cls) -> AttemptCount:
-        return cls(value=0)
-
-    def increment(self) -> AttemptCount:
-        return AttemptCount(value=self.value + 1)

@@ -1,6 +1,7 @@
 ---
 name: python-testing
 description: Use when writing, reviewing, or modifying tests for Python code — enforces pytest mastery, async testing, mocking boundaries, property-based testing, and coverage through mandatory phased gates that eliminate testing anti-patterns before marking implementation complete
+disable-model-invocation: true
 ---
 
 # Python Testing

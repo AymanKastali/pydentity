@@ -1,8 +1,12 @@
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from datetime import datetime
+# --- Identity guards ---
+
+
+def guard_not_none(value: object) -> None:
+    if value is None:
+        raise ValueError("Value must not be None.")
 
 
 # --- String guards ---

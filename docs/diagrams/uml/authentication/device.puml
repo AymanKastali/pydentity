@@ -1,0 +1,93 @@
+@startuml device
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class RawDeviceFingerprint <<ValueObject>> {
+    - value: str
+}
+
+class HashedDeviceFingerprint <<ValueObject>> {
+    - value: str
+}
+
+class DevicePolicy <<ValueObject>> {
+    - max_devices_per_account: int
+}
+
+' ===== ENUMS =====
+enum DeviceStatus {
+    ACTIVE
+    REVOKED
+}
+
+enum DeviceRevocationReason {
+    MANUAL
+    ADMIN
+    LOCKOUT
+    CLOSURE
+}
+
+' ===== DOMAIN INTERFACES =====
+interface DeviceFingerprintHasher <<DomainInterface>> {
+    + hash(fingerprint: RawDeviceFingerprint): HashedDeviceFingerprint
+}
+
+interface DeviceFingerprintVerifier <<DomainInterface>> {
+    + verify(fingerprint: RawDeviceFingerprint, hash: HashedDeviceFingerprint): bool
+}
+
+' ===== DOMAIN SERVICES =====
+class RegisterDevice <<DomainService>> {
+    + register(account_id: AccountId, fingerprint: RawDeviceFingerprint, hasher: DeviceFingerprintHasher, policy: DevicePolicy): Device
+}
+
+class RevokeDevices <<DomainService>> {
+    + revoke(account_id: AccountId, reason: DeviceRevocationReason)
+}
+
+' ===== AGGREGATE ROOT =====
+class Device <<AggregateRoot>> {
+    - id: DeviceId
+    - account_id: AccountId
+    - fingerprint: HashedDeviceFingerprint
+    - status: DeviceStatus
+    + {static} create(id: DeviceId, account_id: AccountId, fingerprint: HashedDeviceFingerprint): Device
+    + revoke(reason: DeviceRevocationReason)
+}
+
+' ===== DOMAIN EVENTS =====
+class DeviceRegistered <<DomainEvent>> {
+    - device_id: DeviceId
+    - account_id: AccountId
+}
+
+class DeviceRevoked <<DomainEvent>> {
+    - device_id: DeviceId
+    - account_id: AccountId
+    - reason: DeviceRevocationReason
+}
+
+' ===== REPOSITORIES =====
+interface DeviceRepository <<Repository>> {
+    + find_by_id(device_id: DeviceId): Device
+    + find_by_fingerprint(fingerprint: HashedDeviceFingerprint): Device
+    + find_by_account_id(account_id: AccountId): list[Device]
+    + count_active_by_account_id(account_id: AccountId): int
+    + save(device: Device)
+}
+
+' ===== RELATIONSHIPS =====
+Device ..> DeviceRegistered : publishes >
+Device ..> DeviceRevoked : publishes >
+
+RegisterDevice ..> Device : creates >
+RegisterDevice ..> DeviceFingerprintHasher : uses >
+RegisterDevice ..> DevicePolicy : uses >
+RegisterDevice ..> DeviceRepository : uses >
+
+RevokeDevices ..> DeviceRepository : uses >
+RevokeDevices ..> Device : revokes >
+
+@enduml
