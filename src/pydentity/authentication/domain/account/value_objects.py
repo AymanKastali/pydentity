@@ -1,484 +1,104 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from enum import StrEnum, auto
-from typing import ClassVar
+from typing import ClassVar, Final
+from uuid import UUID
 
-from pydentity.authentication.domain.account.errors import (
-    AccountAlreadyClosedError,
-    AccountAlreadySuspendedError,
-    AccountNotActiveError,
-    AccountNotLockedError,
-    AccountNotUnverifiedError,
-    AccountUnverifiedError,
-    MFAAlreadyEnabledError,
-    MFANotEnabledError,
-    PasswordPolicyViolationError,
-)
-from pydentity.shared_kernel import (
-    ValueObject,
-    guard_all_positive,
-    guard_all_within_max,
+from pydentity.shared_kernel.building_blocks import ValueObject
+from pydentity.shared_kernel.guards import (
     guard_min_not_greater_than_max,
-    guard_not_empty,
-    guard_not_empty_collection,
+    guard_not_blank,
     guard_not_negative,
+    guard_not_none,
     guard_positive,
-    guard_within_max,
     guard_within_max_length,
-    guard_within_max_size,
-    guard_within_min,
 )
 
 
 class AccountStatus(StrEnum):
-    UNVERIFIED = auto()
+    PENDING_VERIFICATION = auto()
     ACTIVE = auto()
     LOCKED = auto()
     SUSPENDED = auto()
     CLOSED = auto()
 
-    # --- Queries ---
-
-    @property
-    def is_unverified(self) -> bool:
-        return self is AccountStatus.UNVERIFIED
-
-    @property
-    def is_active(self) -> bool:
-        return self is AccountStatus.ACTIVE
-
-    @property
-    def is_locked(self) -> bool:
-        return self is AccountStatus.LOCKED
-
-    @property
-    def is_suspended(self) -> bool:
-        return self is AccountStatus.SUSPENDED
-
-    @property
-    def is_closed(self) -> bool:
-        return self is AccountStatus.CLOSED
-
-    # --- Guards ---
-
-    def guard_is_unverified(self) -> None:
-        if not self.is_unverified:
-            raise AccountNotUnverifiedError()
-
-    def guard_is_active(self) -> None:
-        if not self.is_active:
-            raise AccountNotActiveError()
-
-    def guard_is_locked(self) -> None:
-        if not self.is_locked:
-            raise AccountNotLockedError()
-
-    def guard_not_unverified(self) -> None:
-        if self.is_unverified:
-            raise AccountUnverifiedError()
-
-    def guard_not_suspended(self) -> None:
-        if self.is_suspended:
-            raise AccountAlreadySuspendedError()
-
-    def guard_not_closed(self) -> None:
-        if self.is_closed:
-            raise AccountAlreadyClosedError()
-
 
 class LockReason(StrEnum):
-    ADMIN = auto()
     THRESHOLD = auto()
+    ADMIN = auto()
 
 
 class UnlockReason(StrEnum):
-    ADMIN = auto()
     EXPIRY = auto()
-
-
-class MFAStatus(StrEnum):
-    ENABLED = auto()
-    DISABLED = auto()
-
-    @property
-    def is_enabled(self) -> bool:
-        return self is MFAStatus.ENABLED
-
-    def guard_is_enabled(self) -> None:
-        if not self.is_enabled:
-            raise MFANotEnabledError()
-
-    def guard_not_already_enabled(self) -> None:
-        if self.is_enabled:
-            raise MFAAlreadyEnabledError()
+    ADMIN = auto()
 
 
 @dataclass(frozen=True, slots=True)
-class EmailAddress(ValueObject):
-    _MAX_LENGTH: ClassVar[int] = 254
-    _MAX_LOCAL_PART_LENGTH: ClassVar[int] = 64
-    _MAX_DOMAIN_LENGTH: ClassVar[int] = 253
-    _MAX_DOMAIN_LABEL_LENGTH: ClassVar[int] = 63
+class CredentialId(ValueObject):
+    value: UUID
+
+    def __post_init__(self) -> None:
+        guard_not_none(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class Email(ValueObject):
+    _MAX_LENGTH: ClassVar[Final[int]] = 254
 
     value: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "value", self.value.strip().lower())
-        guard_not_empty(self.value)
+        guard_not_blank(self.value)
         guard_within_max_length(self.value, self._MAX_LENGTH)
-        self._guard_has_valid_structure()
+        self._guard_email_format()
 
-    def _guard_has_valid_structure(self) -> None:
-        parts: list[str] = self.value.split("@")
-        self._guard_has_exactly_one_at_sign(parts)
-        self._guard_local_part_valid(parts[0])
-        self._guard_domain_valid(parts[1])
+    def _guard_email_format(self) -> None:
+        parts = self.value.split("@")
+        if len(parts) != 2 or not parts[0] or "." not in parts[1]:
+            raise ValueError(f"'{self.value}' is not a valid email format.")
 
-    # --- At sign ---
 
-    def _guard_has_exactly_one_at_sign(self, parts: list[str]) -> None:
-        if len(parts) != 2:
-            raise ValueError("Email address must contain exactly one '@'.")
+@dataclass(frozen=True, slots=True)
+class RawPassword(ValueObject):
+    value: str
 
-    # --- Local part ---
-
-    def _guard_local_part_valid(self, local_part: str) -> None:
-        guard_not_empty(local_part)
-        guard_within_max_length(local_part, self._MAX_LOCAL_PART_LENGTH)
-        self._guard_local_part_has_no_leading_dot(local_part)
-        self._guard_local_part_has_no_trailing_dot(local_part)
-        self._guard_local_part_has_no_consecutive_dots(local_part)
-
-    def _guard_local_part_has_no_leading_dot(self, local_part: str) -> None:
-        if local_part.startswith("."):
-            raise ValueError("Email local part must not start with a dot.")
-
-    def _guard_local_part_has_no_trailing_dot(self, local_part: str) -> None:
-        if local_part.endswith("."):
-            raise ValueError("Email local part must not end with a dot.")
-
-    def _guard_local_part_has_no_consecutive_dots(self, local_part: str) -> None:
-        if ".." in local_part:
-            raise ValueError("Email local part must not contain consecutive dots.")
-
-    # --- Domain ---
-
-    def _guard_domain_valid(self, domain: str) -> None:
-        guard_not_empty(domain)
-        guard_within_max_length(domain, self._MAX_DOMAIN_LENGTH)
-        self._guard_domain_has_at_least_two_labels(domain)
-        self._guard_domain_labels_valid(domain)
-
-    def _guard_domain_has_at_least_two_labels(self, domain: str) -> None:
-        if "." not in domain:
-            raise ValueError("Email domain must contain at least two labels.")
-
-    def _guard_domain_labels_valid(self, domain: str) -> None:
-        labels: list[str] = domain.split(".")
-        for label in labels:
-            self._guard_domain_label_valid(label)
-
-    # --- Domain label ---
-
-    def _guard_domain_label_valid(self, label: str) -> None:
-        guard_not_empty(label)
-        guard_within_max_length(label, self._MAX_DOMAIN_LABEL_LENGTH)
-        self._guard_domain_label_no_leading_hyphen(label)
-        self._guard_domain_label_no_trailing_hyphen(label)
-        self._guard_domain_label_is_alphanumeric_or_hyphen(label)
-
-    def _guard_domain_label_no_leading_hyphen(self, label: str) -> None:
-        if label.startswith("-"):
-            raise ValueError("Email domain label must not start with a hyphen.")
-
-    def _guard_domain_label_no_trailing_hyphen(self, label: str) -> None:
-        if label.endswith("-"):
-            raise ValueError("Email domain label must not end with a hyphen.")
-
-    def _guard_domain_label_is_alphanumeric_or_hyphen(self, label: str) -> None:
-        if not all(character.isalnum() or character == "-" for character in label):
-            raise ValueError(
-                "Email domain label must only contain"
-                " alphanumeric characters or hyphens."
-            )
+    def __post_init__(self) -> None:
+        guard_not_blank(self.value)
 
 
 @dataclass(frozen=True, slots=True)
 class HashedPassword(ValueObject):
-    _MAX_LENGTH: ClassVar[int] = 256
-
     value: str
 
     def __post_init__(self) -> None:
-        guard_not_empty(self.value)
-        guard_within_max_length(self.value, self._MAX_LENGTH)
+        guard_not_blank(self.value)
 
 
 @dataclass(frozen=True, slots=True)
-class HashedPasswordHistory(ValueObject):
-    _MAX_SIZE: ClassVar[int] = 24
-
-    hashes: tuple[HashedPassword, ...]
+class FailedAttemptCount(ValueObject):
+    value: int
 
     def __post_init__(self) -> None:
-        guard_within_max_size(self.hashes, self._MAX_SIZE)
-
-    @classmethod
-    def initialize(cls) -> HashedPasswordHistory:
-        return cls(hashes=())
-
-    def rotate(
-        self, current_password: HashedPassword, depth: int
-    ) -> HashedPasswordHistory:
-        return self.prepend(current_password).truncate(depth)
-
-    def prepend(self, password: HashedPassword) -> HashedPasswordHistory:
-        return HashedPasswordHistory(hashes=(password,) + self.hashes)
-
-    def truncate(self, depth: int) -> HashedPasswordHistory:
-        return HashedPasswordHistory(hashes=self.hashes[:depth])
-
-
-@dataclass(frozen=True, slots=True)
-class EncryptedTOTPSecret(ValueObject):
-    _MAX_LENGTH: ClassVar[int] = 512
-
-    value: bytes
-
-    def __post_init__(self) -> None:
-        if not self.value:
-            raise ValueError("Encrypted TOTP secret must not be empty.")
-        if len(self.value) > self._MAX_LENGTH:
-            raise ValueError(
-                f"Encrypted TOTP secret must not exceed {self._MAX_LENGTH} bytes."
-            )
-
-
-@dataclass(frozen=True, slots=True)
-class HashedRecoveryCode(ValueObject):
-    _MAX_LENGTH: ClassVar[int] = 256
-
-    value: str
-    used_at: datetime | None
-
-    def __post_init__(self) -> None:
-        guard_not_empty(self.value)
-        guard_within_max_length(self.value, self._MAX_LENGTH)
-
-    @property
-    def is_unused(self) -> bool:
-        return self.used_at is None
-
-    def mark_used(self, now: datetime) -> HashedRecoveryCode:
-        return HashedRecoveryCode(value=self.value, used_at=now)
-
-
-@dataclass(frozen=True, slots=True)
-class HashedRecoveryCodeSet(ValueObject):
-    _MAX_SIZE: ClassVar[int] = 20
-
-    codes: tuple[HashedRecoveryCode, ...]
-
-    def __post_init__(self) -> None:
-        guard_within_max_size(self.codes, self._MAX_SIZE)
-
-    @classmethod
-    def initialize(cls) -> HashedRecoveryCodeSet:
-        return cls(codes=())
-
-    @property
-    def is_empty(self) -> bool:
-        return len(self.codes) == 0
-
-    @property
-    def has_unused(self) -> bool:
-        return any(code.is_unused for code in self.codes)
-
-    def with_code_consumed(
-        self, consumed_code: HashedRecoveryCode, now: datetime
-    ) -> HashedRecoveryCodeSet:
-        updated_codes: tuple[HashedRecoveryCode, ...] = tuple(
-            code.mark_used(now) if code == consumed_code else code
-            for code in self.codes
-        )
-        return HashedRecoveryCodeSet(codes=updated_codes)
-
-
-@dataclass(frozen=True, slots=True)
-class LockoutState(ValueObject):
-    _MAX_FAILED_ATTEMPTS: ClassVar[int] = 100
-    _MAX_LOCKOUT_CYCLES: ClassVar[int] = 50
-
-    failed_attempt_count: int
-    lockout_count: int
-    last_failed_at: datetime | None
-    lockout_until: datetime | None
-
-    def __post_init__(self) -> None:
-        guard_not_negative(self.failed_attempt_count)
-        guard_within_max(self.failed_attempt_count, self._MAX_FAILED_ATTEMPTS)
-        guard_not_negative(self.lockout_count)
-        guard_within_max(self.lockout_count, self._MAX_LOCKOUT_CYCLES)
-
-    @classmethod
-    def initialize(cls) -> LockoutState:
-        return cls(
-            failed_attempt_count=0,
-            lockout_count=0,
-            last_failed_at=None,
-            lockout_until=None,
-        )
-
-    # --- Queries ---
-
-    def is_threshold_reached(self, threshold: int) -> bool:
-        return self.failed_attempt_count >= threshold
-
-    def is_expired_timed_lockout(self, now: datetime) -> bool:
-        return self.is_timed and self.is_expired(now)
-
-    @property
-    def is_timed(self) -> bool:
-        return self.lockout_until is not None
-
-    def is_expired(self, now: datetime) -> bool:
-        if self.lockout_until is None:
-            return False
-        return now >= self.lockout_until
-
-    # --- Behaviors ---
-
-    def increment(self, now: datetime) -> LockoutState:
-        return LockoutState(
-            failed_attempt_count=self.failed_attempt_count + 1,
-            lockout_count=self.lockout_count,
-            last_failed_at=now,
-            lockout_until=self.lockout_until,
-        )
-
-    def apply_lockout(
-        self, tier_minutes: tuple[int, ...], now: datetime
-    ) -> LockoutState:
-        tier_index: int = min(self.lockout_count, len(tier_minutes) - 1)
-        duration_minutes: int = tier_minutes[tier_index]
-        lockout_until: datetime = now + timedelta(minutes=duration_minutes)
-        return LockoutState(
-            failed_attempt_count=0,
-            lockout_count=self.lockout_count + 1,
-            last_failed_at=self.last_failed_at,
-            lockout_until=lockout_until,
-        )
-
-    def reset(self) -> LockoutState:
-        return LockoutState.initialize()
-
-    def clear_expiry(self) -> LockoutState:
-        return LockoutState(
-            failed_attempt_count=0,
-            lockout_count=self.lockout_count,
-            last_failed_at=self.last_failed_at,
-            lockout_until=None,
-        )
-
-    def apply_indefinite_lockout(self) -> LockoutState:
-        return LockoutState(
-            failed_attempt_count=self.failed_attempt_count,
-            lockout_count=self.lockout_count,
-            last_failed_at=self.last_failed_at,
-            lockout_until=None,
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class LockoutPolicy(ValueObject):
-    _ABSOLUTE_MAX_THRESHOLD: ClassVar[int] = 100
-    _ABSOLUTE_MAX_TIER_DURATION: ClassVar[int] = 1440
-
-    threshold: int
-    tier_minutes: tuple[int, ...]
-
-    def __post_init__(self) -> None:
-        guard_positive(self.threshold)
-        guard_within_max(self.threshold, self._ABSOLUTE_MAX_THRESHOLD)
-        guard_not_empty_collection(self.tier_minutes)
-        guard_all_positive(self.tier_minutes)
-        guard_all_within_max(self.tier_minutes, self._ABSOLUTE_MAX_TIER_DURATION)
+        guard_not_negative(self.value)
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordPolicy(ValueObject):
-    _ABSOLUTE_MIN_LENGTH: ClassVar[int] = 8
-    _ABSOLUTE_MAX_LENGTH: ClassVar[int] = 128
-    _ABSOLUTE_MAX_HISTORY_DEPTH: ClassVar[int] = 24
-
     min_length: int
     max_length: int
-    require_uppercase: bool
-    require_lowercase: bool
-    require_digit: bool
-    require_special: bool
-    history_depth: int
+    max_history: int
 
     def __post_init__(self) -> None:
-        guard_within_min(self.min_length, self._ABSOLUTE_MIN_LENGTH)
-        guard_within_max(self.max_length, self._ABSOLUTE_MAX_LENGTH)
+        guard_positive(self.min_length)
+        guard_positive(self.max_length)
+        guard_positive(self.max_history)
         guard_min_not_greater_than_max(self.min_length, self.max_length)
-        guard_not_negative(self.history_depth)
-        guard_within_max(self.history_depth, self._ABSOLUTE_MAX_HISTORY_DEPTH)
 
-    def validate(self, raw_password: str) -> None:
-        self._guard_not_empty(raw_password)
-        self._guard_min_length(raw_password)
-        self._guard_max_length(raw_password)
-        self._guard_uppercase(raw_password)
-        self._guard_lowercase(raw_password)
-        self._guard_digit(raw_password)
-        self._guard_special(raw_password)
 
-    def _guard_not_empty(self, raw_password: str) -> None:
-        if not raw_password:
-            raise PasswordPolicyViolationError("Password must not be empty.")
+@dataclass(frozen=True, slots=True)
+class LockoutPolicy(ValueObject):
+    max_failed_attempts: int
+    lockout_duration_seconds: int
 
-    def _guard_min_length(self, raw_password: str) -> None:
-        if len(raw_password) < self.min_length:
-            raise PasswordPolicyViolationError(
-                f"Password must be at least {self.min_length} characters."
-            )
-
-    def _guard_max_length(self, raw_password: str) -> None:
-        if len(raw_password) > self.max_length:
-            raise PasswordPolicyViolationError(
-                f"Password must not exceed {self.max_length} characters."
-            )
-
-    def _guard_uppercase(self, raw_password: str) -> None:
-        if self.require_uppercase and not any(
-            character.isupper() for character in raw_password
-        ):
-            raise PasswordPolicyViolationError(
-                "Password must contain at least one uppercase letter."
-            )
-
-    def _guard_lowercase(self, raw_password: str) -> None:
-        if self.require_lowercase and not any(
-            character.islower() for character in raw_password
-        ):
-            raise PasswordPolicyViolationError(
-                "Password must contain at least one lowercase letter."
-            )
-
-    def _guard_digit(self, raw_password: str) -> None:
-        if self.require_digit and not any(
-            character.isdigit() for character in raw_password
-        ):
-            raise PasswordPolicyViolationError(
-                "Password must contain at least one digit."
-            )
-
-    def _guard_special(self, raw_password: str) -> None:
-        if self.require_special and not any(
-            not character.isalnum() for character in raw_password
-        ):
-            raise PasswordPolicyViolationError(
-                "Password must contain at least one special character."
-            )
+    def __post_init__(self) -> None:
+        guard_positive(self.max_failed_attempts)
+        guard_positive(self.lockout_duration_seconds)

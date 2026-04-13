@@ -1,16 +1,11 @@
-from pydentity.shared_kernel import DomainError
+from pydentity.authentication.domain.session.value_objects import SessionStatus
+from pydentity.shared_kernel.building_blocks import DomainError
 
 
-class SessionAlreadyEndedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Session has already ended.")
+class SessionError(DomainError):
+    pass
 
 
-class RefreshTokenExpiredError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Refresh token has expired.")
-
-
-class RefreshTokenRevokedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Refresh token has been revoked.")
+class SessionNotActiveError(SessionError):
+    def __init__(self, current_status: SessionStatus) -> None:
+        super().__init__(f"Session must be active, but status is {current_status}.")

@@ -1,6 +1,7 @@
 ---
 name: ddd-planning
 description: Use when planning a DDD project from discovery to implementation roadmap — guides knowledge crunching, Event Storming, strategic design, tactical design, architecture planning, and delivery sequencing through mandatory phased gates before marking planning complete
+disable-model-invocation: true
 ---
 
 # DDD Project Planning

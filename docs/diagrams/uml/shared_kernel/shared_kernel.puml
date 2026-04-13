@@ -1,0 +1,18 @@
+@startuml shared_kernel
+!theme blueprint
+hide empty members
+
+' ===== SHARED VALUE OBJECTS =====
+class AccountId <<ValueObject>> {
+    - value: UUID
+}
+
+class DeviceId <<ValueObject>> {
+    - value: UUID
+}
+
+class EventName <<ValueObject>> {
+    - value: str
+}
+
+@enduml

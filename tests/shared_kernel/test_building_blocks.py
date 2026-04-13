@@ -1,171 +1,191 @@
 from dataclasses import FrozenInstanceError, dataclass
-from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 import pytest
 
-from pydentity.shared_kernel import (
+from pydentity.shared_kernel.building_blocks import (
     AggregateRoot,
     DomainError,
     DomainEvent,
     Entity,
+    EventName,
     ValueObject,
 )
 
-# --- Concrete subclasses for testing ---
+
+# ── Concrete test doubles ──
 
 
 @dataclass(frozen=True, slots=True)
-class Money(ValueObject):
+class _Price(ValueObject):
     amount: int
     currency: str
 
 
 @dataclass(frozen=True, slots=True)
-class OrderPlaced(DomainEvent):
-    order_id: str
+class _FakeEvent(DomainEvent):
+    detail: str
 
 
-class Order(AggregateRoot[str]):
+class _FakeEntity(Entity[UUID]):
     pass
 
 
-class Product(Entity[int]):
+class _FakeAggregate(AggregateRoot[UUID]):
     pass
 
 
-# --- ValueObject ---
+class _OtherEntity(Entity[UUID]):
+    pass
+
+
+# ── ValueObject ──
 
 
 class TestValueObject:
-    def test_equality_same_values(self):
-        assert Money(amount=100, currency="USD") == Money(amount=100, currency="USD")
+    def test_equal_by_value(self):
+        assert _Price(amount=10, currency="USD") == _Price(amount=10, currency="USD")
 
-    def test_inequality_different_values(self):
-        assert Money(amount=100, currency="USD") != Money(amount=200, currency="USD")
+    def test_not_equal_when_values_differ(self):
+        assert _Price(amount=10, currency="USD") != _Price(amount=20, currency="USD")
 
-    def test_is_frozen(self):
-        money = Money(amount=100, currency="USD")
+    def test_frozen(self):
+        price = _Price(amount=10, currency="USD")
         with pytest.raises(FrozenInstanceError):
-            money.amount = 200  # type: ignore[misc]
+            price.amount = 99  # type: ignore[misc]
+
+    def test_hashable(self):
+        a = _Price(amount=10, currency="USD")
+        b = _Price(amount=10, currency="USD")
+        assert hash(a) == hash(b)
+        assert {a, b} == {a}
 
 
-# --- DomainEvent ---
+# ── DomainEvent ──
 
 
 class TestDomainEvent:
-    def test_stores_occurred_at(self):
-        occurred_at = datetime(2026, 1, 1, tzinfo=UTC)
-        event = OrderPlaced(occurred_at=occurred_at, order_id="123")
-        assert event.occurred_at == occurred_at
+    def test_carries_event_name(self):
+        event = _FakeEvent(detail="item-1")
+        assert event.name == EventName("_FakeEvent")
+        assert event.detail == "item-1"
 
-    def test_name_returns_class_name(self):
-        occurred_at = datetime(2026, 1, 1, tzinfo=UTC)
-        event = OrderPlaced(occurred_at=occurred_at, order_id="123")
-        assert event.name == "OrderPlaced"
+    def test_frozen(self):
+        event = _FakeEvent(detail="item-1")
+        with pytest.raises(FrozenInstanceError):
+            event.detail = "changed"  # type: ignore[misc]
 
-    def test_name_preserves_acronyms(self):
-        @dataclass(frozen=True, slots=True)
-        class MFAEnabled(DomainEvent):
-            pass
+    def test_equal_by_value(self):
+        a = _FakeEvent(detail="d")
+        b = _FakeEvent(detail="d")
+        assert a == b
 
-        event = MFAEnabled(occurred_at=datetime(2026, 1, 1, tzinfo=UTC))
-        assert event.name == "MFAEnabled"
+    def test_is_value_object(self):
+        event = _FakeEvent(detail="d")
+        assert isinstance(event, ValueObject)
 
 
-# --- DomainError ---
+# ── DomainError ──
 
 
 class TestDomainError:
-    def test_stores_message(self):
+    def test_message_property(self):
         error = DomainError("Something went wrong.")
         assert error.message == "Something went wrong."
 
     def test_is_exception(self):
         assert issubclass(DomainError, Exception)
 
+    def test_raisable_and_catchable(self):
+        with pytest.raises(DomainError, match="boom"):
+            raise DomainError("boom")
+
     def test_str_representation(self):
-        error = DomainError("broken")
-        assert str(error) == "broken"
+        error = DomainError("test message")
+        assert str(error) == "test message"
 
 
-# --- Entity ---
+# ── Entity ──
 
 
 class TestEntity:
-    def test_stores_id(self):
-        product = Product(entity_id=42)
-        assert product.id == 42
+    def test_identity_property(self):
+        uid = uuid4()
+        entity = _FakeEntity(uid)
+        assert entity.id == uid
 
-    def test_equality_same_id(self):
-        assert Product(entity_id=1) == Product(entity_id=1)
+    def test_equal_by_identity(self):
+        uid = uuid4()
+        a = _FakeEntity(uid)
+        b = _FakeEntity(uid)
+        assert a == b
 
-    def test_inequality_different_id(self):
-        assert Product(entity_id=1) != Product(entity_id=2)
+    def test_not_equal_different_id(self):
+        a = _FakeEntity(uuid4())
+        b = _FakeEntity(uuid4())
+        assert a != b
 
-    def test_inequality_different_type(self):
-        class Widget(Entity[int]):
-            pass
+    def test_not_equal_different_type(self):
+        uid = uuid4()
+        entity = _FakeEntity(uid)
+        other = _OtherEntity(uid)
+        assert entity != other
 
-        assert Product(entity_id=1) != Widget(entity_id=1)
+    def test_hash_by_identity(self):
+        uid = uuid4()
+        a = _FakeEntity(uid)
+        b = _FakeEntity(uid)
+        assert hash(a) == hash(b)
 
-    def test_inequality_with_non_entity(self):
-        assert Product(entity_id=1) != "not an entity"
-
-    def test_hash_matches_id_hash(self):
-        product = Product(entity_id=42)
-        assert hash(product) == hash(42)
+    def test_not_equal_to_non_entity(self):
+        entity = _FakeEntity(uuid4())
+        assert entity != "not an entity"
 
 
-# --- AggregateRoot ---
+# ── AggregateRoot ──
 
 
 class TestAggregateRoot:
     def test_starts_with_no_events(self):
-        order = Order(entity_id="order-1")
-        assert order.events == []
+        agg = _FakeAggregate(uuid4())
+        assert agg.events == []
 
-    def test_record_event_adds_to_list(self):
-        order = Order(entity_id="order-1")
-        event = OrderPlaced(
-            occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
-            order_id="order-1",
-        )
-        order.record_event(event)
-        assert len(order.events) == 1
-        assert order.events[0] is event
+    def test_record_event(self):
+        agg = _FakeAggregate(uuid4())
+        event = _FakeEvent(detail="d")
+        agg.record_event(event)
+        assert agg.events == [event]
+
+    def test_record_multiple_events(self):
+        agg = _FakeAggregate(uuid4())
+        e1 = _FakeEvent(detail="1")
+        e2 = _FakeEvent(detail="2")
+        agg.record_event(e1)
+        agg.record_event(e2)
+        assert agg.events == [e1, e2]
+
+    def test_clear_events(self):
+        agg = _FakeAggregate(uuid4())
+        event = _FakeEvent(detail="d")
+        agg.record_event(event)
+        assert agg.events == [event]
+        agg.clear_events()
+        assert agg.events == []
 
     def test_events_returns_copy(self):
-        order = Order(entity_id="order-1")
-        events = order.events
-        events.append(
-            OrderPlaced(
-                occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
-                order_id="x",
-            )
-        )
-        assert order.events == []
+        agg = _FakeAggregate(uuid4())
+        event = _FakeEvent(detail="d")
+        agg.record_event(event)
+        events = agg.events
+        events.clear()
+        assert agg.events == [event]
 
-    def test_clear_events_empties_list(self):
-        order = Order(entity_id="order-1")
-        order.record_event(
-            OrderPlaced(
-                occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
-                order_id="order-1",
-            )
-        )
-        order.clear_events()
-        assert order.events == []
+    def test_is_entity(self):
+        agg = _FakeAggregate(uuid4())
+        assert isinstance(agg, Entity)
 
-    def test_multiple_events_preserves_order(self):
-        order = Order(entity_id="order-1")
-        event_1 = OrderPlaced(
-            occurred_at=datetime(2026, 1, 1, tzinfo=UTC),
-            order_id="1",
-        )
-        event_2 = OrderPlaced(
-            occurred_at=datetime(2026, 1, 2, tzinfo=UTC),
-            order_id="2",
-        )
-        order.record_event(event_1)
-        order.record_event(event_2)
-        assert order.events == [event_1, event_2]
+    def test_identity_equality(self):
+        uid = uuid4()
+        a = _FakeAggregate(uid)
+        b = _FakeAggregate(uid)
+        assert a == b

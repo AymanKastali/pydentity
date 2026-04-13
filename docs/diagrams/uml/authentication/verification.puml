@@ -1,0 +1,133 @@
+@startuml verification
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class VerificationRequestId <<ValueObject>> {
+    - value: UUID
+}
+
+class HashedVerificationRequestToken <<ValueObject>> {
+    - value: str
+}
+
+class RawVerificationRequestToken <<ValueObject>> {
+    - value: str
+}
+
+class VerificationPolicy <<ValueObject>> {
+    - email_verification_ttl_seconds: int
+    - password_reset_ttl_seconds: int
+}
+
+class VerificationRequestExpiry <<ValueObject>> {
+    - value: datetime
+}
+
+' ===== ENUMS =====
+enum VerificationRequestStatus {
+    PENDING
+    VERIFIED
+    INVALIDATED
+    EXPIRED
+}
+
+enum VerificationRequestType {
+    EMAIL_VERIFICATION
+    PASSWORD_RESET
+}
+
+enum VerificationFailureReason {
+    INVALID_TOKEN
+    EXPIRED
+    ALREADY_VERIFIED
+}
+
+' ===== DOMAIN INTERFACES =====
+interface VerificationRequestTokenHasher <<DomainInterface>> {
+    + hash(token: RawVerificationRequestToken): HashedVerificationRequestToken
+}
+
+interface VerificationRequestTokenVerifier <<DomainInterface>> {
+    + verify(token: RawVerificationRequestToken, hash: HashedVerificationRequestToken): bool
+}
+
+' ===== DOMAIN SERVICES =====
+class InvalidateVerificationRequests <<DomainService>> {
+    + invalidate(account_id: AccountId, type: VerificationRequestType)
+}
+
+' ===== FACTORY =====
+class VerificationRequestFactory <<Factory>> {
+    + create_email_verification_request(account_id: AccountId, hasher: VerificationRequestTokenHasher, policy: VerificationPolicy): tuple[VerificationRequest, RawVerificationRequestToken]
+    + create_password_reset_request(account_id: AccountId, hasher: VerificationRequestTokenHasher, policy: VerificationPolicy): tuple[VerificationRequest, RawVerificationRequestToken]
+}
+
+' ===== AGGREGATE ROOT =====
+class VerificationRequest <<AggregateRoot>> {
+    - id: VerificationRequestId
+    - account_id: AccountId
+    - status: VerificationRequestStatus
+    - type: VerificationRequestType
+    - hash: HashedVerificationRequestToken
+    - expiry: VerificationRequestExpiry
+    + {static} create(id: VerificationRequestId, account_id: AccountId, type: VerificationRequestType, hash: HashedVerificationRequestToken, expiry: VerificationRequestExpiry): VerificationRequest
+    + verify(token: RawVerificationRequestToken, verifier: VerificationRequestTokenVerifier, current_time: datetime)
+    + invalidate()
+    + expire()
+}
+
+' ===== DOMAIN EVENTS =====
+class VerificationRequestCreated <<DomainEvent>> {
+    - verification_request_id: VerificationRequestId
+    - account_id: AccountId
+    - type: VerificationRequestType
+}
+
+class VerificationRequestFailed <<DomainEvent>> {
+    - verification_request_id: VerificationRequestId
+    - account_id: AccountId
+    - reason: VerificationFailureReason
+}
+
+class VerificationRequestVerified <<DomainEvent>> {
+    - verification_request_id: VerificationRequestId
+    - account_id: AccountId
+}
+
+class VerificationRequestInvalidated <<DomainEvent>> {
+    - verification_request_id: VerificationRequestId
+    - account_id: AccountId
+}
+
+class VerificationRequestExpired <<DomainEvent>> {
+    - verification_request_id: VerificationRequestId
+    - account_id: AccountId
+}
+
+' ===== REPOSITORIES =====
+interface VerificationRequestRepository <<Repository>> {
+    + find_by_id(verification_request_id: VerificationRequestId): VerificationRequest
+    + find_pending_by_account_id(account_id: AccountId): list[VerificationRequest]
+    + find_pending_by_account_id_and_type(account_id: AccountId, type: VerificationRequestType): list[VerificationRequest]
+    + save(verification_request: VerificationRequest)
+}
+
+' ===== RELATIONSHIPS =====
+VerificationRequest ..> VerificationRequestCreated : publishes >
+VerificationRequest ..> VerificationRequestVerified : publishes >
+VerificationRequest ..> VerificationRequestFailed : publishes >
+VerificationRequest ..> VerificationRequestInvalidated : publishes >
+VerificationRequest ..> VerificationRequestExpired : publishes >
+
+VerificationRequest ..> VerificationRequestTokenVerifier : uses >
+
+VerificationRequestFactory ..> VerificationRequest : creates >
+VerificationRequestFactory ..> VerificationRequestTokenHasher : uses >
+VerificationRequestFactory ..> VerificationPolicy : uses >
+
+InvalidateVerificationRequests ..> VerificationRequestRepository : uses >
+InvalidateVerificationRequests ..> VerificationRequest : invalidates >
+
+@enduml

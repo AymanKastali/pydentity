@@ -1,76 +1,63 @@
-from pydentity.shared_kernel import DomainError
+from pydentity.authentication.domain.account.value_objects import (
+    AccountStatus,
+    Email,
+)
+from pydentity.shared_kernel.building_blocks import DomainError
 
 
-class AccountNotActiveError(DomainError):
+class AccountError(DomainError):
+    pass
+
+
+class AccountNotActiveError(AccountError):
+    def __init__(self, current_status: AccountStatus) -> None:
+        super().__init__(f"Account must be active, but status is {current_status}.")
+
+
+class AccountNotPendingVerificationError(AccountError):
+    def __init__(self, current_status: AccountStatus) -> None:
+        super().__init__(
+            f"Account must be pending verification, but status is {current_status}."
+        )
+
+
+class AccountNotLockableError(AccountError):
+    def __init__(self, current_status: AccountStatus) -> None:
+        super().__init__(f"Account cannot be locked from status {current_status}.")
+
+
+class AccountNotUnlockableError(AccountError):
+    def __init__(self, current_status: AccountStatus) -> None:
+        super().__init__(f"Account cannot be unlocked from status {current_status}.")
+
+
+class InvalidCredentialsError(AccountError):
     def __init__(self) -> None:
-        super().__init__("Account is not active.")
+        super().__init__("Invalid credentials.")
 
 
-class AccountNotUnverifiedError(DomainError):
+class PasswordAlreadyUsedError(AccountError):
     def __init__(self) -> None:
-        super().__init__("Account is not unverified.")
+        super().__init__("Password has been used previously.")
 
 
-class AccountNotLockedError(DomainError):
+class PasswordCompromisedError(AccountError):
     def __init__(self) -> None:
-        super().__init__("Account is not locked.")
+        super().__init__("Password appears in known data breaches.")
 
 
-class AccountUnverifiedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Account has not been verified.")
+class PasswordPolicyViolationError(AccountError):
+    def __init__(self, min_length: int, max_length: int) -> None:
+        super().__init__(
+            f"Password must be between {min_length} and {max_length} characters."
+        )
 
 
-class AccountAlreadySuspendedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Account is already suspended.")
+class InvalidEmailError(AccountError):
+    def __init__(self, email: Email) -> None:
+        super().__init__(f"Email {email.value} is not a valid email address.")
 
 
-class AccountAlreadyClosedError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Account is already closed.")
-
-
-class PasswordReuseError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Password was recently used and cannot be reused.")
-
-
-class DuplicateTOTPSecretError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Account already has a TOTP secret.")
-
-
-class TOTPSecretNotFoundError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Account does not have a TOTP secret.")
-
-
-class CannotRemoveCredentialError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Cannot remove credential while MFA requires it.")
-
-
-class MFAAlreadyEnabledError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("MFA is already enabled.")
-
-
-class MFANotEnabledError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("MFA is not enabled.")
-
-
-class MFARequiresCredentialError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("MFA requires at least one non-password credential.")
-
-
-class EmailAlreadyTakenError(DomainError):
-    def __init__(self) -> None:
-        super().__init__("Email address is already associated with an account.")
-
-
-class PasswordPolicyViolationError(DomainError):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
+class DuplicateEmailError(AccountError):
+    def __init__(self, email: Email) -> None:
+        super().__init__(f"Email {email.value} is already in use.")

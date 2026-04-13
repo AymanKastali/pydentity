@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pydentity.audit.domain.audit_entry.aggregate import AuditEntry
-    from pydentity.audit.domain.audit_entry.aggregate_id import AuditEntryId
-    from pydentity.shared_kernel import AccountId
+from pydentity.audit.domain.audit_entry.aggregate import AuditEntry
+from pydentity.audit.domain.audit_entry.value_objects import AuditEntryId
+from pydentity.shared_kernel.building_blocks import EventName
+from pydentity.shared_kernel.value_objects import AccountId
 
 
 class AuditEntryRepository(ABC):
@@ -18,4 +17,4 @@ class AuditEntryRepository(ABC):
     async def find_by_account_id(self, account_id: AccountId) -> list[AuditEntry]: ...
 
     @abstractmethod
-    async def find_by_event_name(self, event_name: str) -> list[AuditEntry]: ...
+    async def find_by_event_name(self, event_name: EventName) -> list[AuditEntry]: ...

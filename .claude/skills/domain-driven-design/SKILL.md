@@ -1,6 +1,7 @@
 ---
 name: domain-driven-design
 description: Use when designing, building, reviewing, or modifying any domain model, application structure, or module boundary — enforces ubiquitous language, tactical building blocks (Aggregates, Entities, Value Objects, Domain Events, Factories, Specifications, Repositories), strategic design (Bounded Contexts, Context Maps, Subdomains, Distillation), supple design (Intention-Revealing Interfaces, Side-Effect-Free Functions, Closure of Operations), Evans' four-layer architecture (User Interface, Application, Domain, Infrastructure) with DIP-evolved dependency direction, infrastructure isolation, and advanced patterns (CQRS, Event Sourcing, Sagas) through mandatory phased gates
+disable-model-invocation: true
 ---
 
 # Domain-Driven Design

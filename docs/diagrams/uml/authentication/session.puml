@@ -1,0 +1,93 @@
+@startuml session
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class SessionId <<ValueObject>> {
+    - value: UUID
+}
+
+class SessionPolicy <<ValueObject>> {
+    - ttl_seconds: int
+}
+
+class SessionExpiry <<ValueObject>> {
+    - value: datetime
+}
+
+' ===== ENUMS =====
+enum SessionStatus {
+    ACTIVE
+    ENDED
+}
+
+enum SessionEndReason {
+    LOGOUT
+    EXPIRED
+    FORCED
+    COMPROMISE
+}
+
+' ===== DOMAIN SERVICES =====
+class TerminateSessions <<DomainService>> {
+    + terminate(device_id: DeviceId, reason: SessionEndReason)
+}
+
+' ===== FACTORY =====
+class SessionFactory <<Factory>> {
+    + start_session(account_id: AccountId, device_id: DeviceId, policy: SessionPolicy): Session
+}
+
+' ===== AGGREGATE ROOT =====
+class Session <<AggregateRoot>> {
+    - id: SessionId
+    - account_id: AccountId
+    - device_id: DeviceId
+    - status: SessionStatus
+    - expiry: SessionExpiry
+    + {static} create(id: SessionId, account_id: AccountId, device_id: DeviceId, expiry: SessionExpiry): Session
+    + end(reason: SessionEndReason)
+    + refresh(policy: SessionPolicy)
+}
+
+' ===== DOMAIN EVENTS =====
+class SessionStarted <<DomainEvent>> {
+    - session_id: SessionId
+    - account_id: AccountId
+    - device_id: DeviceId
+}
+
+class SessionEnded <<DomainEvent>> {
+    - session_id: SessionId
+    - account_id: AccountId
+    - device_id: DeviceId
+    - reason: SessionEndReason
+}
+
+class SessionRefreshed <<DomainEvent>> {
+    - session_id: SessionId
+    - account_id: AccountId
+    - device_id: DeviceId
+}
+
+' ===== REPOSITORIES =====
+interface SessionRepository <<Repository>> {
+    + find_by_id(session_id: SessionId): Session
+    + find_active_by_device_id(device_id: DeviceId): list[Session]
+    + save(session: Session)
+}
+
+' ===== RELATIONSHIPS =====
+Session ..> SessionStarted : publishes >
+Session ..> SessionEnded : publishes >
+Session ..> SessionRefreshed : publishes >
+Session ..> SessionPolicy : uses >
+
+SessionFactory ..> Session : creates >
+SessionFactory ..> SessionPolicy : uses >
+
+TerminateSessions ..> SessionRepository : uses >
+TerminateSessions ..> Session : ends >
+
+@enduml

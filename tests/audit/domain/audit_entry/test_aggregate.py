@@ -1,38 +1,82 @@
 from uuid import uuid4
 
 from pydentity.audit.domain.audit_entry.aggregate import AuditEntry
-from pydentity.audit.domain.audit_entry.aggregate_id import AuditEntryId
-from pydentity.audit.domain.audit_entry.value_objects import EventPayload
-from pydentity.shared_kernel import AccountId
+from pydentity.audit.domain.audit_entry.value_objects import AuditEntryId, EventPayload
+from pydentity.shared_kernel.building_blocks import AggregateRoot, EventName
+from pydentity.shared_kernel.value_objects import AccountId
 
 
-class TestAuditEntryRecord:
-    def test_creates_audit_entry(self, account_id: AccountId):
+def _make_entry() -> AuditEntry:
+    return AuditEntry.record(
+        entry_id=AuditEntryId(value=uuid4()),
+        event_name=EventName(value="AccountRegistered"),
+        account_id=AccountId(value=uuid4()),
+        payload=EventPayload(entries=(("reason", "signup"),)),
+    )
+
+
+class TestAuditEntry:
+    def test_record_factory_creates_entry(self):
         entry_id = AuditEntryId(value=uuid4())
-        payload = EventPayload(entries=(("key", "value"),))
-        entry = AuditEntry.record(entry_id, "account_registered", account_id, payload)
+        event_name = EventName(value="AccountRegistered")
+        account_id = AccountId(value=uuid4())
+        payload = EventPayload(entries=(("reason", "signup"),))
+
+        entry = AuditEntry.record(
+            entry_id=entry_id,
+            event_name=event_name,
+            account_id=account_id,
+            payload=payload,
+        )
+
         assert entry.id == entry_id
-
-    def test_stores_event_name(self, account_id: AccountId):
-        entry_id = AuditEntryId(value=uuid4())
-        payload = EventPayload(entries=())
-        entry = AuditEntry.record(entry_id, "account_registered", account_id, payload)
-        assert entry.event_name == "account_registered"
-
-    def test_stores_account_id(self, account_id: AccountId):
-        entry_id = AuditEntryId(value=uuid4())
-        payload = EventPayload(entries=())
-        entry = AuditEntry.record(entry_id, "account_registered", account_id, payload)
+        assert entry.event_name == event_name
         assert entry.account_id == account_id
-
-    def test_stores_payload(self, account_id: AccountId):
-        entry_id = AuditEntryId(value=uuid4())
-        payload = EventPayload(entries=(("key", "value"),))
-        entry = AuditEntry.record(entry_id, "account_registered", account_id, payload)
         assert entry.payload == payload
 
-    def test_records_no_domain_events(self, account_id: AccountId):
-        entry_id = AuditEntryId(value=uuid4())
-        payload = EventPayload(entries=())
-        entry = AuditEntry.record(entry_id, "account_registered", account_id, payload)
+    def test_is_aggregate_root(self):
+        entry = _make_entry()
+        assert isinstance(entry, AggregateRoot)
+
+    def test_identity_equality(self):
+        uid = uuid4()
+        entry_id = AuditEntryId(value=uid)
+        a = AuditEntry.record(
+            entry_id=entry_id,
+            event_name=EventName(value="X"),
+            account_id=AccountId(value=uuid4()),
+            payload=EventPayload(entries=()),
+        )
+        b = AuditEntry.record(
+            entry_id=entry_id,
+            event_name=EventName(value="Y"),
+            account_id=AccountId(value=uuid4()),
+            payload=EventPayload(entries=()),
+        )
+        assert a == b
+
+    def test_not_equal_different_ids(self):
+        a = _make_entry()
+        b = _make_entry()
+        assert a != b
+
+    def test_no_domain_events_after_creation(self):
+        entry = _make_entry()
         assert entry.events == []
+
+    def test_hash_by_identity(self):
+        uid = uuid4()
+        entry_id = AuditEntryId(value=uid)
+        a = AuditEntry.record(
+            entry_id=entry_id,
+            event_name=EventName(value="X"),
+            account_id=AccountId(value=uuid4()),
+            payload=EventPayload(entries=()),
+        )
+        b = AuditEntry.record(
+            entry_id=entry_id,
+            event_name=EventName(value="Y"),
+            account_id=AccountId(value=uuid4()),
+            payload=EventPayload(entries=()),
+        )
+        assert hash(a) == hash(b)

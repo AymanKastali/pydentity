@@ -1,22 +1,21 @@
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from typing import Self
 
-from pydentity.authentication.domain.session.aggregate_id import SessionId
+from pydentity.authentication.domain.session.errors import SessionNotActiveError
 from pydentity.authentication.domain.session.events import (
-    RefreshTokenRotated,
-    SessionEnded,
+    SessionRefreshed,
+    SessionRevoked,
     SessionStarted,
 )
 from pydentity.authentication.domain.session.value_objects import (
-    RefreshToken,
-    SessionEndReason,
+    SessionExpiry,
+    SessionId,
+    SessionPolicy,
+    SessionRevocationReason,
     SessionStatus,
 )
-from pydentity.shared_kernel import AggregateRoot
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from pydentity.shared_kernel import AccountId
+from pydentity.shared_kernel.building_blocks import AggregateRoot
+from pydentity.shared_kernel.value_objects import AccountId, DeviceId
 
 
 class Session(AggregateRoot[SessionId]):
@@ -24,97 +23,96 @@ class Session(AggregateRoot[SessionId]):
         self,
         session_id: SessionId,
         account_id: AccountId,
-        refresh_token: RefreshToken,
+        device_id: DeviceId,
         status: SessionStatus,
+        expiry: SessionExpiry,
     ) -> None:
         super().__init__(session_id)
         self._account_id: AccountId = account_id
-        self._refresh_token: RefreshToken = refresh_token
+        self._device_id: DeviceId = device_id
         self._status: SessionStatus = status
-
-    # --- Creation ---
+        self._expiry: SessionExpiry = expiry
 
     @classmethod
-    def start(
+    def create(
         cls,
         session_id: SessionId,
         account_id: AccountId,
-        refresh_token: RefreshToken,
-        now: datetime,
-    ) -> Session:
+        device_id: DeviceId,
+        expiry: SessionExpiry,
+    ) -> Self:
         session = cls(
             session_id=session_id,
             account_id=account_id,
-            refresh_token=refresh_token,
+            device_id=device_id,
             status=SessionStatus.ACTIVE,
+            expiry=expiry,
         )
-        session.record_event(
-            SessionStarted(
-                occurred_at=now, session_id=session_id, account_id=account_id
-            )
-        )
+        session._record_session_started()
         return session
 
-    # --- Queries ---
+    def revoke(self, reason: SessionRevocationReason) -> None:
+        self._guard_status_is_active()
+        self._mark_as_revoked()
+        self._record_session_revoked(reason)
+
+    def refresh(self, policy: SessionPolicy, current_time: datetime) -> None:
+        self._guard_status_is_active()
+        self._compute_expiry(policy, current_time)
+        self._record_session_refreshed()
+
+    def _compute_expiry(self, policy: SessionPolicy, current_time: datetime) -> None:
+        self._expiry = SessionExpiry(
+            value=current_time + timedelta(seconds=policy.ttl_seconds),
+        )
+
+    def _mark_as_revoked(self) -> None:
+        self._status = SessionStatus.REVOKED
+
+    def _guard_status_is_active(self) -> None:
+        if self._status is not SessionStatus.ACTIVE:
+            raise SessionNotActiveError(self._status)
+
+    def _record_session_started(self) -> None:
+        self.record_event(
+            SessionStarted(
+                session_id=self._id,
+                account_id=self._account_id,
+                device_id=self._device_id,
+            )
+        )
+
+    def _record_session_revoked(self, reason: SessionRevocationReason) -> None:
+        self.record_event(
+            SessionRevoked(
+                session_id=self._id,
+                account_id=self._account_id,
+                device_id=self._device_id,
+                reason=reason,
+            )
+        )
+
+    def _record_session_refreshed(self) -> None:
+        self.record_event(
+            SessionRefreshed(
+                session_id=self._id,
+                account_id=self._account_id,
+                device_id=self._device_id,
+            )
+        )
 
     @property
     def account_id(self) -> AccountId:
         return self._account_id
 
     @property
-    def refresh_token(self) -> RefreshToken:
-        return self._refresh_token
+    def device_id(self) -> DeviceId:
+        return self._device_id
 
     @property
     def status(self) -> SessionStatus:
         return self._status
 
-    # --- Token refresh ---
-
-    def refresh(self, new_refresh_token: RefreshToken, now: datetime) -> None:
-        self._status.guard_is_active()
-        self._refresh_token.guard_not_expired(now)
-        self._refresh_token.guard_not_revoked()
-        self._rotate_refresh_token(new_refresh_token)
-        self.record_event(
-            RefreshTokenRotated(
-                occurred_at=now,
-                session_id=self._id,
-                account_id=self._account_id,
-            )
-        )
-
-    def _rotate_refresh_token(self, new_refresh_token: RefreshToken) -> None:
-        self._refresh_token = new_refresh_token
-
-    # --- Termination ---
-
-    def end(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.LOGOUT, now)
-
-    def _terminate(self, reason: SessionEndReason, now: datetime) -> None:
-        self._status.guard_is_active()
-        self._mark_ended()
-        self.record_event(
-            SessionEnded(
-                occurred_at=now,
-                session_id=self._id,
-                account_id=self._account_id,
-                reason=reason,
-            )
-        )
-
-    def _mark_ended(self) -> None:
-        self._status = SessionStatus.ENDED
-
-    def idle_timeout(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.IDLE_TIMEOUT, now)
-
-    def absolute_timeout(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.ABSOLUTE_TIMEOUT, now)
-
-    def force_end(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.FORCED, now)
-
-    def flag_compromised(self, now: datetime) -> None:
-        self._terminate(SessionEndReason.COMPROMISE, now)
+    @property
+    def expiry(self) -> SessionExpiry:
+        return self._expiry

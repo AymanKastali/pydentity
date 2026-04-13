@@ -1,0 +1,32 @@
+@startuml audit_entry
+!theme blueprint
+hide empty members
+!include ../shared_kernel/shared_kernel.puml
+
+' ===== VALUE OBJECTS =====
+class AuditEntryId <<ValueObject>> {
+    - value: UUID
+}
+
+class EventPayload <<ValueObject>> {
+    - entries: tuple[tuple[str, str], ...]
+}
+
+' ===== AGGREGATE ROOT =====
+class AuditEntry <<AggregateRoot>> {
+    - id: AuditEntryId
+    - event_name: EventName
+    - account_id: AccountId
+    - payload: EventPayload
+    + {static} record(id: AuditEntryId, event_name: EventName, account_id: AccountId, payload: EventPayload): AuditEntry
+}
+
+' ===== REPOSITORIES =====
+interface AuditEntryRepository <<Repository>> {
+    + find_by_id(entry_id: AuditEntryId): AuditEntry
+    + find_by_account_id(account_id: AccountId): list[AuditEntry]
+    + find_by_event_name(event_name: EventName): list[AuditEntry]
+    + save(entry: AuditEntry)
+}
+
+@enduml
